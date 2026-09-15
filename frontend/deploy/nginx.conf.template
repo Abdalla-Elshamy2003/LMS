@@ -1,0 +1,92 @@
+# Serves the built React SPA and reverse-proxies /api to the backend.
+# BACKEND_HOST is substituted at container start (see docker-entrypoint.sh) — defaults to
+# "backend:8091" (the docker-compose service name, resolved by Compose's embedded DNS) so local
+# Docker Compose needs no configuration; set BACKEND_HOST to override it (e.g. on Railway, where
+# there's no compose network, to the backend service's private domain and port).
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+    server_tokens off;
+
+    # Compose healthcheck target — cheap, no proxying involved.
+    location = /healthz {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 "ok\n";
+    }
+
+    gzip on;
+    gzip_comp_level 5;
+    gzip_min_length 512;
+    gzip_types text/plain text/css application/json application/javascript text/xml
+               application/xml application/xml+rss text/javascript image/svg+xml;
+
+    # Reasonable baseline hardening for a public-facing static site.
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header Referrer-Policy no-referrer always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), display-capture=()" always;
+    add_header Cross-Origin-Opener-Policy same-origin-allow-popups always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https:; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://player.vdocipher.com; font-src 'self' data: https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'" always;
+
+    # Hashed build assets (Vite fingerprints filenames) are safe to cache indefinitely.
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options SAMEORIGIN always;
+        add_header Referrer-Policy no-referrer always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), display-capture=()" always;
+        add_header Cross-Origin-Opener-Policy same-origin-allow-popups always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https:; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://player.vdocipher.com; font-src 'self' data: https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'" always;
+        try_files $uri =404;
+    }
+
+    # Everything under /api/* (auth, students, exams, protected file downloads, ...)
+    # goes to the Spring Boot backend.
+    #
+    # proxy_pass goes through a *variable* rather than a literal host on purpose: with a literal,
+    # nginx resolves the backend's address once at worker start and caches it forever, so the
+    # moment the backend redeploys onto a new address every /api call 502s until this container
+    # is also restarted by hand (hit exactly that in production). A variable makes nginx re-resolve
+    # per request, which in turn requires an explicit resolver — that address is filled in below
+    # from the container's own /etc/resolv.conf at start (see docker-entrypoint.sh) so the same
+    # image works under Compose and on Railway. $request_uri must be appended explicitly here:
+    # unlike the literal form, the variable form does not forward the original path on its own.
+    location /api/ {
+        resolver RESOLVER_PLACEHOLDER valid=10s ipv6=off;
+        set $manarah_backend BACKEND_HOST_PLACEHOLDER;
+        proxy_pass http://$manarah_backend$request_uri;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Large lesson/homework uploads go through this proxy too.
+        client_max_body_size 512M;
+        # AI generation from a large PDF (upload to the model + processing) can run past two minutes.
+        proxy_read_timeout 300s;
+    }
+
+    # React Router client-side routing: any other path falls back to index.html.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # index.html itself must never be cached, or a redeploy won't reach clients.
+    location = /index.html {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options SAMEORIGIN always;
+        add_header Referrer-Policy no-referrer always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), display-capture=()" always;
+        add_header Cross-Origin-Opener-Policy same-origin-allow-popups always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https:; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://player.vdocipher.com; font-src 'self' data: https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'" always;
+    }
+}

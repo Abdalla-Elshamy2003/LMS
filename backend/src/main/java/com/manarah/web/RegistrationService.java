@@ -1,0 +1,307 @@
+package com.manarah.web;
+
+import com.manarah.common.exception.ApiExceptions.BadRequestException;
+import com.manarah.common.exception.ApiExceptions.ConflictException;
+import com.manarah.common.exception.ApiExceptions.NotFoundException;
+import com.manarah.course.domain.Course;
+import com.manarah.course.repo.CourseRepository;
+import com.manarah.enrollment.domain.Enrollment;
+import com.manarah.enrollment.repo.EnrollmentRepository;
+import com.manarah.identity.domain.Role;
+import com.manarah.identity.domain.User;
+import com.manarah.identity.repo.UserRepository;
+import com.manarah.org.domain.Branch;
+import com.manarah.org.domain.Tenant;
+import com.manarah.org.repo.BranchRepository;
+import com.manarah.org.repo.TenantRepository;
+import com.manarah.payment.CourseCheckoutService;
+import com.manarah.security.JwtService;
+import com.manarah.security.PasswordPolicy;
+import com.manarah.student.domain.Guardian;
+import com.manarah.student.domain.Student;
+import com.manarah.student.domain.StudentGuardian;
+import com.manarah.student.repo.GuardianRepository;
+import com.manarah.student.repo.StudentGuardianRepository;
+import com.manarah.student.repo.StudentRepository;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+import java.util.regex.Pattern;
+
+/**
+ * Public self-registration (§register). A real account, not just a lead form: this creates an
+ * actual STUDENT login (email + the password the visitor chose) alongside the trial student
+ * profile, so the response can hand back a working access token — the visitor lands inside the
+ * app immediately, the same way logging in does. Guardian details are optional here (staff can
+ * always add one later from the student profile); the account and the student record are the
+ * only things guaranteed to exist afterward.
+ *
+ * <p>Validates the requested institution and course membership first, then creates everything
+ * atomically — a failure partway through rolls back the whole request instead of leaving an
+ * orphaned account with no student record.
+ */
+@Service
+public class RegistrationService {
+
+    private static final Pattern EMAIL = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+
+    private final TenantRepository tenants;
+    private final BranchRepository branches;
+    private final CourseRepository courses;
+    private final StudentRepository students;
+    private final GuardianRepository guardians;
+    private final StudentGuardianRepository links;
+    private final EnrollmentRepository enrollments;
+    private final UserRepository users;
+    private final PasswordEncoder passwordEncoder;
+    private final com.manarah.payment.CourseAccessCodeService accessCodes;
+    private final JwtService jwtService;
+    private final CourseCheckoutService checkout;
+    private final com.manarah.academy.AcademyAccess academyAccess;
+
+    public RegistrationService(TenantRepository tenants, BranchRepository branches, CourseRepository courses,
+                               StudentRepository students, GuardianRepository guardians,
+                               StudentGuardianRepository links, EnrollmentRepository enrollments,
+                               UserRepository users, PasswordEncoder passwordEncoder, JwtService jwtService,
+                               CourseCheckoutService checkout, com.manarah.academy.AcademyAccess academyAccess,
+                               com.manarah.payment.CourseAccessCodeService accessCodes) {
+        this.accessCodes = accessCodes;
+        this.academyAccess = academyAccess;
+        this.tenants = tenants;
+        this.branches = branches;
+        this.courses = courses;
+        this.students = students;
+        this.guardians = guardians;
+        this.links = links;
+        this.enrollments = enrollments;
+        this.users = users;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
+        this.checkout = checkout;
+    }
+
+    private static final java.util.Set<String> EDUCATION_TYPES = java.util.Set.of("عادي", "لغات", "تجريبي");
+
+    public record RegisterCommand(String fullName, String email, String password, String phone, String grade,
+                                  String nationalId, String educationType,
+                                  String guardianName, String guardianPhone, Long courseId, String tenantSlug) {
+    }
+
+    public record RegistrationResult(String accessToken, String tokenType, long expiresInMinutes,
+                                     String studentCode, String message) {
+    }
+
+    /** A checkout is a registration tied to buying one specific paid course: the course is
+     *  required, and a purchase order is opened for its price instead of a trial enrollment. */
+    public record CheckoutCommand(String fullName, String email, String password, String phone, String grade,
+                                  String nationalId, String educationType,
+                                  String guardianName, String guardianPhone, Long courseId, String tenantSlug) {
+    }
+
+    /** No tenantSlug/courseId needed — the code itself identifies both. */
+    public record RedeemCommand(String code, String fullName, String email, String password, String phone,
+                                String grade, String nationalId, String educationType,
+                                String guardianName, String guardianPhone) {
+    }
+
+    public record CheckoutResult(String accessToken, String tokenType, long expiresInMinutes, String studentCode,
+                                 String reference, BigDecimal amount, String status, String checkoutUrl,
+                                 boolean liveGateway, String courseTitle, String message) {
+    }
+
+    @Transactional
+    public RegistrationResult register(RegisterCommand cmd) {
+        Tenant t = resolveTenant(cmd.tenantSlug());
+        Long tenantId = t.getId();
+        Course course = cmd.courseId() == null ? null : requireCourse(tenantId, cmd.courseId());
+
+        Account acc = createAccount(tenantId, cmd.fullName(), cmd.email(), cmd.password(), cmd.phone(),
+                cmd.grade(), cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone());
+
+        if (course != null) {
+            Enrollment e = new Enrollment();
+            e.setTenantId(tenantId);
+            e.setStudentId(acc.student.getId());
+            e.setCourseId(course.getId());
+            // A free course opens immediately; a paid one stays a trial until checkout completes.
+            e.setStatus(isFree(course) ? "ACTIVE" : "TRIAL");
+            enrollments.save(e);
+        }
+
+        String token = jwtService.generateAccessToken(acc.user);
+        return new RegistrationResult(token, "Bearer", jwtService.getAccessTokenTtlMinutes(),
+                acc.student.getCode(), "تم إنشاء حسابك بنجاح! أهلاً بك في منارة.");
+    }
+
+    /**
+     * Public checkout from a teacher's profile / course page: create the account, then open the
+     * very same purchase order a logged-in student would get from the courses page. This used to
+     * raise a manual invoice instead, which meant a visitor buying from the public site never
+     * reached the payment gateway at all — the one path where money was still collected by hand.
+     *
+     * <p>No enrollment is created here on purpose. Access to a paid course is granted only by
+     * {@code CourseCheckoutService.complete()}, i.e. after the gateway webhook confirms payment
+     * (or immediately, if the course is free) — creating one up front would hand out the course
+     * before a piastre was collected.
+     */
+    @Transactional
+    public CheckoutResult checkout(CheckoutCommand cmd) {
+        if (cmd.courseId() == null) {
+            throw new BadRequestException("اختر كورساً للاشتراك فيه");
+        }
+        Tenant t = resolveTenant(cmd.tenantSlug());
+        Long tenantId = t.getId();
+        Course course = requireCourse(tenantId, cmd.courseId());
+
+        Account acc = createAccount(tenantId, cmd.fullName(), cmd.email(), cmd.password(), cmd.phone(),
+                cmd.grade(), cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone());
+        acc.student.setStatus("PENDING_PAYMENT");
+        students.save(acc.student);
+
+        var order = checkout.openOrder(tenantId, acc.user.getId(), acc.student.getId(),
+                acc.student.getFullName(), cmd.email().trim(), cmd.phone(), course.getId());
+
+        String token = jwtService.generateAccessToken(acc.user);
+        return new CheckoutResult(token, "Bearer", jwtService.getAccessTokenTtlMinutes(), acc.student.getCode(),
+                order.reference(), order.amount(), order.status(), order.checkoutUrl(), order.liveGateway(),
+                course.getTitle(), checkoutMessage(order));
+    }
+
+    /** Creates the account inside the code's own tenant/course and redeems it in one transaction. */
+    @Transactional
+    public RegistrationResult redeem(RedeemCommand cmd) {
+        var code = accessCodes.findRedeemable(cmd.code());
+        Course course = courses.findByTenantIdAndId(code.getTenantId(), code.getCourseId())
+                .orElseThrow(() -> new BadRequestException("الكورس المرتبط بهذا الكود لم يعد متاحاً"));
+
+        Account acc = createAccount(code.getTenantId(), cmd.fullName(), cmd.email(), cmd.password(), cmd.phone(),
+                cmd.grade(), cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone());
+        accessCodes.redeem(code, acc.student.getId());
+
+        String token = jwtService.generateAccessToken(acc.user);
+        return new RegistrationResult(token, "Bearer", jwtService.getAccessTokenTtlMinutes(),
+                acc.student.getCode(), "تم تفعيل اشتراكك في \"" + course.getTitle() + "\" بنجاح!");
+    }
+
+    private static String checkoutMessage(com.manarah.payment.CourseCheckoutService.OrderView order) {
+        if ("PAID".equals(order.status()))
+            return "تم إنشاء حسابك وتفعيل الكورس! تقدر تبدأ المذاكرة دلوقتي.";
+        if (order.liveGateway())
+            return "تم إنشاء حسابك! كمّل الدفع من بوابة الدفع الآمنة عشان يتفتحلك الكورس فوراً.";
+        return "تم إنشاء حسابك! اختر طريقة الدفع لإتمام العملية وفتح الكورس.";
+    }
+
+    private record Account(User user, Student student) {
+    }
+
+    /** Shared by register() and checkout(): validates + creates the User/Student(+Guardian) that
+     *  every self-service signup needs, regardless of whether it ends in a trial or a purchase. */
+    private Account createAccount(Long tenantId, String fullName, String email, String password, String phone,
+                                  String grade, String nationalId, String educationTypeIn,
+                                  String guardianName, String guardianPhone) {
+        if (fullName == null || fullName.isBlank()) {
+            throw new BadRequestException("الاسم الكامل مطلوب");
+        }
+        if (email == null || !EMAIL.matcher(email.trim()).matches()) {
+            throw new BadRequestException("البريد الإلكتروني غير صحيح");
+        }
+        PasswordPolicy.requireStrong(password);
+        if (phone == null || phone.isBlank()) {
+            throw new BadRequestException("رقم الهاتف مطلوب");
+        }
+        if (nationalId != null && !nationalId.isBlank() && !nationalId.matches("\\d{14}")) {
+            throw new BadRequestException("الرقم القومي يجب أن يتكون من 14 رقماً");
+        }
+        String educationType = (educationTypeIn == null || educationTypeIn.isBlank()) ? "عادي" : educationTypeIn;
+        if (!EDUCATION_TYPES.contains(educationType)) {
+            throw new BadRequestException("نظام التعليم غير صحيح");
+        }
+
+        String trimmedEmail = email.trim();
+        if (users.existsByTenantIdAndEmailIgnoreCase(tenantId, trimmedEmail)) {
+            throw new ConflictException("هذا البريد الإلكتروني مسجَّل بالفعل، جرّب تسجيل الدخول بدلاً من ذلك");
+        }
+
+        Long branchId = branches.findByTenantIdOrderByName(tenantId).stream()
+                .findFirst().map(Branch::getId).orElse(null);
+
+        User user = new User();
+        user.setTenantId(tenantId);
+        user.setBranchId(branchId);
+        user.setFullName(fullName);
+        user.setEmail(trimmedEmail);
+        user.setPhone(phone);
+        user.setRole(Role.STUDENT);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        try {
+            users.save(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException("هذا البريد الإلكتروني مسجَّل بالفعل");
+        }
+
+        Student s = new Student();
+        s.setTenantId(tenantId);
+        s.setBranchId(branchId);
+        s.setUserId(user.getId());
+        // Placeholder for the insert; replaced with an id-derived code right after — race-free
+        // by construction since the DB just assigned this row a unique auto-increment id.
+        s.setCode("PENDING-" + UUID.randomUUID());
+        s.setFullName(fullName);
+        s.setGrade(grade);
+        s.setNationalId(nationalId);
+        s.setEducationType(educationType);
+        s.setPhone(phone);
+        s.setStatus("TRIAL");
+        try {
+            students.save(s);
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException("تعذّر إنشاء ملف الطالب، حاول مرة أخرى");
+        }
+        s.setCode(String.format("STD-%05d", s.getId()));
+        students.save(s);
+
+        // A guardian is optional at self-registration time — staff or the student can add one
+        // later from the profile. We still link one automatically when contact info is given.
+        if ((guardianName != null && !guardianName.isBlank()) || (guardianPhone != null && !guardianPhone.isBlank())) {
+            Guardian g = new Guardian();
+            g.setTenantId(tenantId);
+            g.setFullName(nn(guardianName, "ولي أمر " + fullName));
+            g.setPhone(nn(guardianPhone, phone));
+            guardians.save(g);
+
+            StudentGuardian link = new StudentGuardian();
+            link.setTenantId(tenantId);
+            link.setStudentId(s.getId());
+            link.setGuardianId(g.getId());
+            link.setRelation("ولي أمر");
+            links.save(link);
+        }
+
+        return new Account(user, s);
+    }
+
+    private Course requireCourse(Long tenantId, Long courseId) {
+        return courses.findByTenantIdAndId(tenantId, courseId)
+                .orElseThrow(() -> new BadRequestException("الكورس المحدد غير متاح لهذه المؤسسة"));
+    }
+
+    private Tenant resolveTenant(String slug) {
+        var tenant = (slug != null ? tenants.findBySlug(slug) : tenants.findAll().stream().findFirst())
+                .orElseThrow(() -> new NotFoundException("لا توجد مؤسسة"));
+        academyAccess.rejectSelfEnrollment(tenant.getId());
+        return tenant;
+    }
+
+    private static String nn(String v, String fallback) {
+        return (v == null || v.isBlank()) ? fallback : v;
+    }
+
+    private static boolean isFree(Course c) {
+        BigDecimal price = c.getFinalPrice() != null ? c.getFinalPrice() : c.getPrice();
+        return price == null || price.signum() <= 0;
+    }
+}

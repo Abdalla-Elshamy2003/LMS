@@ -1,0 +1,28 @@
+# Tooling (portable JDK/Maven — large binaries)
+.tooling/
+
+# Backend build & data
+backend/target/
+backend/data/
+backend/*.log
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Secrets
+.env
+
+# Local scratch: QA/test databases, logs, generated reports — not project source
+data/
+tmp/
+output/
+screenshots/
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+# Misc
+.DS_Store
+*.class

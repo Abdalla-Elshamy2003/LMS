@@ -1,0 +1,180 @@
+server:
+  port: 8091
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: manarah-lms
+  datasource:
+    # transaction_mode=IMMEDIATE: every @Transactional block starts as a writer, so concurrent
+    # read-then-write requests (exam autosave, video session heartbeats) queue on busy_timeout
+    # instead of failing instantly with SQLITE_BUSY on the snapshot upgrade.
+    url: jdbc:sqlite:./data/manarah.db?journal_mode=WAL&busy_timeout=5000&foreign_keys=true&date_class=text&transaction_mode=IMMEDIATE
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      pool-name: manarah-pool
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.community.dialect.SQLiteDialect
+        format_sql: false
+    open-in-view: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+  mail:
+    # Blank host keeps the JavaMailSender bean from being created at all — SmtpEmailSender handles
+    # its absence and falls back to logging, so the app still boots with no SMTP configured.
+    host: ${SPRING_MAIL_HOST:}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 8000
+          timeout: 8000
+          writetimeout: 8000
+  jackson:
+    default-property-inclusion: non_null
+  servlet:
+    multipart:
+      max-file-size: 512MB
+      max-request-size: 512MB
+
+manarah:
+  # This app's own public base URL (e.g. https://manarah.example.com). Used to build the links we
+  # send out — password-reset mails, payment redirects. Without it those links are relative and
+  # unusable from an inbox, so set MANARAH_PUBLIC_APP_URL on any real deployment.
+  public-app-url: ${MANARAH_PUBLIC_APP_URL:}
+  email:
+    # Real SMTP delivery for notifications and password-reset links. Leave 'enabled: false' (or
+    # spring.mail.host blank) to keep the safe stub behaviour — logs only, never claims a message
+    # was sent. See SmtpEmailSender for the full setup.
+    enabled: ${MANARAH_EMAIL_ENABLED:false}
+    from: ${MANARAH_EMAIL_FROM:}
+  security:
+    jwt:
+      # Base64-encoded 256-bit secret. Override in production via MANARAH_JWT_SECRET.
+      secret: ${MANARAH_JWT_SECRET}
+      # 30 days by default so staff scanning gate/attendance QR codes on a personal phone stay
+      # signed in instead of hitting a login wall mid-shift; there is no refresh-token flow, so
+      # this access token is the only thing keeping the session alive.
+      access-token-ttl-minutes: ${MANARAH_JWT_ACCESS_TTL_MINUTES:43200}
+      refresh-token-ttl-days: 30
+    cors:
+      allowed-origins: ${MANARAH_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+    cookies:
+      # Set true whenever the public site is served over HTTPS.
+      secure: ${MANARAH_COOKIE_SECURE:false}
+    login:
+      max-failures: ${MANARAH_LOGIN_MAX_FAILURES:8}
+      window-minutes: ${MANARAH_LOGIN_WINDOW_MINUTES:15}
+  demo:
+    # Demo data contains public sample accounts; it is opt-in and must stay disabled in production.
+    seed-enabled: ${MANARAH_DEMO_SEED_ENABLED:false}
+    password: ${MANARAH_DEMO_PASSWORD:}
+  storage:
+    root: ./data/files
+  video:
+    vdocipher-secret: ${MANARAH_VDOCIPHER_SECRET:}
+    require-drm: ${MANARAH_VIDEO_REQUIRE_DRM:false}
+    # How many devices one account may stream on at the same time; a new device replaces the oldest.
+    max-concurrent-sessions: ${MANARAH_VIDEO_MAX_SESSIONS:1}
+    # Reject stream requests that lack the browser's <video> fetch metadata (download managers, curl, scripts).
+    require-browser-fetch: ${MANARAH_VIDEO_REQUIRE_BROWSER_FETCH:true}
+  whatsapp:
+    # Real WhatsApp delivery via Meta's Cloud API. Leave 'enabled: false' (or the
+    # token/phone-number-id blank) to keep the safe stub behavior (logs only, never
+    # claims a message was sent). See WhatsAppCloudApiSender for setup details.
+    enabled: ${MANARAH_WHATSAPP_ENABLED:false}
+    access-token: ${MANARAH_WHATSAPP_ACCESS_TOKEN:}
+    phone-number-id: ${MANARAH_WHATSAPP_PHONE_NUMBER_ID:}
+    # Meta App Secret used to verify X-Hub-Signature-256 on every inbound POST.
+    app-secret: ${MANARAH_WHATSAPP_APP_SECRET:}
+    api-version: v20.0
+    default-country-code: "20"
+    # Shared secret Meta sends back during the webhook subscription handshake (hub.verify_token).
+    # Set MANARAH_WHATSAPP_VERIFY_TOKEN to whatever you register in Meta App Dashboard > WhatsApp > Configuration.
+    verify-token: ${MANARAH_WHATSAPP_VERIFY_TOKEN:}
+  sms:
+    # Real SMS delivery through a bulk-SMS gateway's HTTP API. Every Egyptian provider names its
+    # parameters differently, so the names are configuration rather than hardcoded — see
+    # HttpSmsSender for a worked example. Leave 'enabled: false' (or the url blank) to keep the
+    # safe stub behaviour: logs only, never claims a message was sent.
+    enabled: ${MANARAH_SMS_ENABLED:false}
+    url: ${MANARAH_SMS_URL:}
+    method: ${MANARAH_SMS_METHOD:GET}
+    recipient-param: ${MANARAH_SMS_RECIPIENT_PARAM:mobile}
+    message-param: ${MANARAH_SMS_MESSAGE_PARAM:message}
+    sender-param: ${MANARAH_SMS_SENDER_PARAM:sender}
+    # The registered Sender ID shown to the recipient — the provider must approve it first.
+    sender-id: ${MANARAH_SMS_SENDER_ID:}
+    # Full Authorization header value if the gateway uses one, e.g. "Bearer abc123".
+    auth-header: ${MANARAH_SMS_AUTH_HEADER:}
+    # Any remaining gateway parameters as "key:value" pairs, comma-separated (username, password, ...).
+    extra-params: ${MANARAH_SMS_EXTRA_PARAMS:}
+    default-country-code: "20"
+  ai:
+    # AI-assisted question generation for the exam question bank (OpenAI-compatible chat
+    # completions API — works with OpenRouter, OpenAI, or any compatible provider). Leave
+    # 'enabled: false' (or the api-key blank) to keep generation disabled with a clear error
+    # instead of silently failing. See AiQuestionGenerator for details.
+    enabled: ${MANARAH_AI_ENABLED:false}
+    base-url: ${MANARAH_AI_BASE_URL:https://openrouter.ai/api/v1}
+    api-key: ${MANARAH_AI_API_KEY:}
+    model: ${MANARAH_AI_MODEL:inclusionai/ling-3.0-flash-fin:free}
+  payment:
+    sandbox-enabled: ${MANARAH_PAYMENT_SANDBOX_ENABLED:false}
+    paymob:
+      # Real course-payment gateway (Paymob Accept — Egypt's standard aggregator for card +
+      # mobile wallets like Vodafone Cash; Fawry/InstaPay are NOT confirmed available through
+      # this API, see PaymobGatewayService). Leave 'enabled: false' (or the keys blank) to keep
+      # the existing sandbox/demo checkout behavior instead of a live gateway.
+      enabled: ${MANARAH_PAYMOB_ENABLED:false}
+      secret-key: ${MANARAH_PAYMOB_SECRET_KEY:}
+      public-key: ${MANARAH_PAYMOB_PUBLIC_KEY:}
+      hmac-secret: ${MANARAH_PAYMOB_HMAC_SECRET:}
+      # Comma-separated Integration IDs from your Paymob Accept Dashboard > Payment Integrations
+      # (one per enabled payment method — card, Vodafone Cash, ...). Paymob's own hosted
+      # checkout page shows exactly the methods behind these IDs; nothing is hardcoded here.
+      integration-ids: ${MANARAH_PAYMOB_INTEGRATION_IDS:}
+      api-base-url: ${MANARAH_PAYMOB_API_BASE_URL:https://accept.paymob.com}
+      checkout-base-url: ${MANARAH_PAYMOB_CHECKOUT_BASE_URL:https://eg.checkout.paymob.com/}
+      # This app's own public base URL, used to build the webhook/redirect URLs Paymob calls
+      # back to (e.g. https://your-domain.com). Required for the gateway to actually work.
+      public-app-url: ${MANARAH_PUBLIC_APP_URL:}
+
+management:
+  health:
+    # spring-boot-starter-mail registers a health indicator that opens a real SMTP connection on
+    # every /actuator/health call. With no SMTP configured that reports DOWN and the container
+    # healthcheck fails the deployment; even with SMTP configured, a temporarily unreachable mail
+    # provider must not mark the whole platform unhealthy. Delivery failures are handled inside
+    # SmtpEmailSender instead.
+    mail:
+      enabled: false
+
+springdoc:
+  api-docs:
+    # API documentation is an administrative tool and is disabled unless explicitly enabled.
+    enabled: ${MANARAH_API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${MANARAH_API_DOCS_ENABLED:false}
+    path: /swagger-ui.html
+    operationsSorter: method
+
+logging:
+  level:
+    root: INFO
+    com.manarah: INFO
+    org.hibernate.SQL: WARN

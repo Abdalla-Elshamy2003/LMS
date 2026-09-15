@@ -1,0 +1,181 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html { scroll-behavior: smooth; scroll-padding-top: 90px; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 3px solid #22d3ee; outline-offset: 4px; }
+::selection { background: #ccfbf1; color: #115e59; }
+.landing-hero { background: radial-gradient(ellipse at 20% 48%, #dff4ef 0, transparent 42%), radial-gradient(ellipse at 85% 15%, #e5f4ff 0, transparent 40%), #f8fbf9; }
+.learning-banner { background: radial-gradient(ellipse at 0% 10%, #155e75 0, transparent 65%), linear-gradient(110deg, #123e4a, #102432 65%); }
+.schedule-hero { background: radial-gradient(ellipse at 0% 10%, #0f766e 0, transparent 64%), linear-gradient(110deg, #123e4a, #0d2330 72%); }
+.support-hero { background: radial-gradient(ellipse at 5% 0%, #0e7490 0, transparent 62%), linear-gradient(115deg, #123e4a, #101d36 72%); }
+.profile-cover { background: radial-gradient(circle at 18% 20%, rgba(103,232,249,.35), transparent 24%), radial-gradient(circle at 80% 0%, rgba(167,139,250,.3), transparent 30%), linear-gradient(120deg, #0f766e, #123e4a 55%, #172554); }
+.schedule-board { scrollbar-width: thin; scrollbar-color: #99d5ce #f8fafc; }
+.course-cover { background-image: radial-gradient(circle at 8% 15%, #ffffff17, transparent 65%); }
+.cover-0 { background-color: #176878; }
+.cover-1 { background-color: #6652a3; }
+.cover-2 { background-color: #b4793b; }
+.cover-3 { background-color: #3e7867; }
+.course-tile { transition: box-shadow .3s ease, translate .3s ease, border-color .3s ease; }
+.course-tile:hover { translate: 0 -5px; border-color: #a5d9d5; box-shadow: 0 18px 38px -18px #0f766e44; }
+.course-tile .course-cover > svg { transition: transform .6s ease; }
+.course-tile:hover .course-cover > svg { transform: rotate(6deg) scale(1.06); }
+.hero-orbit { transform: rotateX(25deg) rotateZ(-18deg); box-shadow: 0 0 0 24px #ccfbf120, 0 0 0 65px #ccfbf118; }
+.banner-book { animation: book-drift 7s ease-in-out infinite; }
+.css-library { position: relative; width: 100%; height: 100%; perspective: 1000px; }
+.css-book { position: absolute; border-radius: 6px 15px 15px 6px; transform-style: preserve-3d; box-shadow: 18px 24px 30px -14px #164e6340; animation: css-book-float 6s ease-in-out infinite; }
+.css-book::before { content: ''; position: absolute; inset: 5px -13px 5px auto; width: 20px; background: repeating-linear-gradient(90deg, #e2ded0 0 1px, #fffbee 1px 3px); transform: rotateY(90deg); transform-origin: left; }
+.css-book::after { content: ''; position: absolute; inset: auto 0 -12px 0; height: 15px; background: #eee9db; transform: rotateX(-90deg); transform-origin: top; border-bottom: 4px solid #0e7490; }
+.css-book-cover { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; color: white; border-radius: inherit; border-right: 9px solid #ffffff18; }
+.css-book-cover span { font-weight: 900; font-size: 23px; }
+.css-book-cover small { font-size: 10px; opacity: .8; }
+.css-book-cover svg { color: #d9f99d; }
+.book-teal { width: 34%; height: 49%; left: 43%; top: 24%; background: linear-gradient(120deg, #0e8090, #115564); transform: rotateY(-28deg) rotateZ(13deg); z-index: 3; }
+.book-purple { width: 28%; height: 43%; left: 16%; top: 30%; background: linear-gradient(120deg, #8b5cf6, #5b3697); transform: rotateY(-20deg) rotateZ(-17deg); animation-delay: -2s; z-index: 2; }
+.book-amber { width: 16%; height: 23%; left: 33%; top: 8%; background: linear-gradient(120deg, #fbbf24, #d98b16); transform: rotateY(-25deg) rotateZ(-23deg); animation-delay: -4s; }
+.book-amber .css-book-cover span { font-size: 15px; }
+.css-open-book { position: absolute; width: 44%; height: 26%; left: 27%; bottom: 5%; display: flex; transform: rotateX(45deg) rotateZ(-12deg); z-index: 4; filter: drop-shadow(8px 18px 12px #164e6330); }
+.css-open-book > div { width: 50%; border: 7px solid #fff9e9; border-bottom: 6px solid #177184; background: repeating-linear-gradient(#fff9e9 0 11px, #c5cfc9 12px 13px); transform: rotateY(-15deg); border-radius: 3px 14px 4px 2px; }
+.css-open-book > div + div { transform: rotateY(15deg); border-radius: 14px 3px 2px 4px; }
+.library-shadow { position: absolute; width: 65%; height: 9%; left: 20%; bottom: 1%; border-radius: 100%; background: #155e7520; filter: blur(16px); }
+@keyframes css-book-float { 0%,100% { translate: 0 0; } 50% { translate: 0 -16px; } }
+@keyframes book-drift { 0%,100% { transform: translateY(0) rotate(12deg); } 50% { transform: translateY(-12px) rotate(8deg); } }
+@media (hover: hover) {
+  .btn-primary:hover, .btn-soft:hover { translate: 0 -2px; }
+  nav a:hover svg { transform: translateX(-2px); transition: transform .2s ease; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .course-tile:hover, .btn-primary:hover, .btn-soft:hover { translate: none; }
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Cairo', 'Tajawal', system-ui, sans-serif;
+  background: #f6f7fb;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; border: 2px solid #f6f7fb; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+@layer components {
+  .card {
+    @apply bg-white rounded-3xl shadow-card border border-ink-100/70;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 font-semibold text-sm
+           transition-all duration-200 active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white shadow-glow hover:bg-brand-700;
+  }
+  .btn-ghost {
+    @apply btn bg-ink-100 text-ink-700 hover:bg-ink-200;
+  }
+  .btn-soft {
+    @apply btn bg-brand-50 text-brand-700 hover:bg-brand-100;
+  }
+  .input {
+    @apply w-full rounded-2xl border border-ink-200 bg-white px-4 py-2.5 text-sm outline-none
+           transition-all focus:border-brand-400 focus:ring-4 focus:ring-brand-100;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold;
+  }
+  .label {
+    @apply block text-sm font-semibold text-ink-600 mb-1.5;
+  }
+}
+
+/* subtle grid background for auth */
+.bg-grid {
+  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.18) 1px, transparent 0);
+  background-size: 28px 28px;
+}
+
+/* fine dot grid for light sections (landing page) */
+.bg-dots {
+  background-image: radial-gradient(circle at 1px 1px, rgba(2,132,199,0.16) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+}
+
+.gradient-text {
+  background-image: linear-gradient(90deg, #0369a1, #0ea5e9, #38bdf8, #0284c7);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.mesh-bg {
+  background-image:
+    radial-gradient(at 20% 20%, rgba(14,165,233,0.16) 0px, transparent 50%),
+    radial-gradient(at 80% 10%, rgba(56,189,248,0.14) 0px, transparent 50%),
+    radial-gradient(at 90% 80%, rgba(3,105,161,0.12) 0px, transparent 50%),
+    radial-gradient(at 10% 90%, rgba(125,211,252,0.16) 0px, transparent 50%);
+}
+
+/* home page teacher cards: rotating glow ring around the floating portrait + light sweep on hover */
+.tcard { overflow: visible; isolation: isolate; }
+.tcard-ring {
+  background: conic-gradient(from 0deg, var(--glow, #0ea5e9), #ffffff00 30%, var(--glow, #0ea5e9) 55%, #ffffff00 80%, var(--glow, #0ea5e9));
+  animation: tcard-spin 6s linear infinite;
+  filter: blur(1px);
+  opacity: .85;
+}
+.tcard-ring::after { content: ''; position: absolute; inset: 4px; border-radius: inherit; background: #fff; }
+@keyframes tcard-spin { to { transform: rotate(360deg); } }
+.tcard-shine {
+  position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none;
+}
+.tcard-shine::before {
+  content: ''; position: absolute; top: -40%; bottom: -40%; width: 45%; left: -60%;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,.55), transparent);
+  transform: skewX(-18deg); transition: left .9s ease;
+}
+.group:hover .tcard-shine::before { left: 130%; }
+@media (prefers-reduced-motion: reduce) { .tcard-ring { animation: none; } .group:hover .tcard-shine::before { transition: none; } }
+
+/* home page hero typewriter caret */
+.typewriter-caret { animation: caret-blink 1s steps(2, start) infinite; }
+@keyframes caret-blink { to { visibility: hidden; } }
+
+/* home page capability strip */
+.marquee { overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); }
+.marquee-track { display: flex; width: max-content; animation: marquee 38s linear infinite; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(50%); } }
+@media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } }
+
+.text-outline {
+  -webkit-text-stroke: 1.5px rgba(2,132,199,0.25);
+  color: transparent;
+}
+
+/* Exam hall & protected player */
+@keyframes exam-timer-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(225,29,72,.55); } 50% { box-shadow: 0 0 0 8px rgba(225,29,72,0); } }
+.exam-hall .animate-pulse { animation: exam-timer-pulse 1.2s ease-in-out infinite; }
+video::-internal-media-controls-download-button { display: none; }
+video::-webkit-media-controls-enclosure { overflow: hidden; }
+@media print { video, iframe[allow*="encrypted-media"] { visibility: hidden !important; } }
+@media (prefers-reduced-motion: reduce) { .exam-hall .animate-pulse { animation: none; } }

@@ -1,0 +1,165 @@
+.teacher-site{--navy:#14354b;--blue:#086f98;--orange:#f19457;--paper:#faf9f5;color:var(--navy);background:var(--paper);font-family:'Cairo',sans-serif;overflow-x:clip}.teacher-site *{box-sizing:border-box}.teacher-site a,.teacher-site button{-webkit-tap-highlight-color:transparent}.teacher-site button:focus-visible,.teacher-site a:focus-visible,.teacher-site summary:focus-visible{outline:3px solid #ef965f;outline-offset:5px}.tl-container{width:min(1200px,calc(100% - 80px));margin-inline:auto}.tl-announcement{display:flex;align-items:center;justify-content:center;gap:14px;background:#163e53;color:#fff;padding:11px 20px;font-size:11px}.tl-mini-dot{width:4px;height:4px;background:#e5ac7b;border-radius:50%}.tl-header{background:#faf9f5f2;border-bottom:1px solid #e6e9e6}.tl-nav{display:flex;align-items:center;justify-content:space-between;gap:25px;min-height:95px}.tl-brand{display:flex;align-items:center;gap:12px;color:var(--navy);text-decoration:none}.tl-brand strong{font-size:20px;font-weight:900;display:block}.tl-brand small{font-size:10px;display:block;opacity:.65;margin-top:2px}.tl-logo{width:46px;height:46px;object-fit:contain;display:block}.tl-links{display:flex;align-items:center;gap:26px;font-size:12px;font-weight:700}.tl-links a:hover{color:var(--blue)}.tl-button{display:inline-flex;justify-content:center;align-items:center;gap:20px;padding:16px 24px;border-radius:9px;background:var(--blue);color:#fff;font-size:13px;font-weight:800;border:1px solid transparent;transition:transform .2s,background .2s}.tl-button:hover{background:#075678;transform:translateY(-2px)}.tl-button.small{padding:11px 16px;font-size:11px;gap:10px}.tl-menu{display:none}.tl-hero{position:relative;background:radial-gradient(ellipse at 15% 40%,#dcedeb90,transparent 55%)}.tl-hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:65px;padding-top:60px;padding-bottom:65px;align-items:center;min-height:620px}.tl-eyebrow{display:flex;align-items:center;gap:9px;font-size:11px;font-weight:700;margin-bottom:24px}.tl-eyebrow>span{background:#5c937b;border-radius:50%;height:7px;width:7px}.tl-hero h1{font-size:clamp(36px,4.1vw,59px);line-height:1.5;letter-spacing:-1.9px;font-weight:900;margin:0 0 22px;max-width:600px}.tl-description{font-size:14px;line-height:2.1;color:#687880;max-width:510px;white-space:pre-line}.tl-actions{display:flex;gap:24px;align-items:center;margin-top:30px}.tl-watch{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700}.tl-watch>span{width:37px;height:37px;border:1px solid #b8c8cc;border-radius:50%;display:grid;place-items:center}.tl-trust{display:flex;gap:18px;margin-top:30px;font-size:10px;color:#617781;flex-wrap:wrap}.tl-trust>span{display:flex;gap:5px;align-items:center}.tl-trust svg{color:#447e72}.tl-portrait-wrap{position:relative;padding:22px 30px 24px;isolation:isolate}.tl-portrait{border-radius:190px 190px 40px 40px;overflow:hidden;border:9px solid #fff;box-shadow:0 20px 65px #145a7020;transform:rotate(-2deg);aspect-ratio:1/1.12;background:#dbedef}.tl-portrait img{width:100%;height:100%;object-fit:cover;object-position:center}.tl-orbit{position:absolute;inset:3% -3%;border:1px dashed #8aa8aa70;border-radius:50%;z-index:-1;transform:rotate(-18deg)}.tl-formula{position:absolute;font-family:Georgia,serif;color:#5d8794;font-style:italic;z-index:2}.tl-formula.f1{right:-13px;top:10px;font-size:24px;transform:rotate(14deg)}.tl-formula.f2{left:10px;top:3px;font-size:48px;color:#d69c6b;transform:rotate(-17deg)}.tl-formula.f3{left:-15px;bottom:75px;font-size:28px}.tl-float-note{position:absolute;bottom:79px;right:-16px;display:flex;gap:13px;align-items:center;background:#fffffff5;border:1px solid #e5edeb;padding:14px 17px;border-radius:13px;box-shadow:0 12px 32px #26495e12;z-index:4}.tl-note-icon{color:#a36336;background:#fbe7d5;width:45px;height:45px;display:grid;place-items:center;border-radius:11px}.tl-float-note strong{display:block;font-size:14px}.tl-float-note small{display:block;font-size:9px;color:#73838b;margin-top:3px}.tl-float-note>svg{color:#bb8356}.tl-portrait-label{position:absolute;left:55px;bottom:0;background:#173f53;color:white;border-radius:10px;padding:13px 24px;text-align:center;transform:rotate(-4deg)}.tl-portrait-label span{font-size:9px;color:#a6c6d0;display:block}.tl-portrait-label strong{font-size:18px;display:block}.tl-method-strip{display:flex;align-items:center;justify-content:space-between;border-top:1px solid #dce5e3;border-bottom:1px solid #dce5e3;padding:22px 0;gap:20px;font-size:13px;font-weight:700}.tl-method-strip>span{display:flex;align-items:center;gap:13px}.tl-method-strip svg{width:22px;color:#527c86}.tl-method-strip i{height:25px;width:1px;background:#d6e0dd}.tl-method-strip a{display:flex;gap:20px;font-size:11px;align-items:center}.tl-section{padding-top:85px;padding-bottom:65px}.tl-section-head{display:flex;align-items:end;justify-content:space-between;gap:24px;margin-bottom:30px}.tl-kicker{font-size:11px;font-weight:800;color:#598074;letter-spacing:.3px;display:block;margin-bottom:12px}.teacher-site h2{font-size:34px;font-weight:900;line-height:1.6;letter-spacing:-.8px}.teacher-site h2>span{color:var(--blue)}.tl-section-head>p,.tl-faq>div>p{font-size:12px;line-height:2;color:#73818a}.tl-courses{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:23px}.tl-course{background:white;border:1px solid #e2e6e2;border-radius:15px;overflow:hidden;transition:box-shadow .25s,transform .25s}.tl-course:hover{box-shadow:0 14px 35px #15394c12;transform:translateY(-5px)}.tl-course-art{position:relative;height:193px;overflow:hidden;padding:17px 19px;background-image:linear-gradient(#ffffff30 1px,transparent 1px),linear-gradient(90deg,#ffffff30 1px,transparent 1px);background-size:22px 22px}.tl-course-art.blue{background-color:#d6e7ec;color:#22586e}.tl-course-art.peach{background-color:#f1e0cd;color:#9d653d}.tl-course-art.green{background-color:#e1e9d9;color:#54744b}.tl-course-label{font-size:10px;background:#ffffffb3;padding:5px 10px;border-radius:20px;font-weight:700}.tl-math-art{font:italic 55px Georgia;display:block;text-align:center;transform:rotate(-9deg);margin-top:16px;direction:ltr}.tl-art-caption{font-size:10px;position:absolute;bottom:15px;right:19px;font-weight:700}.tl-discount{position:absolute;bottom:15px;left:15px;background:#fff9ed;color:#a65c2b;font-size:10px;border-radius:20px;padding:5px 9px}.tl-course-body{padding:22px}.tl-course-meta{display:flex;justify-content:space-between;font-size:9px;color:#758583}.tl-course-meta>span:last-child{color:#8b775e}.tl-course h3{font-size:17px;font-weight:800;margin:10px 0}.tl-course p{font-size:11px;line-height:1.95;color:#7a868a;min-height:44px}.tl-course-footer{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:22px;padding-top:16px;border-top:1px solid #edf0eb}.tl-price{display:flex;flex-wrap:wrap;align-items:baseline;gap:7px}.tl-price strong{font-size:16px;font-weight:900}.tl-price del{font-size:10px;color:#899295}.tl-course-footer button,.tl-course-footer>a{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:800;color:var(--blue)}.tl-demo-note{text-align:center;font-size:10px;color:#8b8e85;margin-top:20px;line-height:1.9}.tl-about-section{background:#edf2ed;padding:75px 0;margin-top:20px}.tl-about-grid{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:100px}.tl-about-grid h2{font-size:37px;margin-bottom:20px}.tl-about-visual{position:relative;padding:10px 28px}.tl-about-photo{border-radius:140px 140px 22px 22px;overflow:hidden;aspect-ratio:1/1;background:#e3edef;border:8px solid #fff;transform:rotate(3deg)}.tl-about-photo img{width:100%;height:100%;object-fit:cover}.tl-about-note{position:absolute;right:0;bottom:25px;background:#fff8e8;border:1px solid #e9d8b9;padding:19px 22px;transform:rotate(-6deg);display:flex;align-items:center;gap:18px;font-size:13px;border-radius:5px;box-shadow:0 10px 20px #4c644e0c}.tl-about-note svg{color:#b87a40}.tl-about-features{margin:23px 0}.tl-about-features p{display:flex;align-items:center;gap:12px;font-size:12px;margin-top:12px}.tl-about-features p>span{background:#dce8da;color:#437757;border-radius:50%;padding:4px}.tl-text-link{font-size:12px;color:var(--blue);display:flex;gap:16px;align-items:center;font-weight:800}.tl-lessons{display:grid;grid-template-columns:repeat(3,1fr);gap:23px}.tl-lesson{text-align:right;border:1px solid #e2e6e2;background:white;border-radius:13px;overflow:hidden;transition:transform .2s}.tl-lesson:hover{transform:translateY(-5px)}.tl-lesson-preview{height:158px;display:flex;justify-content:center;align-items:center;position:relative;background:#173f4e;color:#f3efe1}.tl-lesson-preview.lesson-1{background:#41685e}.tl-lesson-preview.lesson-2{background:#505b78}.tl-lesson-preview>span{font:italic 26px Georgia;transform:rotate(-5deg)}.tl-lesson-preview>i{position:absolute;left:15px;bottom:13px;width:30px;height:30px;display:grid;place-items:center;background:#ffffff1c;border:1px solid #ffffff44;border-radius:50%}.tl-lesson-info{padding:20px}.tl-lesson-info small{font-size:10px;color:#84928f}.tl-lesson-info h3{font-size:15px;font-weight:800;margin:8px 0 15px}.tl-lesson-info>span{display:flex;align-items:center;gap:10px;color:var(--blue);font-size:10px}.tl-steps-section{border-block:1px solid #e2e5df;display:grid;grid-template-columns:1fr 2fr;padding-block:45px;gap:40px;margin-top:20px}.tl-steps-section h2{font-size:25px}.tl-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:30px}.tl-steps b{font:italic 28px Georgia;color:#a2b5b2;display:block;margin-bottom:13px}.tl-steps h3{font-size:13px;font-weight:800;margin-bottom:10px}.tl-steps p{font-size:11px;line-height:2;color:#7b898d}.tl-faq{display:grid;grid-template-columns:1fr 1.6fr;gap:80px}.tl-faq details{border-bottom:1px solid #dfe4e1;padding:18px 0}.tl-faq summary{font-size:13px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-weight:800;list-style:none;gap:20px}.tl-faq summary::-webkit-details-marker{display:none}.tl-faq details[open] svg{transform:rotate(180deg)}.tl-faq details>p{color:#6f7f87;font-size:12px;line-height:2;margin-top:15px}.tl-final-cta{position:relative;background:#173f53;color:white;border-radius:18px;padding:43px 50px;display:flex;justify-content:space-between;align-items:center;overflow:hidden;gap:20px}.tl-final-cta>div,.tl-final-cta>a{position:relative;z-index:1}.tl-final-cta>div>span{color:#b3c8c4;font-size:11px}.tl-final-cta h2{font-size:30px;margin-top:6px}.tl-final-cta p{font-size:11px;color:#b0c5ce;margin-top:8px}.tl-button.light{background:#f4e7d6;color:#244a59;flex-shrink:0}.tl-cta-math{position:absolute;font:230px Georgia;color:#ffffff07;left:25%;top:-55px;transform:rotate(13deg)}.tl-footer{display:flex;justify-content:space-between;align-items:center;gap:20px;padding-block:45px}.tl-footer p,.tl-footer>span{font-size:10px;color:#82908f}.tl-footer .tl-brand strong{font-size:15px}.tl-footer .tl-logo{width:36px;height:36px}.tl-loading{min-height:100vh;display:flex;flex-direction:column;gap:24px;align-items:center;justify-content:center;padding:30px}.tl-empty{padding:40px;border:1px dashed #b4c6c6;border-radius:16px;text-align:center;line-height:2}.tl-modal{position:fixed;inset:0;background:#102e43b8;backdrop-filter:blur(5px);z-index:100;display:grid;place-items:center;padding:24px}.tl-modal-card{position:relative;background:var(--paper);padding:45px 35px 30px;border-radius:20px;max-width:600px;max-height:90vh;overflow:auto}.tl-modal-close{position:absolute;left:17px;top:16px}.tl-modal-card h2{font-size:27px}.tl-modal-formula{font:italic 32px Georgia;background:#e3ece8;text-align:center;padding:30px 10px;border-radius:12px;margin:24px 0}.tl-modal-card>p{font-size:14px;line-height:2.2}.tl-modal-card>strong{display:block;font-size:13px;margin:20px 0;color:#477569}.tl-modal-card>.tl-button{width:100%}
+@media(min-width:1600px){.tl-container{width:1280px}.tl-hero-grid{gap:110px}}
+@media(max-width:1050px){.tl-container{width:calc(100% - 48px)}.tl-links{gap:15px;font-size:10px}.tl-hero-grid{gap:30px}.tl-hero h1{font-size:42px}.tl-portrait-wrap{padding-inline:15px}.tl-about-grid{gap:50px}.tl-method-strip{font-size:11px}.tl-course-body{padding:17px}.tl-steps-section{grid-template-columns:1fr}.tl-faq{gap:40px}.tl-course-footer{align-items:start;flex-direction:column}.tl-course-footer button,.tl-course-footer>a{margin-top:7px}}
+@media(max-width:760px){.tl-container{width:calc(100% - 36px)}.tl-announcement{font-size:9px;gap:7px}.tl-announcement .tl-mini-dot,.tl-announcement>svg{display:none}.tl-nav{min-height:80px;gap:10px}.tl-brand strong{font-size:16px}.tl-brand small{font-size:8px}.tl-logo{width:34px;height:34px}.tl-button.small{font-size:9px;padding:9px 11px;margin-right:auto}.tl-menu{display:block}.tl-links{display:none}.tl-links.open{display:flex;position:absolute;top:113px;inset-inline:0;background:var(--paper);z-index:20;padding:25px;flex-wrap:wrap;box-shadow:0 10px 20px #173f5320;font-size:12px}.tl-hero-grid{grid-template-columns:1fr;gap:20px;padding-top:32px;padding-bottom:42px}.tl-hero-copy{text-align:center}.tl-eyebrow{justify-content:center;margin-bottom:17px}.tl-hero h1{font-size:38px;letter-spacing:-1px;max-width:450px;margin-inline:auto}.tl-description{font-size:12px;max-width:490px;margin-inline:auto}.tl-actions,.tl-trust{justify-content:center}.tl-actions{gap:20px}.tl-actions .tl-button{font-size:11px;padding:14px 17px}.tl-watch{font-size:10px}.tl-trust{gap:12px;font-size:9px;margin-top:23px}.tl-portrait-wrap{width:min(390px,90%);margin:20px auto 10px}.tl-float-note{right:-8px;padding:10px 12px;bottom:70px}.tl-float-note strong{font-size:12px}.tl-method-strip{display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:10px;padding-block:23px}.tl-method-strip i{display:none}.tl-method-strip svg{width:18px}.tl-method-strip a{font-size:10px;gap:9px}.tl-section{padding-top:52px;padding-bottom:35px}.tl-section-head{display:block}.tl-section-head>p{font-size:11px;margin-top:12px}.tl-section-head>p br{display:none}.teacher-site h2{font-size:28px}.tl-courses,.tl-lessons{grid-template-columns:1fr;gap:22px}.tl-course-art{height:210px}.tl-course h3{font-size:18px}.tl-course p{font-size:12px;min-height:0}.tl-course-body{padding:22px}.tl-course-footer{flex-direction:row;align-items:center}.tl-course-footer button,.tl-course-footer>a{margin:0;font-size:11px}.tl-course-meta{font-size:10px}.tl-demo-note{font-size:9px}.tl-about-section{padding:40px 0}.tl-about-grid{grid-template-columns:1fr;gap:35px}.tl-about-visual{width:min(370px,95%);margin:auto}.tl-about-grid>div:last-child{text-align:right}.tl-about-grid h2{font-size:31px}.tl-about-grid .tl-description{margin:0}.tl-lesson-preview{height:170px}.tl-lesson-info h3{font-size:17px}.tl-steps{grid-template-columns:1fr;gap:22px}.tl-steps>div{position:relative;padding-right:52px}.tl-steps b{position:absolute;right:0;top:0}.tl-steps p{font-size:12px}.tl-steps-section{gap:28px;margin-top:25px}.tl-faq{grid-template-columns:1fr;gap:22px}.tl-faq summary{font-size:12px}.tl-final-cta{padding:30px 24px;flex-direction:column;align-items:start;margin-top:20px}.tl-final-cta h2{font-size:25px}.tl-final-cta .tl-button{margin-top:10px;font-size:11px}.tl-footer{flex-wrap:wrap;gap:20px;padding-block:30px}.tl-footer>p{display:none}.tl-footer>span{font-size:9px}.tl-modal-card{padding:42px 22px 25px}.tl-modal-card h2{font-size:25px}}
+
+/* ---------------------------------------------------------------------------
+   Motion layer. Everything below is decoration only — the page is fully usable
+   with all of it disabled, which is exactly what the reduced-motion guard at the
+   very bottom of this file does (it must stay last so it can override these).
+   --------------------------------------------------------------------------- */
+
+
+/* Hero portrait breathes, and the dashed orbit behind it turns slowly. */
+@keyframes tl-float{0%,100%{transform:rotate(-2deg) translateY(0)}50%{transform:rotate(-2deg) translateY(-14px)}}
+@keyframes tl-orbit{to{transform:rotate(342deg)}}
+@keyframes tl-drift{0%,100%{transform:translateY(0) rotate(var(--tilt,0deg))}50%{transform:translateY(-9px) rotate(var(--tilt,0deg))}}
+.tl-portrait{animation:tl-float 7s ease-in-out infinite}
+.tl-orbit{animation:tl-orbit 46s linear infinite}
+.tl-portrait-wrap:hover .tl-portrait{animation-play-state:paused;transform:rotate(-2deg) scale(1.02)}
+.tl-portrait img{transition:transform .8s cubic-bezier(.22,.61,.36,1)}
+.tl-portrait-wrap:hover .tl-portrait img{transform:scale(1.07)}
+.tl-formula.f1{--tilt:14deg;animation:tl-drift 5.5s ease-in-out infinite}
+.tl-formula.f2{--tilt:-17deg;animation:tl-drift 6.5s ease-in-out .6s infinite}
+.tl-formula.f3{animation:tl-drift 6s ease-in-out .3s infinite}
+
+/* Course cards: deeper lift, the artwork panel zooms and its grid pattern slides. */
+.tl-course{transition:box-shadow .35s,transform .35s,border-color .35s}
+.tl-course:hover{box-shadow:0 22px 50px #15394c1f;transform:translateY(-9px);border-color:#cfdcd8}
+.tl-course-art{transition:background-size .6s cubic-bezier(.22,.61,.36,1)}
+.tl-course:hover .tl-course-art{background-size:28px 28px}
+.tl-course-art img{width:100%;height:100%;object-fit:cover;transition:transform .7s cubic-bezier(.22,.61,.36,1)}
+.tl-course:hover .tl-course-art img{transform:scale(1.08)}
+.tl-math-art{transition:transform .5s cubic-bezier(.34,1.4,.64,1)}
+.tl-course:hover .tl-math-art{transform:rotate(-4deg) scale(1.09)}
+.tl-course-footer button,.tl-course-footer>a{transition:gap .25s}
+.tl-course:hover .tl-course-footer button,.tl-course:hover .tl-course-footer>a{gap:14px}
+
+/* Same treatment for the demo-lesson tiles. */
+.tl-lesson{transition:transform .3s,box-shadow .3s}
+.tl-lesson:hover{transform:translateY(-8px);box-shadow:0 18px 40px #15394c17}
+.tl-lesson-preview>span{transition:transform .5s cubic-bezier(.34,1.4,.64,1)}
+.tl-lesson:hover .tl-lesson-preview>span{transform:rotate(-2deg) scale(1.12)}
+
+/* The about photo leans back toward straight on hover. */
+.tl-about-photo{transition:transform .6s cubic-bezier(.22,.61,.36,1)}
+.tl-about-visual:hover .tl-about-photo{transform:rotate(0deg) scale(1.02)}
+.tl-about-photo img{transition:transform .8s cubic-bezier(.22,.61,.36,1)}
+.tl-about-visual:hover .tl-about-photo img{transform:scale(1.06)}
+
+/* Primary button gets a sheen that sweeps across on hover. */
+.tl-button{position:relative;overflow:hidden}
+.tl-button::after{content:"";position:absolute;inset:0 auto 0 -60%;width:45%;background:linear-gradient(90deg,transparent,#ffffff38,transparent);transform:skewX(-18deg);transition:left .6s ease}
+.tl-button:hover::after{left:115%}
+
+/* Login split-screen. The left panel carries a slow aurora wash behind the portrait. */
+@keyframes tl-aurora{0%,100%{transform:translate3d(-4%,-2%,0) scale(1)}50%{transform:translate3d(5%,3%,0) scale(1.12)}}
+.tl-auth{position:relative;overflow:hidden;background:#e6eeea}
+.tl-auth::before{content:"";position:absolute;width:70%;aspect-ratio:1;top:-10%;right:-12%;border-radius:50%;background:radial-gradient(circle,#bcd8d160,transparent 68%);animation:tl-aurora 17s ease-in-out infinite}
+.tl-auth::after{content:"";position:absolute;width:60%;aspect-ratio:1;bottom:-18%;left:-10%;border-radius:50%;background:radial-gradient(circle,#f0c9a350,transparent 68%);animation:tl-aurora 21s ease-in-out 2s infinite reverse}
+.tl-auth>*{position:relative;z-index:1}
+.tl-auth-photo{border-radius:100px 100px 24px 24px;border:8px solid #fff;box-shadow:0 22px 60px #14354b1f;animation:tl-float 8s ease-in-out infinite;object-fit:cover}
+.tl-field{position:relative}
+.tl-field input{width:100%;padding:14px 44px 14px 16px;border:1px solid #dfe6e3;border-radius:11px;background:#fff;font:inherit;font-size:14px;transition:border-color .2s,box-shadow .2s}
+.tl-field input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 4px #086f9818}
+.tl-field>svg{position:absolute;right:15px;top:50%;transform:translateY(-50%);color:#9fb0b3;pointer-events:none;transition:color .2s}
+.tl-field input:focus~svg{color:var(--blue)}
+
+
+/* --- Course/lesson slider -------------------------------------------------
+   A horizontal snap-scroller rather than a grid: the teacher can publish any
+   number of courses and videos without the section growing taller and taller. */
+.tl-slider-wrap{position:relative}
+.tl-slider{display:flex;gap:22px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;padding:6px 2px 22px;scrollbar-width:none;-ms-overflow-style:none}
+.tl-slider::-webkit-scrollbar{display:none}
+.tl-slide{flex:0 0 clamp(258px,29vw,326px);scroll-snap-align:start}
+.tl-slide .tl-course{height:100%;display:flex;flex-direction:column}
+.tl-bob{height:100%}
+.tl-slide .tl-course-body{display:flex;flex-direction:column;flex:1}
+.tl-slide .tl-course-footer{margin-top:auto}
+
+/* Cover art: the portrait fills the panel, formulas sit on top of it. */
+.tl-cover{position:relative;height:210px;overflow:hidden;background:#dce9ee}
+.tl-cover>img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .8s cubic-bezier(.22,.61,.36,1)}
+.tl-course:hover .tl-cover>img{transform:scale(1.07)}
+.tl-cover-veil{position:absolute;inset:auto 0 0 0;height:58%;background:linear-gradient(to top,#0e2c3ccc,transparent)}
+.tl-cover-top{position:absolute;top:13px;right:15px;left:15px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.tl-cover-year{background:#ffffffe8;color:#1d4a5e;font-size:10px;font-weight:800;padding:5px 11px;border-radius:20px;backdrop-filter:blur(3px)}
+.tl-cover-flag{background:#c8552e;color:#fff;font-size:10px;font-weight:800;padding:5px 10px;border-radius:20px}
+.tl-cover-play{position:absolute;inset:0;display:grid;place-items:center;color:#fff}
+.tl-cover-play>span{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:#ffffff2e;border:1.5px solid #ffffff8a;backdrop-filter:blur(4px);transition:transform .3s,background .3s}
+.tl-course:hover .tl-cover-play>span{transform:scale(1.12);background:#ffffff45}
+
+/* Arrows sit outside the cards on wide screens, and hide when there's nothing to scroll. */
+.tl-slide-nav{position:absolute;top:-62px;left:0;display:flex;gap:9px}
+.tl-slide-nav button{width:40px;height:40px;border-radius:50%;border:1px solid #cfdad8;background:#fff;color:#20536a;display:grid;place-items:center;transition:background .2s,color .2s,transform .2s,opacity .2s}
+.tl-slide-nav button:hover:not(:disabled){background:#20536a;color:#fff;transform:translateY(-2px)}
+.tl-slide-nav button:disabled{opacity:.35;cursor:default}
+.tl-slider-hint{font-size:10px;color:#8b979b;margin-top:-8px}
+@media(max-width:760px){.tl-slide{flex:0 0 82%}.tl-slide-nav{display:none}}
+
+.tl-modal-video{position:relative;aspect-ratio:16/9;background:#0e2530;border-radius:13px;overflow:hidden;margin:22px 0}
+.tl-modal-video iframe,.tl-modal-video video{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+
+
+/* --- Drifting maths backdrop (MathBackdrop.jsx) ---------------------------- */
+@keyframes tl-bg-drift{
+  0%{transform:translate3d(0,0,0) rotate(var(--tilt,0deg));opacity:0}
+  12%{opacity:.5}
+  50%{transform:translate3d(14px,-42px,0) rotate(calc(var(--tilt,0deg) + 6deg));opacity:.62}
+  88%{opacity:.42}
+  100%{transform:translate3d(-10px,-92px,0) rotate(var(--tilt,0deg));opacity:0}
+}
+.tl-math-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.tl-math-bg span{position:absolute;font-family:Georgia,serif;font-style:italic;color:#20536a;opacity:0;white-space:nowrap;will-change:transform,opacity;animation:tl-bg-drift linear infinite}
+.tl-hero .tl-math-bg span{color:#1c5570;opacity:0}
+.tl-auth .tl-math-bg span{color:#2c6b74}
+
+/* --- Login: the six covers orbiting the portrait --------------------------- */
+@keyframes tl-sat-in{from{opacity:0;transform:scale(.6) translateY(18px)}to{opacity:1;transform:none}}
+@keyframes tl-sat-bob{0%,100%{transform:translateY(0) rotate(var(--sat-tilt,0deg))}50%{transform:translateY(-16px) rotate(calc(var(--sat-tilt,0deg) * -1))}}
+.tl-stage{position:relative;display:grid;place-items:center;margin-inline:auto;width:min(430px,100%);aspect-ratio:1}
+.tl-stage-ring{position:absolute;inset:6%;border:1px dashed #7fa8a760;border-radius:50%;animation:tl-orbit 54s linear infinite}
+.tl-stage-ring.two{inset:-6%;border-color:#d6a97d55;animation-duration:74s;animation-direction:reverse}
+.tl-stage>.tl-auth-photo{position:relative;z-index:2;width:56%;aspect-ratio:1}
+.tl-sat{position:absolute;z-index:3;width:23%;aspect-ratio:1;border-radius:50%;object-fit:cover;border:4px solid #fff;box-shadow:0 10px 26px #14354b26;opacity:0;
+  animation:tl-sat-in .55s cubic-bezier(.34,1.4,.64,1) forwards,tl-sat-bob 6s ease-in-out infinite}
+.tl-sat:hover{box-shadow:0 16px 34px #14354b3d}
+/* Six evenly spaced anchor points around the portrait, each bobbing out of phase. */
+.tl-sat.s1{top:-2%;left:50%;margin-left:-11.5%;--sat-tilt:5deg;animation-delay:.05s,.4s}
+.tl-sat.s2{top:20%;right:-1%;--sat-tilt:-6deg;animation-delay:.14s,1.1s}
+.tl-sat.s3{bottom:19%;right:1%;--sat-tilt:4deg;animation-delay:.23s,1.8s}
+.tl-sat.s4{bottom:-2%;left:50%;margin-left:-11.5%;--sat-tilt:-5deg;animation-delay:.32s,2.4s}
+.tl-sat.s5{bottom:19%;left:1%;--sat-tilt:6deg;animation-delay:.41s,3.1s}
+.tl-sat.s6{top:20%;left:-1%;--sat-tilt:-4deg;animation-delay:.5s,3.7s}
+@media(max-width:1180px){.tl-sat.s2,.tl-sat.s6{display:none}}
+
+/* --- Landing: scrolling symbol strip + livelier hero ----------------------- */
+@keyframes tl-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.tl-marquee{overflow:hidden;border-block:1px solid #dce5e3;padding:16px 0;-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.tl-marquee>div{display:flex;gap:52px;width:max-content;animation:tl-marquee 34s linear infinite}
+.tl-marquee span{font:italic 25px Georgia;color:#5d8794;opacity:.62;white-space:nowrap}
+.tl-marquee:hover>div{animation-play-state:paused}
+.tl-hero>*{position:relative;z-index:1}
+@keyframes tl-pulse-glow{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.85;transform:scale(1.12)}}
+.tl-hero::after{content:"";position:absolute;width:46%;aspect-ratio:1;border-radius:50%;top:-14%;right:-8%;
+  background:radial-gradient(circle,#bcdcd880,transparent 68%);animation:tl-pulse-glow 13s ease-in-out infinite;pointer-events:none;z-index:0}
+
+
+/* --- Slider cards rise and fall as you scroll sideways ---------------------
+   Alternating cards start at different heights so the row reads as a wave, and each one bobs
+   on its own offset cycle. Hovering pauses the card under the cursor so the hover lift stays
+   readable instead of fighting the loop. */
+@keyframes tl-slide-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
+.tl-bob{animation:tl-slide-bob 5.4s ease-in-out infinite;will-change:transform}
+.tl-slide:nth-child(2n) .tl-bob{animation-delay:-.9s}
+.tl-slide:nth-child(3n) .tl-bob{animation-delay:-1.8s}
+.tl-slide:nth-child(4n) .tl-bob{animation-delay:-2.7s}
+.tl-slide:nth-child(5n) .tl-bob{animation-delay:-3.6s}
+.tl-slide:nth-child(2n){padding-top:30px}
+.tl-slide:hover .tl-bob{animation-play-state:paused}
+.tl-slider{align-items:flex-start;padding-bottom:46px}
+
+a.tl-cover{display:block;cursor:pointer}
+
+@media(prefers-reduced-motion:reduce){.teacher-site *,.tl-auth *{scroll-behavior:auto!important;animation:none!important;transition:none!important}.tl-sat{opacity:1!important}.tl-math-bg{display:none!important}.tl-slide:nth-child(2n){padding-top:0}}
