@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Run backend tests (sqlite profile + Redis service)
+        working-directory: backend
+        run: >
+          mvn -B test
+          -Dspring.profiles.active=sqlite
+          -DMANARAH_JWT_SECRET=Y2ktdGVzdC1vbmx5LXNlY3JldC1kby1ub3QtdXNlLWluLXByb2Q=
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - working-directory: frontend
+        run: npm ci
+      - working-directory: frontend
+        run: npm run build
+      - name: Fail on known high/critical vulnerabilities
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
+  stack-smoke-test:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write a CI-only .env for docker compose
+        run: |
+          cat > .env <<EOF
+          POSTGRES_DB=manarah
+          POSTGRES_USER=manarah
+          POSTGRES_PASSWORD=ci-postgres-pass
+          MANARAH_REDIS_PASSWORD=ci-redis-pass
+          MANARAH_JWT_SECRET=Y2ktdGVzdC1vbmx5LXNlY3JldC1kby1ub3QtdXNlLWluLXByb2Q=
+          MANARAH_DEMO_SEED_ENABLED=true
+          MANARAH_DEMO_PASSWORD=manarah123
+          MANARAH_STORAGE_PROVIDER=s3
+          MANARAH_S3_BUCKET=manarah-files
+          MINIO_ROOT_USER=manarah
+          MINIO_ROOT_PASSWORD=ci-minio-pass
+          EOF
+      - name: Build and start the full stack (postgres, redis, minio, backend, frontend)
+        run: docker compose up --build -d
+      - name: Wait for backend/frontend health
+        run: |
+          for i in $(seq 1 30); do
+            status=$(docker compose ps --format '{{.Name}} {{.Status}}')
+            echo "$status"
+            if echo "$status" | grep -c '(healthy)' | grep -q 5; then exit 0; fi
+            sleep 5
+          done
+          echo "Stack did not become healthy in time" && docker compose logs && exit 1
+      - name: Smoke test login through the real stack
+        run: |
+          curl -fsS -X POST http://localhost/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"admin@manarah.io","password":"manarah123"}' | grep -q accessToken
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs
