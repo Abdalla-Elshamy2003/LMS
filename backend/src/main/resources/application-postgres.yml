@@ -1,0 +1,20 @@
+# Production datasource profile. Active by default (see application.yml spring.profiles.active).
+spring:
+  datasource:
+    url: ${MANARAH_DB_URL:jdbc:postgresql://localhost:5432/manarah}
+    username: ${MANARAH_DB_USERNAME:manarah}
+    password: ${MANARAH_DB_PASSWORD:manarah}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      # Postgres tolerates real concurrent writers, unlike SQLite's single-writer lock - safe to run
+      # more than one backend instance against this pool. Keep (instances x max-pool) comfortably
+      # under the Postgres server's own max_connections.
+      maximum-pool-size: ${MANARAH_DB_POOL_SIZE:10}
+      minimum-idle: 2
+      pool-name: manarah-pool
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    locations: classpath:db/migration/postgres

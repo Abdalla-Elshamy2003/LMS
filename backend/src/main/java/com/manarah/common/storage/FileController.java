@@ -8,7 +8,6 @@ import com.manarah.course.LearningService;
 import com.manarah.course.repo.LessonMaterialRepository;
 import com.manarah.security.UserPrincipal;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
@@ -30,7 +29,7 @@ import com.manarah.homework.repo.SubmissionRepository;
 import com.manarah.exam.repo.ExamRepository;
 import com.manarah.student.StudentAccessPolicy;
 
-/** Upload/download for lesson materials and homework files (§7). Files live on disk, not in SQLite. */
+/** Upload/download for lesson materials and homework files (§7). Storage backend (disk or S3) is behind {@link FileStorage}. */
 @RestController
 @RequestMapping("/api/files")
 @Tag(name = "Files")
@@ -97,7 +96,7 @@ public class FileController {
         authorizeDownload(actor, tenantId, clean);
         if (clean.toLowerCase(Locale.ROOT).matches(".*\\.(mp4|webm|mov|m4v)$"))
             throw new ForbiddenException("استخدم مشغّل الدرس لمشاهدة الفيديو");
-        Resource resource = new FileSystemResource(target);
+        Resource resource = storage.open(clean);
         if (!resource.exists()) {
             return ResponseEntity.notFound().build();
         }
@@ -140,6 +139,7 @@ public class FileController {
         int dot = name.lastIndexOf('.');
         String ext = dot < 0 ? "" : name.substring(dot + 1).toLowerCase(Locale.ROOT);
         if (!extensions.contains(ext)) throw new BadRequestException("امتداد الملف غير مسموح");
+        FileContentValidator.assertMatchesExtension(file, ext);
     }
 
     private void authorizeDownload(UserPrincipal actor, Long tenantId, String key) {

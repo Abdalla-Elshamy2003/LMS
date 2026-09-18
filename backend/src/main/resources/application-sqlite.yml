@@ -1,0 +1,20 @@
+# Local-only development profile - quick start without Docker/Postgres. Never use in production:
+# SQLite's single-writer lock cannot serve concurrent traffic and this profile is not maintained
+# for the same feature parity as the postgres profile going forward.
+spring:
+  datasource:
+    # transaction_mode=IMMEDIATE: every @Transactional block starts as a writer, so concurrent
+    # read-then-write requests (exam autosave, video session heartbeats) queue on busy_timeout
+    # instead of failing instantly with SQLITE_BUSY on the snapshot upgrade.
+    url: jdbc:sqlite:./data/manarah.db?journal_mode=WAL&busy_timeout=5000&foreign_keys=true&date_class=text&transaction_mode=IMMEDIATE
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      pool-name: manarah-pool
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.community.dialect.SQLiteDialect
+  flyway:
+    locations: classpath:db/migration/sqlite

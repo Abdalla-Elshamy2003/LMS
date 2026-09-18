@@ -137,7 +137,7 @@ public class VideoPlaybackController {
         var root = storage.resolve("t" + actor.getTenantId()).toAbsolutePath().normalize();
         var target = storage.resolve(m.getFileKey()).toAbsolutePath().normalize();
         if (!target.startsWith(root)) throw new ForbiddenException("ملف غير متاح");
-        Resource resource = new FileSystemResource(target);
+        Resource resource = storage.open(m.getFileKey());
         if (!resource.exists()) return ResponseEntity.notFound().build();
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).header("X-Content-Type-Options","nosniff")
                 .header("Referrer-Policy","no-referrer").header("Cross-Origin-Resource-Policy","same-origin")

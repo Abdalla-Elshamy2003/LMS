@@ -1,0 +1,4 @@
+# Force LF for shell scripts regardless of core.autocrlf - a CRLF shebang line breaks
+# `exec /docker-entrypoint.sh` inside a Linux container (only manifests once someone's local
+# checkout/stash operation re-applies core.autocrlf conversion on Windows).
+*.sh text eol=lf

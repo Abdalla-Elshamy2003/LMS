@@ -1,0 +1,10 @@
+ALTER TABLE student_exams ADD COLUMN draft_answers TEXT;
+ALTER TABLE student_exams ADD COLUMN draft_saved_at TEXT;
+ALTER TABLE student_exams ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE submissions ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+CREATE TABLE uploaded_files (
+ id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ tenant_id BIGINT NOT NULL,
+ owner_id BIGINT NOT NULL,
+ file_key TEXT NOT NULL UNIQUE
+);

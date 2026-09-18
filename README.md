@@ -11,7 +11,9 @@
 | | |
 |---|---|
 | **الباك-إند** | Java 21 · Spring Boot 3.3 · Spring Security (JWT) · Spring Data JPA · Flyway |
-| **قاعدة البيانات** | SQLite (Hibernate community dialect · WAL) |
+| **قاعدة البيانات** | PostgreSQL (إنتاج ودوكر) — SQLite متاحة فقط كـ profile تطوير محلي بديل |
+| **التخزين المؤقت / rate limiting** | Redis |
+| **تخزين الملفات** | S3-compatible (MinIO محليًا) — أو Local disk لنسخة واحدة فقط |
 | **الفرونت-إند** | React 18 · Vite · Tailwind CSS · Framer Motion · Recharts · RTL عربي |
 | **المعمارية** | Clean layered + Domain Events + RBAC + Multi-tenant |
 | **المنفذ** | الباك-إند: `8091` · الفرونت-إند (dev): `5174` |
@@ -20,9 +22,13 @@
 
 ## 🚀 التشغيل
 
+**الطريقة الموصى بها: Docker Compose (قسم 3 تحت)** — بيشغّل Postgres وRedis وMinIO والباك-إند والفرونت-إند مع بعض، وهو الإعداد الأقرب للإنتاج.
+
 الجهاز لا يحتوي على Java مثبّتة على النظام، لذلك تم وضع **JDK 21 + Maven محمولين** داخل `D:\LMS\.tooling` (بدون صلاحيات مدير). المسارات محفوظة في `.tooling\paths.json`.
 
-### 1) الباك-إند
+### 1) الباك-إند (بدون Docker)
+
+الـ profile الافتراضي أصبح `postgres` ومحتاج قاعدة Postgres حقيقية شغالة (`MANARAH_DB_URL`/`MANARAH_DB_USERNAME`/`MANARAH_DB_PASSWORD`) وRedis (`MANARAH_REDIS_HOST`). للتشغيل السريع من غير أي حاجة من دول، استخدم profile الـ SQLite القديم (تطوير محلي فقط، غير مخصص للإنتاج):
 
 من **PowerShell**:
 
@@ -30,12 +36,14 @@
 $p = Get-Content 'D:\LMS\.tooling\paths.json' | ConvertFrom-Json
 $env:JAVA_HOME = $p.jdk
 & "$($p.mvn)\bin\mvn.cmd" -f 'D:\LMS\backend\pom.xml' -DskipTests package
+$env:SPRING_PROFILES_ACTIVE = "sqlite"
 & "$($p.jdk)\bin\java.exe" -jar 'D:\LMS\backend\target\manarah-lms.jar'
 ```
 
 - يعمل على `http://localhost:8091`
 - توثيق الـ API (Swagger): `http://localhost:8091/swagger-ui.html`
 - عند أول تشغيل يتم إنشاء قاعدة البيانات وتعبئتها ببيانات تجريبية عربية غنية تلقائياً.
+- محتاج كمان `MANARAH_JWT_SECRET` و`MANARAH_REDIS_HOST` (شغّل Redis محليًا بـ `docker run -d -p 6379:6379 redis:7-alpine` لو مش عايز تشغّل الـ compose كامل).
 
 ### 2) الفرونت-إند
 
@@ -51,6 +59,8 @@ npm run dev
 
 لا يحتاج Docker إلى تثبيت Java أو Node على الجهاز — كل حاجة جوّه الكونتينرات.
 
+انسخ `.env.example` إلى `.env` واملأ `MANARAH_JWT_SECRET` و`POSTGRES_PASSWORD` و`MINIO_ROOT_PASSWORD` على الأقل قبل التشغيل:
+
 ```bash
 # من مجلد D:\LMS
 docker compose up --build -d
@@ -58,8 +68,9 @@ docker compose up --build -d
 
 - الموقع الكامل (فرونت + باك عبر Nginx reverse proxy): **http://localhost**
 - الباك-إند مباشرة (Swagger): **http://localhost:8091/swagger-ui.html**
-- البيانات (قاعدة SQLite + الملفات المرفوعة) محفوظة في Docker volume باسم `manarah-data` وتفضل موجودة حتى لو اتعمل `docker compose down` (استخدم `down -v` لمسحها فعليًا).
-- لتفعيل واتساب حقيقي أو تغيير السيكريت، انسخ `.env.example` إلى `.env` وعدّل القيم قبل التشغيل.
+- الخدمات الخمسة: `postgres` (قاعدة البيانات)، `redis` (rate limiting)، `minio`+`minio-init` (تخزين ملفات S3-compatible محلي)، `backend`، `frontend`.
+- البيانات محفوظة في Docker volumes منفصلة (`manarah-postgres`، `manarah-redis`، `manarah-minio`، `manarah-data` للملفات لو `MANARAH_STORAGE_PROVIDER=local`) وتفضل موجودة حتى لو اتعمل `docker compose down` (استخدم `down -v` لمسحها فعليًا).
+- لاختبار تشغيل أكتر من نسخة backend محليًا (التحقق من إن التطبيق فعلاً stateless)، راجع التعليق آخر `docker-compose.yml`.
 
 أوامر مفيدة:
 
