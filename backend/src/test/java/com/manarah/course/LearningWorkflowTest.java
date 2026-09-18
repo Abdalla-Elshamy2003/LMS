@@ -54,7 +54,8 @@ class LearningWorkflowTest {
         long lessonId = create("/api/courses/modules/" + moduleId + "/lessons", teacher, Map.of("title", "الدرس الأول", "durationMin", 5, "contentText", "شرح عربي محفوظ")).path("id").asLong();
         mvc.perform(get("/api/courses/" + courseId).header("Authorization", "Bearer " + student)).andExpect(status().isForbidden());
         create("/api/enrollments/self", student, Map.of("courseId", courseId));
-        var upload = new MockMultipartFile("file", "lesson.mp4", "video/mp4", new byte[]{0, 1, 2, 3, 4, 5, 6, 7});
+        // Bytes 4-7 must spell "ftyp" (an MP4 file-type box) - the file content validator checks this.
+        var upload = new MockMultipartFile("file", "lesson.mp4", "video/mp4", new byte[]{0, 0, 0, 0x20, 'f', 't', 'y', 'p', 'i', 's', 'o', 'm'});
         String key = read(mvc.perform(multipart("/api/files/upload").file(upload).param("folder", "materials").header("Authorization", "Bearer " + teacher))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("fileKey").asText();
         long videoId = create("/api/courses/lessons/" + lessonId + "/materials", teacher, Map.of("type", "VIDEO", "title", "شرح الفيديو", "fileKey", key)).path("id").asLong();

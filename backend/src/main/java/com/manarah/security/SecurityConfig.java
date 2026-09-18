@@ -25,11 +25,14 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final PublicEndpointRateLimitFilter publicEndpointRateLimitFilter;
     private final List<String> allowedOrigins;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter,
+                          PublicEndpointRateLimitFilter publicEndpointRateLimitFilter,
                           @Value("${manarah.security.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173}") String allowedOrigins) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.publicEndpointRateLimitFilter = publicEndpointRateLimitFilter;
         this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim).filter(s -> !s.isBlank()).toList();
     }
@@ -64,7 +67,8 @@ public class SecurityConfig {
                     response.setContentType("application/json;charset=UTF-8");
                     response.getWriter().write("{\"status\":401,\"error\":\"Unauthorized\",\"message\":\"يلزم تسجيل الدخول\"}");
                 }))
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(publicEndpointRateLimitFilter, JwtAuthFilter.class);
         return http.build();
     }
 

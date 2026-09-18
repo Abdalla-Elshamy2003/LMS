@@ -49,7 +49,8 @@ class AssessmentProWorkflowTest {
         return json.readTree(mvc.perform(get(path).header("Authorization","Bearer "+token)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
     }
     String upload(String token,String name) throws Exception {
-        return json.readTree(mvc.perform(multipart("/api/files/upload").file(new MockMultipartFile("file",name,"image/png",new byte[]{1,2,3})).param("folder","submissions").header("Authorization","Bearer "+token)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("fileKey").asText();
+        byte[] pngHeader = {(byte)0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A};
+        return json.readTree(mvc.perform(multipart("/api/files/upload").file(new MockMultipartFile("file",name,"image/png",pngHeader)).param("folder","submissions").header("Authorization","Bearer "+token)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("fileKey").asText();
     }
     long course() {
         var u=users.findByEmailIgnoreCase("student@manarah.io").orElseThrow();
