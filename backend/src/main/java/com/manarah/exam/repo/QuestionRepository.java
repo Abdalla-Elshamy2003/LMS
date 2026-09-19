@@ -30,7 +30,7 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
               AND (:subject IS NULL OR q.subject = :subject)
               AND (:difficulty IS NULL OR q.difficulty = :difficulty)
               AND (:type IS NULL OR q.type = :type)
-              AND (:q IS NULL OR LOWER(q.stem) LIKE LOWER(CONCAT('%', :q, '%')))
+              AND (CAST(:q AS string) IS NULL OR LOWER(q.stem) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%')))
               AND (:ownerId IS NULL OR q.createdBy = :ownerId)
               AND (:scoped = 0 OR q.createdBy = :actorId OR q.subject IN :subjects)
             """)

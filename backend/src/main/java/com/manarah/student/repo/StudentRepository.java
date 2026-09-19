@@ -46,9 +46,9 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
               AND (:branchId IS NULL OR s.branchId = :branchId)
               AND (:status IS NULL OR s.status = :status)
               AND (:academicStatus IS NULL OR s.academicStatus = :academicStatus)
-              AND (:q IS NULL OR LOWER(s.fullName) LIKE LOWER(CONCAT('%', :q, '%'))
-                   OR s.code LIKE CONCAT('%', :q, '%')
-                   OR s.phone LIKE CONCAT('%', :q, '%'))
+              AND (CAST(:q AS string) IS NULL OR LOWER(s.fullName) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
+                   OR s.code LIKE CONCAT('%', CAST(:q AS string), '%')
+                   OR s.phone LIKE CONCAT('%', CAST(:q AS string), '%'))
             """)
     Page<Student> search(@Param("tenantId") Long tenantId,
                          @Param("branchId") Long branchId,

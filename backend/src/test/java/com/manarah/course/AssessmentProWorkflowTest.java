@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AssessmentProWorkflowTest {
     private static final String RUN="assessment-pro-"+UUID.randomUUID();
     @DynamicPropertySource static void config(DynamicPropertyRegistry p) {
-        p.add("spring.datasource.url",()->"jdbc:sqlite:"+Path.of("target",RUN+".db").toAbsolutePath()+"?foreign_keys=true&date_class=text&busy_timeout=5000");
+        com.manarah.TestDatabase.register(p, RUN);
         p.add("manarah.storage.root",()->Path.of("target",RUN+"-files").toAbsolutePath().toString());
     }
     @Autowired MockMvc mvc; @Autowired ObjectMapper json; @Autowired UserRepository users;

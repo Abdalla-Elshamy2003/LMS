@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class TeacherAcademyWorkflowTest {
     static final String RUN = "academy-test-" + UUID.randomUUID();
     @DynamicPropertySource static void database(DynamicPropertyRegistry p) {
-        p.add("spring.datasource.url", () -> "jdbc:sqlite:" + Path.of("target", RUN + ".db").toAbsolutePath() + "?foreign_keys=true&date_class=text&busy_timeout=5000");
+        com.manarah.TestDatabase.register(p, RUN);
     }
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;

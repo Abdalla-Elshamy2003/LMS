@@ -9,6 +9,18 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: manarah
+          POSTGRES_USER: manarah
+          POSTGRES_PASSWORD: ci-postgres-pass
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U manarah -d manarah"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
       redis:
         image: redis:7-alpine
         ports: ["6379:6379"]
@@ -24,11 +36,16 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Run backend tests (sqlite profile + Redis service)
+      # PostgreSQL is what production runs, and SQLite hides mistakes Postgres rejects, so the suite runs on Postgres.
+      - name: Run backend tests (PostgreSQL + Redis services)
         working-directory: backend
+        env:
+          MANARAH_TEST_PG_URL: jdbc:postgresql://localhost:5432/manarah
+          MANARAH_TEST_PG_USER: manarah
+          MANARAH_TEST_PG_PASSWORD: ci-postgres-pass
         run: >
           mvn -B test
-          -Dspring.profiles.active=sqlite
+          -Dspring.profiles.active=postgres
           -DMANARAH_JWT_SECRET=Y2ktdGVzdC1vbmx5LXNlY3JldC1kby1ub3QtdXNlLWluLXByb2Q=
 
   frontend:

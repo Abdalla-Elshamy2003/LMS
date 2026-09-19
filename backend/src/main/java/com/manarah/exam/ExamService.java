@@ -269,8 +269,8 @@ public class ExamService {
         return PageResponse.of(p, question -> toQuestionView(question, true));
     }
 
-    /** Placeholder so the {@code IN} clause is never handed an empty list. */
-    private static final List<String> NO_SUBJECTS = List.of(" ");
+    /** Placeholder so the {@code IN} clause is never handed an empty list; it matches no real subject (and, unlike NUL, PostgreSQL accepts it). */
+    private static final List<String> NO_SUBJECTS = List.of("\uE000");
 
     /** The subjects a teacher actually teaches, taken from their own courses. */
     private List<String> mySubjects(Long tenantId, Long teacherId) {

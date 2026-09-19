@@ -1,19 +1,22 @@
 package com.manarah.tooling;
 
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 
 /**
  * One-time data copy from the legacy SQLite database into the PostgreSQL database this app now
- * runs on. Only active on the 'migrate' profile (see application-migrate.yml, which also forces
- * spring.main.web-application-type=none so this runs and exits instead of starting the server).
+ * runs on. Only active on the 'migrate' profile (see application-migrate.yml).
  *
  * <p>Run against the 'postgres' profile's own datasource (so it targets whatever
  * MANARAH_DB_URL/USERNAME/PASSWORD point at) plus manarah.migrate.sqlite-path pointing at the
@@ -23,59 +26,31 @@ import java.util.Set;
  *      --manarah.migrate.sqlite-path=/path/to/manarah.db
  * </pre>
  *
- * <p>Safe to re-run: any table that already has rows in the Postgres target is skipped, so a
- * failed run can be retried without duplicating already-copied tables. Foreign key and trigger
- * enforcement is disabled for the duration of the load (session_replication_role=replica) so
- * tables can be copied in any order, then identity sequences are resynced to MAX(id)+1 per table
- * so new rows created after the cutover don't collide with migrated ids.
+ * <p>The tables to copy and which columns are booleans are read from the Postgres schema that
+ * Flyway just created, never from a hand-kept list, so a new migration cannot silently be left
+ * out. SQLite is opened read-only - it stays untouched as the rollback copy. Tables absent from
+ * the source are skipped, and a table that already has rows in Postgres is skipped too, so a
+ * failed run can simply be repeated. Foreign key and trigger enforcement is off for the load
+ * (session_replication_role=replica) so tables can be copied in any order; identity sequences are
+ * then resynced to MAX(id)+1 so rows created after the cutover cannot collide with migrated ids.
  *
- * <p>This is a thin, intentionally un-clever ETL: it works purely at the JDBC/ResultSetMetaData
- * level (no Hibernate/JPA involved) so every column - including ones added by later migrations -
- * is copied generically without needing an entity mapping.
+ * <p>Deliberately un-clever JDBC (no Hibernate): every column is copied generically, and only
+ * SQLite's 0/1 integers are converted where the Postgres column is a real BOOLEAN. Timestamps are
+ * text in both databases and are copied verbatim.
  */
 @Component
 @Profile("migrate")
 public class SqliteToPostgresMigrator implements CommandLineRunner {
 
-    // Keep in sync with the boolean columns listed in
-    // scripts (build tooling)/sqlite_to_postgres.js used to generate db/migration/postgres/*.sql -
-    // these are the columns that are BOOLEAN in Postgres but INTEGER 0/1 in the source SQLite file.
-    private static final Set<String> BOOLEAN_COLUMNS = Set.of(
-            "is_correct", "active", "anonymous", "pinned", "has_projector", "has_ac",
-            "demo_content", "published", "default_home", "notify_parent", "notify_teacher",
-            "completed", "shuffle_questions", "shuffle_options", "fullscreen", "disable_copy",
-            "detect_tab_switch", "needs_manual_grade", "show_correct_answers", "allow_late", "correct"
-    );
-
-    // Every table Flyway creates (db/migration/postgres/V1..V26). Update this list if a later
-    // migration adds a table before you run a fresh cutover. Order doesn't matter - FK
-    // enforcement is disabled for the duration of the load.
-    private static final List<String> TABLES = List.of(
-            "tenants", "branches", "rooms", "users", "students", "guardians", "student_guardians",
-            "courses", "course_modules", "lessons", "lesson_materials", "lesson_progress",
-            "study_groups", "enrollments", "class_sessions", "attendance_records",
-            "questions", "question_options", "exams", "exam_questions", "student_exams", "student_answers",
-            "assignments", "submissions", "grade_items",
-            "invoices", "installments", "payments",
-            "notifications", "notification_rules",
-            "risk_assessments", "student_timeline", "audit_logs",
-            "messages", "announcements", "calendar_events",
-            "student_points", "point_events", "badges", "student_badges", "certificates", "teacher_evaluations",
-            "course_purchase_orders", "forum_topics", "forum_replies", "forum_likes",
-            "teacher_academies", "student_gate_logs", "contact_leads",
-            "support_cases", "support_messages", "password_reset_tokens",
-            "submission_files", "grading_comments", "video_watch_sessions",
-            "lesson_checkpoints", "lesson_checkpoint_answers", "uploaded_files",
-            "course_access_codes"
-    );
-
     private final DataSource postgres;
     private final String sqlitePath;
+    private final ConfigurableApplicationContext context;
 
-    public SqliteToPostgresMigrator(DataSource postgres,
-                                     org.springframework.core.env.Environment env) {
+    public SqliteToPostgresMigrator(DataSource postgres, org.springframework.core.env.Environment env,
+                                     ConfigurableApplicationContext context) {
         this.postgres = postgres;
         this.sqlitePath = env.getRequiredProperty("manarah.migrate.sqlite-path");
+        this.context = context;
     }
 
     @Override
@@ -83,31 +58,64 @@ public class SqliteToPostgresMigrator implements CommandLineRunner {
         System.out.println("=== SQLite -> PostgreSQL data migration ===");
         System.out.println("Source: " + sqlitePath);
 
-        try (Connection sqlite = DriverManager.getConnection("jdbc:sqlite:" + sqlitePath);
+        // Read-only: the SQLite file is the rollback copy and must never be modified by the migration.
+        Properties readOnly = new Properties();
+        readOnly.setProperty("open_mode", "1");
+        try (Connection sqlite = DriverManager.getConnection("jdbc:sqlite:" + sqlitePath, readOnly);
              Connection pg = postgres.getConnection()) {
 
+            List<String> tables = targetTables(pg);
             pg.setAutoCommit(false);
             try (Statement s = pg.createStatement()) {
                 s.execute("SET session_replication_role = replica");
             }
 
-            for (String table : TABLES) {
+            for (String table : tables) {
                 copyTable(sqlite, pg, table);
             }
-
             pg.commit();
 
             try (Statement s = pg.createStatement()) {
                 s.execute("SET session_replication_role = DEFAULT");
             }
-            resyncIdentitySequences(pg);
+            resyncIdentitySequences(pg, tables);
             pg.commit();
         }
 
         System.out.println("=== Done ===");
+        // The app context (web stack, schedulers) would otherwise keep the process alive: close it and exit 0.
+        System.exit(SpringApplication.exit(context));
+    }
+
+    /** Every table Flyway created in the target schema, except Flyway's own bookkeeping. */
+    private static List<String> targetTables(Connection pg) throws SQLException {
+        List<String> tables = new ArrayList<>();
+        try (Statement s = pg.createStatement();
+             ResultSet rs = s.executeQuery("SELECT table_name FROM information_schema.tables "
+                     + "WHERE table_schema = current_schema() AND table_type = 'BASE TABLE' "
+                     + "AND table_name <> 'flyway_schema_history' ORDER BY table_name")) {
+            while (rs.next()) tables.add(rs.getString(1));
+        }
+        return tables;
+    }
+
+    private static Set<String> booleanColumns(Connection pg, String table) throws SQLException {
+        Set<String> columns = new LinkedHashSet<>();
+        try (PreparedStatement ps = pg.prepareStatement("SELECT column_name FROM information_schema.columns "
+                + "WHERE table_schema = current_schema() AND table_name = ? AND data_type = 'boolean'")) {
+            ps.setString(1, table);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) columns.add(rs.getString(1));
+            }
+        }
+        return columns;
     }
 
     private void copyTable(Connection sqlite, Connection pg, String table) throws SQLException {
+        if (!existsIn(sqlite, table)) {
+            System.out.println(table + ": not in source database, skipping");
+            return;
+        }
         try (Statement check = pg.createStatement();
              ResultSet existing = check.executeQuery("SELECT count(*) FROM " + table)) {
             existing.next();
@@ -117,25 +125,24 @@ public class SqliteToPostgresMigrator implements CommandLineRunner {
             }
         }
 
+        Set<String> booleans = booleanColumns(pg, table);
         try (Statement src = sqlite.createStatement();
              ResultSet rs = src.executeQuery("SELECT * FROM " + table + " ORDER BY id")) {
 
             ResultSetMetaData meta = rs.getMetaData();
-            int columnCount = meta.getColumnCount();
             LinkedHashSet<String> columns = new LinkedHashSet<>();
-            for (int i = 1; i <= columnCount; i++) columns.add(meta.getColumnName(i));
+            for (int i = 1; i <= meta.getColumnCount(); i++) columns.add(meta.getColumnName(i));
 
             String columnList = String.join(", ", columns);
             String placeholders = String.join(", ", columns.stream().map(c -> "?").toArray(String[]::new));
-            String insertSql = "INSERT INTO " + table + " (" + columnList + ") VALUES (" + placeholders + ")";
+            // Ids are GENERATED ALWAYS AS IDENTITY, so keeping the original ids needs an explicit override.
+            String insertSql = "INSERT INTO " + table + " (" + columnList + ") OVERRIDING SYSTEM VALUE VALUES (" + placeholders + ")";
 
             long rowCount = 0;
             try (PreparedStatement insert = pg.prepareStatement(insertSql)) {
                 while (rs.next()) {
                     int i = 1;
-                    for (String col : columns) {
-                        bind(insert, i++, col, rs);
-                    }
+                    for (String col : columns) bind(insert, i++, col, rs, booleans.contains(col));
                     insert.addBatch();
                     rowCount++;
                     if (rowCount % 500 == 0) insert.executeBatch();
@@ -146,27 +153,32 @@ public class SqliteToPostgresMigrator implements CommandLineRunner {
         }
     }
 
-    private void bind(PreparedStatement insert, int index, String column, ResultSet rs) throws SQLException {
-        if (BOOLEAN_COLUMNS.contains(column)) {
-            Object raw = rs.getObject(column);
-            if (raw == null) {
-                insert.setNull(index, Types.BOOLEAN);
-            } else {
-                insert.setBoolean(index, ((Number) raw).intValue() != 0);
+    private static boolean existsIn(Connection sqlite, String table) throws SQLException {
+        try (PreparedStatement ps = sqlite.prepareStatement("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")) {
+            ps.setString(1, table);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
             }
-            return;
         }
-        insert.setObject(index, rs.getObject(column));
     }
 
-    private void resyncIdentitySequences(Connection pg) throws SQLException {
-        for (String table : TABLES) {
+    private static void bind(PreparedStatement insert, int index, String column, ResultSet rs, boolean isBoolean) throws SQLException {
+        Object raw = rs.getObject(column);
+        if (isBoolean) {
+            if (raw == null) insert.setNull(index, Types.BOOLEAN);
+            else insert.setBoolean(index, ((Number) raw).intValue() != 0);
+        } else {
+            insert.setObject(index, raw);
+        }
+    }
+
+    private static void resyncIdentitySequences(Connection pg, List<String> tables) throws SQLException {
+        for (String table : tables) {
             try (Statement s = pg.createStatement()) {
-                s.execute(
-                        "SELECT setval(pg_get_serial_sequence('" + table + "','id'), " +
-                        "COALESCE((SELECT MAX(id) FROM " + table + "), 0) + 1, false)");
+                s.execute("SELECT setval(pg_get_serial_sequence('" + table + "','id'), "
+                        + "COALESCE((SELECT MAX(id) FROM " + table + "), 0) + 1, false)");
             }
         }
-        System.out.println("Resynced identity sequences for " + TABLES.size() + " tables");
+        System.out.println("Resynced identity sequences for " + tables.size() + " tables");
     }
 }

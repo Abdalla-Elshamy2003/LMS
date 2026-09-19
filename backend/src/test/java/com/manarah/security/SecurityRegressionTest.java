@@ -54,7 +54,7 @@ class SecurityRegressionTest {
 
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry props) {
-        props.add("spring.datasource.url", () -> "jdbc:sqlite:" + Path.of("target", RUN + ".db").toAbsolutePath() + "?foreign_keys=true&date_class=text&busy_timeout=5000");
+        com.manarah.TestDatabase.register(props, RUN);
         props.add("manarah.storage.root", () -> Path.of("target", RUN + "-files").toAbsolutePath().toString());
     }
 
