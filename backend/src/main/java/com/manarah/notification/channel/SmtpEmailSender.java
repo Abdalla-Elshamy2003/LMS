@@ -54,6 +54,32 @@ public class SmtpEmailSender implements ExternalMessageSender {
         return "EMAIL";
     }
 
+    /** HTML mail with one inline image (referenced as {@code cid:<cid>}) that is also attached, for clients that block inline images. */
+    public boolean sendHtmlWithImage(String recipient, String title, String text, String html, String cid,
+                                     byte[] png, String fileName) {
+        JavaMailSender sender = enabled ? mailer.getIfAvailable() : null;
+        if (sender == null || from.isEmpty() || recipient == null || recipient.isBlank()) {
+            log.info("[EMAIL STUB] would deliver to '{}' :: {}", recipient, title);
+            return false;
+        }
+        try {
+            var message = sender.createMimeMessage();
+            var helper = new org.springframework.mail.javamail.MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(from);
+            helper.setTo(recipient.trim());
+            helper.setSubject(title);
+            helper.setText(text, html);
+            helper.addInline(cid, new org.springframework.core.io.ByteArrayResource(png), "image/png");
+            helper.addAttachment(fileName, new org.springframework.core.io.ByteArrayResource(png), "image/png");
+            sender.send(message);
+            log.info("[EMAIL] delivered to '{}' :: {}", recipient, title);
+            return true;
+        } catch (Exception e) {
+            log.warn("[EMAIL] delivery to '{}' failed: {}", recipient, e.toString());
+            return false;
+        }
+    }
+
     @Override
     public boolean send(String recipient, String title, String body) {
         JavaMailSender sender = enabled ? mailer.getIfAvailable() : null;

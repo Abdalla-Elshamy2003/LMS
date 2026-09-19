@@ -62,13 +62,16 @@ public class RegistrationService {
     private final JwtService jwtService;
     private final CourseCheckoutService checkout;
     private final com.manarah.academy.AcademyAccess academyAccess;
+    private final org.springframework.context.ApplicationEventPublisher events;
 
     public RegistrationService(TenantRepository tenants, BranchRepository branches, CourseRepository courses,
                                StudentRepository students, GuardianRepository guardians,
                                StudentGuardianRepository links, EnrollmentRepository enrollments,
                                UserRepository users, PasswordEncoder passwordEncoder, JwtService jwtService,
                                CourseCheckoutService checkout, com.manarah.academy.AcademyAccess academyAccess,
-                               com.manarah.payment.CourseAccessCodeService accessCodes) {
+                               com.manarah.payment.CourseAccessCodeService accessCodes,
+                               org.springframework.context.ApplicationEventPublisher events) {
+        this.events = events;
         this.accessCodes = accessCodes;
         this.academyAccess = academyAccess;
         this.tenants = tenants;
@@ -262,7 +265,10 @@ public class RegistrationService {
             throw new ConflictException("تعذّر إنشاء ملف الطالب، حاول مرة أخرى");
         }
         s.setCode(String.format("STD-%05d", s.getId()));
+        s.setPassToken(UUID.randomUUID().toString().replace("-", ""));
         students.save(s);
+        events.publishEvent(new com.manarah.student.StudentPassEmail.StudentRegistered(trimmedEmail, fullName, s.getCode(),
+                grade, phone, educationType, tenants.findById(tenantId).map(Tenant::getName).orElse("منارة"), s.getPassToken()));
 
         // A guardian is optional at self-registration time — staff or the student can add one
         // later from the profile. We still link one automatically when contact info is given.

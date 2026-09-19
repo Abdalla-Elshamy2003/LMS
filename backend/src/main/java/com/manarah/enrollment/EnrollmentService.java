@@ -51,7 +51,7 @@ public class EnrollmentService {
     @Transactional
     public Enrollment selfEnroll(Long studentId, Long courseId) {
         Long tenantId = TenantContext.require();
-        academyAccess.rejectSelfEnrollment(tenantId);
+        academyAccess.rejectManagedAcademySelfService(tenantId);
         Course course = courses.findByTenantIdAndId(tenantId, courseId)
                 .orElseThrow(() -> NotFoundException.of("الكورس", courseId));
         if (course.getPrice() != null && course.getPrice().compareTo(BigDecimal.ZERO) > 0) {
