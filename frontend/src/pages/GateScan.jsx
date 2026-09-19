@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { CheckCircle2, XCircle, LogIn, LogOut, GraduationCap, ArrowLeft } from 'lucide-react'
 import api from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { fmtDateTime } from '../lib/format'
+import { fmtDayTime } from '../lib/format'
 import { apiErrorMessage } from '../lib/apiError'
 
 /**
@@ -59,14 +59,28 @@ export default function GateScan() {
               <h1 className="mt-4 flex items-center justify-center gap-2 text-xl font-black text-ink-800">
                 <CheckCircle2 size={20} className="text-emerald-500" /> {result.message}
               </h1>
-              <p className="mt-1 text-xs text-ink-400">{fmtDateTime(result.at)}</p>
+              <p className="mt-1 text-xs text-ink-400">{fmtDayTime(result.at)}</p>
 
               <div className="mt-5 space-y-2 rounded-2xl bg-ink-50 p-4 text-right">
                 <Row label="الطالب" value={result.fullName} />
                 <Row label="الكود" value={result.code} />
-                <Row label="الصف" value={result.grade || '—'} />
+                <Row label="الصف" value={result.grade || result.courses?.find((c) => c.year)?.year || '—'} />
                 <Row label="رقم الهاتف" value={result.phone || '—'} />
               </div>
+              {result.courses?.length > 0 && (
+                <div className="mt-3 rounded-2xl bg-ink-50 p-4 text-right">
+                  <p className="mb-2 text-xs font-bold text-ink-400">الكورسات المسجَّل بها</p>
+                  <ul className="space-y-2">
+                    {result.courses.map((c, i) => (
+                      <li key={i} className="text-sm">
+                        <span className="font-bold text-ink-700">{c.title}</span>
+                        {c.year && <span className="block text-xs text-ink-500">{c.year}</span>}
+                        {c.schedule && <span className="block text-xs text-ink-500">المواعيد: {c.schedule}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </>
           )}
 

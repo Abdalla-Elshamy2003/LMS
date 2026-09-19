@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { AlertTriangle, CheckCircle2, GraduationCap, RefreshCw, ShieldOff, WifiOff, XCircle } from 'lucide-react'
 import StaffGateAction from './StaffGateAction'
 import { VerificationState, useStudentVerification } from './useStudentVerification'
+import { fmtDayTime } from '../../lib/format'
 
 const ENROLLMENT_LABELS = {
   ACTIVE: 'مقيّد',
@@ -67,10 +68,32 @@ function VerifiedProfile({ profile, token }) {
         <Row label="نظام التعليم" value={profile.educationType} />
         <Row label="الحالة" value={ENROLLMENT_LABELS[profile.enrollmentStatus] || profile.enrollmentStatus} />
         <Row label="الجهة" value={profile.institutionName} />
+        <Row label="وقت المسح" value={fmtDayTime(profile.scannedAt)} />
       </dl>
+
+      <CourseList courses={profile.courses} />
+
 
       <StaffGateAction token={token} />
     </>
+  )
+}
+
+function CourseList({ courses }) {
+  if (!courses?.length) return null
+  return (
+    <div className="mt-3 rounded-2xl bg-ink-50 p-4 text-right">
+      <p className="mb-2 text-xs font-bold text-ink-400">الكورسات المسجَّل بها</p>
+      <ul className="space-y-2">
+        {courses.map((c, i) => (
+          <li key={i} className="text-sm">
+            <span className="font-bold text-ink-700">{c.title}</span>
+            {c.year && <span className="block text-xs text-ink-500">{c.year}</span>}
+            {c.schedule && <span className="block text-xs text-ink-500">المواعيد: {c.schedule}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 

@@ -19,6 +19,17 @@ export function fmtDateTime(iso) {
   } catch { return iso }
 }
 
+// "الأحد ١٩ سبتمبر ٢٠٢٦ · ٠١:٢٠ م" - always in Cairo time, whatever the scanning phone's timezone is.
+export function fmtDayTime(iso) {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleString('ar-EG', {
+      timeZone: 'Africa/Cairo', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    })
+  } catch { return iso }
+}
+
 export function timeAgo(iso) {
   if (!iso) return ''
   const diff = (Date.now() - new Date(iso).getTime()) / 1000

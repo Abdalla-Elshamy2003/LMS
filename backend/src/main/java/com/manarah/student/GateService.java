@@ -46,10 +46,12 @@ public class GateService {
     private final com.manarah.academy.TeacherAcademyRepository academies;
     private final ScannedCodeResolver codeResolver;
     private final StudentPassTokens passTokens;
+    private final StudentCourseSummaries courseSummaries;
 
     public GateService(StudentRepository students, StudentGateLogRepository logs, UserRepository users,
                        com.manarah.academy.TeacherAcademyRepository academies, ScannedCodeResolver codeResolver,
-                       StudentPassTokens passTokens) {
+                       StudentPassTokens passTokens, StudentCourseSummaries courseSummaries) {
+        this.courseSummaries = courseSummaries;
         this.students = students;
         this.logs = logs;
         this.users = users;
@@ -63,7 +65,8 @@ public class GateService {
                            String academicStatus, String cardUid, String lastDirection, Instant lastAt) {}
 
     public record ScanResult(Long studentId, String code, String fullName, String grade, String phone,
-                             String direction, Instant at, String message) {}
+                             String direction, Instant at, String message,
+                             List<StudentCourseSummaries.Line> courses) {}
 
     public record LogRow(Long id, Long studentId, String code, String fullName, String grade,
                          String direction, Instant at, String recordedBy) {}
@@ -178,7 +181,8 @@ public class GateService {
         logs.save(log);
 
         return new ScanResult(s.getId(), s.getCode(), s.getFullName(), s.getGrade(), s.getPhone(),
-                direction, now, "IN".equals(direction) ? "تم تسجيل الدخول" : "تم تسجيل الخروج");
+                direction, now, "IN".equals(direction) ? "تم تسجيل الدخول" : "تم تسجيل الخروج",
+                courseSummaries.forStudent(tenantId, s.getId()));
     }
 
     /** Everything logged on a given day (defaults to today), newest first. */

@@ -80,7 +80,16 @@ class StudentVerificationTest {
         Set<String> fields = new HashSet<>();
         body.fieldNames().forEachRemaining(fields::add);
         assertThat(fields).isSubsetOf("verificationStatus", "institutionName", "fullName", "studentCode",
-                "grade", "gradeLevel", "educationType", "enrollmentStatus");
+                "grade", "gradeLevel", "educationType", "enrollmentStatus", "courses", "scannedAt");
+        assertThat(body.get("scannedAt").asText()).isNotBlank();
+        assertThat(body.get("courses").isArray()).isTrue();
+        assertThat(body.get("courses").size()).isGreaterThan(0);
+        body.get("courses").forEach(course -> {
+            Set<String> courseFields = new HashSet<>();
+            course.fieldNames().forEachRemaining(courseFields::add);
+            assertThat(courseFields).isSubsetOf("title", "year", "schedule");
+            assertThat(course.get("title").asText()).isNotBlank();
+        });
         assertThat(body.get("verificationStatus").asText()).isEqualTo("VERIFIED");
         assertThat(body.get("fullName").asText()).isEqualTo(student.getFullName());
         assertThat(body.get("studentCode").asText()).isEqualTo(student.getCode());

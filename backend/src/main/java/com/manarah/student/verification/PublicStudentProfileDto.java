@@ -1,5 +1,7 @@
 package com.manarah.student.verification;
 
+import com.manarah.student.StudentCourseSummaries;
+
 /**
  * What an anonymous visitor may learn by scanning a student's QR code - deliberately a separate
  * type from the internal student DTOs so a new column on {@code Student} can never leak here by
@@ -17,11 +19,13 @@ public record PublicStudentProfileDto(
         String grade,
         String gradeLevel,
         String educationType,
-        String enrollmentStatus) {
+        String enrollmentStatus,
+        java.util.List<StudentCourseSummaries.Line> courses,
+        java.time.Instant scannedAt) {
 
     public enum VerificationStatus { VERIFIED, INACTIVE }
 
     static PublicStudentProfileDto inactive(String institutionName) {
-        return new PublicStudentProfileDto(VerificationStatus.INACTIVE, institutionName, null, null, null, null, null, null);
+        return new PublicStudentProfileDto(VerificationStatus.INACTIVE, institutionName, null, null, null, null, null, null, null, null);
     }
 }

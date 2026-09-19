@@ -2,6 +2,7 @@ package com.manarah.student.verification;
 
 import com.manarah.common.exception.ApiExceptions.NotFoundException;
 import com.manarah.student.InstitutionNameResolver;
+import com.manarah.student.StudentCourseSummaries;
 import com.manarah.student.domain.Student;
 import com.manarah.student.repo.StudentRepository;
 import org.slf4j.Logger;
@@ -35,10 +36,13 @@ public class StudentVerificationService {
 
     private final StudentRepository students;
     private final InstitutionNameResolver institutions;
+    private final StudentCourseSummaries courseSummaries;
 
-    public StudentVerificationService(StudentRepository students, InstitutionNameResolver institutions) {
+    public StudentVerificationService(StudentRepository students, InstitutionNameResolver institutions,
+                                      StudentCourseSummaries courseSummaries) {
         this.students = students;
         this.institutions = institutions;
+        this.courseSummaries = courseSummaries;
     }
 
     @Transactional(readOnly = true)
@@ -59,9 +63,13 @@ public class StudentVerificationService {
             return PublicStudentProfileDto.inactive(institution);
         }
         log.info("student_verification outcome=verified fingerprint={}", fingerprint(candidate));
+        var courses = courseSummaries.forStudent(student.getTenantId(), student.getId());
+        // A student who skipped the year at sign-up is still placed by the course they picked.
+        String grade = student.getGrade() != null && !student.getGrade().isBlank() ? student.getGrade()
+                : courses.stream().map(StudentCourseSummaries.Line::year).filter(java.util.Objects::nonNull).findFirst().orElse(null);
         return new PublicStudentProfileDto(PublicStudentProfileDto.VerificationStatus.VERIFIED, institution,
-                student.getFullName(), student.getCode(), student.getGrade(), student.getGradeLevel(),
-                student.getEducationType(), student.getStatus());
+                student.getFullName(), student.getCode(), grade, student.getGradeLevel(),
+                student.getEducationType(), student.getStatus(), courses, java.time.Instant.now());
     }
 
     /** Short one-way hash so repeated failures can be correlated in logs without ever logging a usable token. */
