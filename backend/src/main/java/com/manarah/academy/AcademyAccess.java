@@ -26,6 +26,15 @@ public class AcademyAccess {
         if (academy.isPresent() && !academy.get().isPublished())
             throw new ForbiddenException("حسابك والكورسات المتاحة لك يحددها المدرس أو الإدارة. تواصل معهم للاشتراك.");
     }
+    /** Self-service course access for an ALREADY-EXISTING account — free self-enrollment, or buying a
+     *  paid course while logged in — only exists on the classic single-tenant setup. Once a tenant is
+     *  one teacher's own academy, a student's course list is entirely staff-managed (assignment, access
+     *  codes) or fixed at registration time; an existing account can never add itself to another course
+     *  just by discovering it, regardless of whether the academy's public page is published. */
+    public void rejectManagedAcademySelfService(Long tenantId) {
+        if (academies.findByTenantId(tenantId).isPresent())
+            throw new ForbiddenException("حسابك والكورسات المتاحة لك يحددها المدرس أو الإدارة. تواصل معهم للاشتراك.");
+    }
     public boolean visible(Long courseId) {
         try { requireCourse(courseId); return true; } catch (ForbiddenException ex) { return false; }
     }

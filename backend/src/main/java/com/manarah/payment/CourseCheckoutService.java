@@ -46,7 +46,7 @@ public class CourseCheckoutService {
 
     @Transactional
     public OrderView create(UserPrincipal actor, CreateOrder req) {
-        academyAccess.rejectSelfEnrollment(actor.getTenantId());
+        academyAccess.rejectManagedAcademySelfService(actor.getTenantId());
         if (actor.getRole() != Role.STUDENT) throw new ForbiddenException("شراء الكورسات متاح لحساب الطالب");
         var student = students.findByTenantIdAndUserId(actor.getTenantId(), actor.getId())
                 .orElseThrow(() -> new NotFoundException("لا يوجد ملف طالب مرتبط بالحساب"));
