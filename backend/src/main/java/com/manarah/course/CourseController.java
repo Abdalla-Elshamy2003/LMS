@@ -84,6 +84,34 @@ public class CourseController {
         return service.addLesson(moduleId, req);
     }
 
+    @PutMapping("/modules/{moduleId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    public ModuleView renameModule(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long moduleId, @Valid @RequestBody UpdateModuleRequest req) {
+        learning.access(actor, learning.moduleCourse(actor, moduleId), true);
+        return service.renameModule(moduleId, req);
+    }
+
+    @DeleteMapping("/modules/{moduleId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    public void deleteModule(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long moduleId) {
+        learning.access(actor, learning.moduleCourse(actor, moduleId), true);
+        service.deleteModule(moduleId);
+    }
+
+    @PutMapping("/lessons/{lessonId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    public LessonView updateLesson(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long lessonId, @Valid @RequestBody UpdateLessonRequest req) {
+        learning.access(actor, learning.lessonCourse(actor, lessonId), true);
+        return service.updateLesson(lessonId, req);
+    }
+
+    @DeleteMapping("/lessons/{lessonId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    public void deleteLesson(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long lessonId) {
+        learning.access(actor, learning.lessonCourse(actor, lessonId), true);
+        service.deleteLesson(lessonId);
+    }
+
     @PostMapping("/lessons/{lessonId}/materials")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
     public MaterialView addMaterial(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long lessonId, @Valid @RequestBody CreateMaterialRequest req) {

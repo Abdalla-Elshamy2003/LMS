@@ -21,6 +21,7 @@ import CoursePaymentCodes from "../features/payments/CoursePaymentCodes";
 import api from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { PageLoader, Spinner } from "../components/ui";
+import ImageUpload from "../components/ImageUpload";
 import { apiErrorMessage } from '../lib/apiError'
 
 const blankAccount = {
@@ -615,18 +616,14 @@ export default function AcademySettings() {
                     }
                   />
                 </label>
-                <label className="block text-xs font-bold">
+                <div className="block text-xs font-bold">
                   صورة الغلاف (اختياري)
-                  <input
-                    dir="ltr"
-                    placeholder="/images/course-1.jpg"
-                    className="input mt-2"
+                  <ImageUpload
                     value={video.poster}
-                    onChange={(e) =>
-                      setVideo((f) => ({ ...f, poster: e.target.value }))
-                    }
+                    label="رفع صورة الغلاف"
+                    onChange={(url) => setVideo((f) => ({ ...f, poster: url }))}
                   />
-                </label>
+                </div>
                 <button disabled={busy} className="btn-primary w-full">
                   {busy ? <Spinner /> : <Plus size={16} />} إضافة الدرس
                 </button>

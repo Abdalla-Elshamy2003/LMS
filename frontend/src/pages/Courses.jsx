@@ -7,6 +7,7 @@ import { Modal, PageLoader, EmptyState, Spinner, stagger, fadeUp } from '../comp
 import { fmtMoney, GRADES } from '../lib/format'
 import { useAuth } from '../lib/auth'
 import { courseHref } from '../lib/courseNavigation'
+import ImageUpload from '../components/ImageUpload'
 import { apiErrorMessage } from '../lib/apiError'
 
 const GRADIENTS = ['from-brand-500 to-indigo-700', 'from-emerald-500 to-teal-700', 'from-sky-500 to-blue-700', 'from-amber-500 to-orange-700', 'from-rose-500 to-pink-700', 'from-violet-500 to-purple-700']
@@ -90,8 +91,9 @@ export default function Courses() {
               <motion.div variants={fadeUp} key={c.id} className="card overflow-hidden">
                 <Link to={courseHref(c, user.role)} className="block hover:shadow-glow transition-shadow">
                   <div className={`relative h-28 bg-gradient-to-br ${GRADIENTS[i % GRADIENTS.length]} p-5`}>
+                    {c.coverUrl && <img src={c.coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />}
                     <div className="absolute inset-0 bg-grid opacity-30" />
-                    <BookOpen className="text-white/90" size={26} />
+                    <BookOpen className="relative text-white/90" size={26} />
                     <span className="absolute bottom-4 left-5 chip bg-white/20 text-white backdrop-blur">{c.subject}</span>
                     {c.discountPercent > 0 && <span className="absolute bottom-4 right-5 chip bg-rose-500 text-white">خصم {c.discountPercent}%</span>}
                   </div>
@@ -245,7 +247,7 @@ function PaymentModal({ order, onClose, onPaid }) {
 }
 
 function NewCourse({ open, onClose, teachers, onSaved }) {
-  const [form, setForm] = useState({ title: '', subject: '', gradeLevel: 'ثانوي', grade: '', price: 0, teacherId: '', schedule: '' })
+  const [form, setForm] = useState({ title: '', subject: '', gradeLevel: 'ثانوي', grade: '', price: 0, teacherId: '', schedule: '', coverUrl: '' })
   const [saving, setSaving] = useState(false)
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
   const save = async () => {
@@ -275,6 +277,10 @@ function NewCourse({ open, onClose, teachers, onSaved }) {
           <div><label className="label">السعر (ج.م)</label><input type="number" className="input" value={form.price} onChange={set('price')} /></div>
         </div>
         <div><label className="label">المواعيد</label><input className="input" value={form.schedule} onChange={set('schedule')} placeholder="الأحد والثلاثاء 6:00م" /></div>
+        <div>
+          <label className="label">صورة الكورس (اختياري)</label>
+          <ImageUpload value={form.coverUrl} label="رفع صورة الكورس" onChange={(url) => setForm((f) => ({ ...f, coverUrl: url }))} />
+        </div>
         <div className="flex justify-end gap-2 pt-2">
           <button onClick={onClose} className="btn-ghost">إلغاء</button>
           <button onClick={save} disabled={saving || !form.title} className="btn-primary">{saving ? 'جارٍ الحفظ...' : 'حفظ'}</button>

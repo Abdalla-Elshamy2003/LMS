@@ -11,5 +11,6 @@ public interface VideoWatchSessionRepository extends JpaRepository<VideoWatchSes
     Optional<VideoWatchSession> findByTenantIdAndSessionToken(Long tenantId, String sessionToken);
     List<VideoWatchSession> findByTenantIdAndUserIdAndEndedAtIsNullAndLastSeenAtAfter(Long tenantId, Long userId, Instant since);
     List<VideoWatchSession> findByTenantIdAndCourseId(Long tenantId, Long courseId);
+    void deleteByTenantIdAndLessonId(Long tenantId, Long lessonId);
     List<VideoWatchSession> findByTenantIdAndUserIdOrderByStartedAtDesc(Long tenantId, Long userId);
 }

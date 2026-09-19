@@ -56,6 +56,67 @@ export function AddLesson({ moduleId, onClose, onSaved }) {
   )
 }
 
+export function EditModule({ module, onClose, onSaved }) {
+  const [title, setTitle] = useState(module.title)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const save = async () => { setSaving(true); setError(''); try { await api.put(`/courses/modules/${module.id}`, { title: title.trim() }); onSaved() } catch (e) { setError(apiErrorMessage(e, 'تعذّر حفظ التعديل')) } finally { setSaving(false) } }
+  return (
+    <Modal open onClose={onClose} title="تعديل الفصل">
+      <div className="space-y-4">
+        <div><label className="label">عنوان الفصل</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+        {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
+        <div className="flex justify-end gap-2"><button onClick={onClose} className="btn-ghost">إلغاء</button><button onClick={save} disabled={saving || !title.trim()} className="btn-primary">حفظ</button></div>
+      </div>
+    </Modal>
+  )
+}
+
+export function EditLesson({ lesson, onClose, onSaved }) {
+  const [form, setForm] = useState({ title: lesson.title, durationMin: lesson.durationMin ?? 0, contentText: lesson.contentText || '' })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+  const save = async () => {
+    setSaving(true); setError('')
+    try {
+      // releaseAt is sent back unchanged so editing the text never cancels a scheduled release.
+      await api.put(`/courses/lessons/${lesson.id}`, { ...form, title: form.title.trim(), durationMin: Math.max(0, Number(form.durationMin)), releaseAt: lesson.releaseAt || null })
+      onSaved()
+    } catch (e) { setError(apiErrorMessage(e, 'تعذّر حفظ التعديل')) } finally { setSaving(false) }
+  }
+  return (
+    <Modal open onClose={onClose} title="تعديل الدرس">
+      <div className="space-y-4">
+        <div><label className="label">عنوان الدرس</label><input className="input" value={form.title} onChange={set('title')} /></div>
+        <div><label className="label">المدة (دقيقة)</label><input type="number" className="input" value={form.durationMin} onChange={set('durationMin')} /></div>
+        <div><label className="label">شرح الدرس</label><textarea className="input" rows={4} value={form.contentText} onChange={set('contentText')} /></div>
+        {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
+        <div className="flex justify-end gap-2"><button onClick={onClose} className="btn-ghost">إلغاء</button><button onClick={save} disabled={saving || !form.title.trim()} className="btn-primary">حفظ</button></div>
+      </div>
+    </Modal>
+  )
+}
+
+/** Asks before deleting a chapter or lesson; `warning` says what else goes with it. */
+export function ConfirmDelete({ title, warning, onClose, onConfirm }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const go = async () => { setBusy(true); setError(''); try { await onConfirm() } catch (e) { setError(apiErrorMessage(e, 'تعذّر الحذف')); setBusy(false) } }
+  return (
+    <Modal open onClose={onClose} title={title}>
+      <div className="space-y-4">
+        <p className="text-sm leading-7 text-ink-600">{warning}</p>
+        {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="btn-ghost">إلغاء</button>
+          <button onClick={go} disabled={busy} className="btn bg-rose-600 text-white hover:bg-rose-700">{busy ? 'جارٍ الحذف…' : 'نعم، احذف'}</button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 /** Multi-item material uploader: a "+" adds rows so the teacher can upload several files at once. */
 export function AddMaterials({ lessonId, onClose, onSaved }) {
   const empty = () => ({ type: 'VIDEO', title: '', description: '', url: '', file: null })

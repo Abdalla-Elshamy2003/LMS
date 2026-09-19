@@ -25,10 +25,20 @@ public class CourseService {
     private final EnrollmentRepository enrollments;
     private final UserRepository users;
     private final com.manarah.academy.TeacherAcademyRepository academies;
+    private final LessonProgressRepository progress;
+    private final VideoWatchSessionRepository watchSessions;
+    private final LessonCheckpointRepository checkpoints;
+    private final LessonCheckpointAnswerRepository checkpointAnswers;
 
     public CourseService(CourseRepository courses, CourseModuleRepository modules, LessonRepository lessons,
                          LessonMaterialRepository materials, EnrollmentRepository enrollments, UserRepository users,
-                         com.manarah.academy.TeacherAcademyRepository academies) {
+                         com.manarah.academy.TeacherAcademyRepository academies, LessonProgressRepository progress,
+                         VideoWatchSessionRepository watchSessions, LessonCheckpointRepository checkpoints,
+                         LessonCheckpointAnswerRepository checkpointAnswers) {
+        this.progress = progress;
+        this.watchSessions = watchSessions;
+        this.checkpoints = checkpoints;
+        this.checkpointAnswers = checkpointAnswers;
         this.courses = courses;
         this.modules = modules;
         this.lessons = lessons;
@@ -95,7 +105,11 @@ public class CourseService {
         if (c.getTeacherId() != null) users.findByTenantIdAndId(tenantId, c.getTeacherId())
                 .filter(u -> u.getRole() == com.manarah.identity.domain.Role.TEACHER)
                 .orElseThrow(() -> new com.manarah.common.exception.ApiExceptions.BadRequestException("اختر مدرساً من هذه المساحة"));
-        c.setCoverUrl(req.coverUrl());
+        String cover = req.coverUrl() == null ? "" : req.coverUrl().trim();
+        if (!cover.isEmpty() && !cover.matches("^https://[^\\s]+$") && !cover.matches("^/api/public/images/[0-9]+$")
+                && !cover.matches("^/images/[a-zA-Z0-9._-]+$"))
+            throw new com.manarah.common.exception.ApiExceptions.BadRequestException("رابط صورة الكورس غير صحيح");
+        c.setCoverUrl(cover.isEmpty() ? null : cover);
         c.setSchedule(req.schedule());
         c.setGrade(req.grade());
         courses.save(c);
@@ -131,6 +145,62 @@ public class CourseService {
         lessons.save(l);
         return new LessonView(l.getId(), l.getTitle(), l.getPosition(), l.getDurationMin(), l.getContentText(),
                 List.of(), l.getCreatedAt(), l.getReleaseAt(), l.getAiSummary());
+    }
+
+    @Transactional
+    public ModuleView renameModule(Long moduleId, UpdateModuleRequest req) {
+        Long tenantId = TenantContext.require();
+        CourseModule m = modules.findById(moduleId).filter(x -> x.getTenantId().equals(tenantId))
+                .orElseThrow(() -> NotFoundException.of("الفصل", moduleId));
+        m.setTitle(req.title().trim());
+        modules.save(m);
+        return new ModuleView(m.getId(), m.getTitle(), m.getPosition(), List.of(), m.getCreatedAt());
+    }
+
+    /** Removes the chapter with all its lessons, their files, and every student's progress in them. */
+    @Transactional
+    public void deleteModule(Long moduleId) {
+        Long tenantId = TenantContext.require();
+        CourseModule m = modules.findById(moduleId).filter(x -> x.getTenantId().equals(tenantId))
+                .orElseThrow(() -> NotFoundException.of("الفصل", moduleId));
+        for (Lesson l : lessons.findByTenantIdAndModuleIdOrderByPosition(tenantId, moduleId)) removeLessonData(tenantId, l);
+        modules.delete(m);
+    }
+
+    @Transactional
+    public LessonView updateLesson(Long lessonId, UpdateLessonRequest req) {
+        Long tenantId = TenantContext.require();
+        Lesson l = lessons.findById(lessonId).filter(x -> x.getTenantId().equals(tenantId))
+                .orElseThrow(() -> NotFoundException.of("الدرس", lessonId));
+        l.setTitle(req.title().trim());
+        if (req.durationMin() != null) l.setDurationMin(Math.max(0, req.durationMin()));
+        l.setContentText(req.contentText());
+        l.setReleaseAt(req.releaseAt());
+        lessons.save(l);
+        List<MaterialView> mats = materials.findByTenantIdAndLessonId(tenantId, l.getId()).stream().map(this::toMaterial).toList();
+        return new LessonView(l.getId(), l.getTitle(), l.getPosition(), l.getDurationMin(), l.getContentText(), mats,
+                l.getCreatedAt(), l.getReleaseAt(), l.getAiSummary());
+    }
+
+    /** Removes the lesson together with its materials, checkpoints and every student's progress in it. */
+    @Transactional
+    public void deleteLesson(Long lessonId) {
+        Long tenantId = TenantContext.require();
+        Lesson l = lessons.findById(lessonId).filter(x -> x.getTenantId().equals(tenantId))
+                .orElseThrow(() -> NotFoundException.of("الدرس", lessonId));
+        removeLessonData(tenantId, l);
+    }
+
+    // Children first: watch sessions point at materials, checkpoint answers at checkpoints.
+    private void removeLessonData(Long tenantId, Lesson l) {
+        Long id = l.getId();
+        watchSessions.deleteByTenantIdAndLessonId(tenantId, id);
+        progress.deleteByTenantIdAndLessonId(tenantId, id);
+        var checkpointIds = checkpoints.findByTenantIdAndLessonIdOrderByPositionAsc(tenantId, id).stream().map(LessonCheckpoint::getId).toList();
+        if (!checkpointIds.isEmpty()) checkpointAnswers.deleteByTenantIdAndCheckpointIdIn(tenantId, checkpointIds);
+        checkpoints.deleteByTenantIdAndLessonId(tenantId, id);
+        materials.deleteByTenantIdAndLessonId(tenantId, id);
+        lessons.delete(l);
     }
 
     @Transactional

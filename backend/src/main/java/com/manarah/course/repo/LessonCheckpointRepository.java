@@ -15,4 +15,6 @@ public interface LessonCheckpointRepository extends JpaRepository<LessonCheckpoi
     List<LessonCheckpoint> findByTenantIdAndQuestionId(Long tenantId, Long questionId);
 
     long countByTenantIdAndLessonId(Long tenantId, Long lessonId);
+
+    void deleteByTenantIdAndLessonId(Long tenantId, Long lessonId);
 }

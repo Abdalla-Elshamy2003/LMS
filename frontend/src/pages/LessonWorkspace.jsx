@@ -25,7 +25,8 @@ import api, { fileUrl } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { PageLoader, EmptyState, ProgressBar } from "../components/ui";
 import { fmtDate } from "../lib/format";
-import { AddModule, AddLesson, AddMaterials } from "./CourseDetail";
+import { AddModule, AddLesson, AddMaterials, EditModule, EditLesson, ConfirmDelete } from "./CourseDetail";
+import RowMenu from "../components/RowMenu";
 import { apiErrorMessage } from '../lib/apiError'
 
 function mediaUrl(material) {
@@ -666,12 +667,13 @@ export default function LessonWorkspace() {
           <div className="max-h-[70vh] overflow-y-auto">
             {course.modules.map((m, i) => (
               <div key={m.id} className="border-b border-ink-100 last:border-0">
+                <div className="flex items-center bg-ink-50/70 pl-2">
                 <button
                   onClick={() =>
                     setCollapsed((s) => ({ ...s, [m.id]: !s[m.id] }))
                   }
                   aria-expanded={!collapsed[m.id]}
-                  className="flex w-full items-center gap-3 bg-ink-50/70 p-4 text-right"
+                  className="flex min-w-0 flex-1 items-center gap-3 p-4 text-right"
                 >
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-xs font-bold text-brand-600">
                     {String(i + 1).padStart(2, "0")}
@@ -682,6 +684,14 @@ export default function LessonWorkspace() {
                     className={`transition-transform ${collapsed[m.id] ? "-rotate-90" : ""}`}
                   />
                 </button>
+                {staff && (
+                  <RowMenu
+                    label={`خيارات الفصل ${m.title}`}
+                    onEdit={() => setModal({ type: "editModule", module: m })}
+                    onDelete={() => setModal({ type: "deleteModule", module: m })}
+                  />
+                )}
+                </div>
                 {!collapsed[m.id] && (
                   <div className="space-y-1 p-2">
                     {m.lessons.map((l, j) => {
@@ -689,10 +699,10 @@ export default function LessonWorkspace() {
                         (p) => p.lessonId === l.id && p.completed,
                       );
                       return (
+                        <div key={l.id} className="flex items-start gap-1">
                         <button
-                          key={l.id}
                           onClick={() => choose(l)}
-                          className={`flex w-full items-start gap-3 rounded-xl p-3 text-right transition ${active?.id === l.id ? "bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200" : "text-ink-600 hover:bg-ink-50"}`}
+                          className={`flex min-w-0 flex-1 items-start gap-3 rounded-xl p-3 text-right transition ${active?.id === l.id ? "bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200" : "text-ink-600 hover:bg-ink-50"}`}
                         >
                           {done ? (
                             <CheckCircle2
@@ -712,6 +722,16 @@ export default function LessonWorkspace() {
                             </span>
                           </span>
                         </button>
+                        {staff && (
+                          <div className="pt-2">
+                            <RowMenu
+                              label={`خيارات الدرس ${l.title}`}
+                              onEdit={() => setModal({ type: "editLesson", lesson: l })}
+                              onDelete={() => setModal({ type: "deleteLesson", lesson: l })}
+                            />
+                          </div>
+                        )}
+                        </div>
                       );
                     })}
                     {staff && (
@@ -754,6 +774,51 @@ export default function LessonWorkspace() {
           moduleId={modal.moduleId}
           onClose={() => setModal(null)}
           onSaved={() => {
+            setModal(null);
+            load();
+          }}
+        />
+      )}
+      {modal?.type === "editModule" && (
+        <EditModule
+          module={modal.module}
+          onClose={() => setModal(null)}
+          onSaved={() => {
+            setModal(null);
+            load();
+          }}
+        />
+      )}
+      {modal?.type === "editLesson" && (
+        <EditLesson
+          lesson={modal.lesson}
+          onClose={() => setModal(null)}
+          onSaved={() => {
+            setModal(null);
+            load();
+          }}
+        />
+      )}
+      {modal?.type === "deleteModule" && (
+        <ConfirmDelete
+          title="حذف الفصل"
+          warning={`هيتم حذف الفصل «${modal.module.title}» وكل دروسه وملفاته، وتقدّم الطلاب فيها. مش هينفع تتراجع.`}
+          onClose={() => setModal(null)}
+          onConfirm={async () => {
+            await api.delete(`/courses/modules/${modal.module.id}`);
+            setModal(null);
+            load();
+          }}
+        />
+      )}
+      {modal?.type === "deleteLesson" && (
+        <ConfirmDelete
+          title="حذف الدرس"
+          warning={`هيتم حذف الدرس «${modal.lesson.title}» وملفاته وأسئلته، وتقدّم الطلاب فيه. مش هينفع تتراجع.`}
+          onClose={() => setModal(null)}
+          onConfirm={async () => {
+            await api.delete(`/courses/lessons/${modal.lesson.id}`);
+            if (String(modal.lesson.id) === params.get("lesson")) setParams({});
             setModal(null);
             load();
           }}

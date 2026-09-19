@@ -39,6 +39,12 @@ public class CourseDtos {
     public record CreateModuleRequest(@NotBlank String title, Integer position) {
     }
 
+    public record UpdateModuleRequest(@NotBlank String title) {
+    }
+
+    public record UpdateLessonRequest(@NotBlank String title, Integer durationMin, String contentText, Instant releaseAt) {
+    }
+
     public record CreateLessonRequest(@NotBlank String title, Integer position, Integer durationMin, String contentText,
                                       Instant releaseAt) {
     }
