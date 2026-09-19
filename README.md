@@ -11,7 +11,7 @@
 | | |
 |---|---|
 | **الباك-إند** | Java 21 · Spring Boot 3.3 · Spring Security (JWT) · Spring Data JPA · Flyway |
-| **قاعدة البيانات** | PostgreSQL (إنتاج ودوكر) — SQLite متاحة فقط كـ profile تطوير محلي بديل |
+| **قاعدة البيانات** | PostgreSQL (إنتاج ودوكر ومحلي) |
 | **التخزين المؤقت / rate limiting** | Redis |
 | **تخزين الملفات** | S3-compatible (MinIO محليًا) — أو Local disk لنسخة واحدة فقط |
 | **الفرونت-إند** | React 18 · Vite · Tailwind CSS · Framer Motion · Recharts · RTL عربي |
@@ -28,7 +28,7 @@
 
 ### 1) الباك-إند (بدون Docker)
 
-الـ profile الافتراضي أصبح `postgres` ومحتاج قاعدة Postgres حقيقية شغالة (`MANARAH_DB_URL`/`MANARAH_DB_USERNAME`/`MANARAH_DB_PASSWORD`) وRedis (`MANARAH_REDIS_HOST`). للتشغيل السريع من غير أي حاجة من دول، استخدم profile الـ SQLite القديم (تطوير محلي فقط، غير مخصص للإنتاج):
+الـ profile الافتراضي أصبح `postgres` ومحتاج قاعدة Postgres حقيقية شغالة (`MANARAH_DB_URL`/`MANARAH_DB_USERNAME`/`MANARAH_DB_PASSWORD`) وRedis (`MANARAH_REDIS_HOST`). أسهل طريقة لتشغيل Postgres وRedis محلياً هي `docker compose up -d postgres redis`، وبعدها:
 
 من **PowerShell**:
 
@@ -36,7 +36,6 @@
 $p = Get-Content 'D:\LMS\.tooling\paths.json' | ConvertFrom-Json
 $env:JAVA_HOME = $p.jdk
 & "$($p.mvn)\bin\mvn.cmd" -f 'D:\LMS\backend\pom.xml' -DskipTests package
-$env:SPRING_PROFILES_ACTIVE = "sqlite"
 & "$($p.jdk)\bin\java.exe" -jar 'D:\LMS\backend\target\manarah-lms.jar'
 ```
 

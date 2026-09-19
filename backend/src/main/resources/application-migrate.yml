@@ -1,9 +1,0 @@
-# One-time SQLite -> Postgres data copy (see SqliteToPostgresMigrator). Activate alongside
-# 'postgres' (e.g. --spring.profiles.active=postgres,migrate) and pass the SQLite file path:
-#   --manarah.migrate.sqlite-path=/path/to/manarah.db
-# Flyway still runs first (postgres profile) so the schema exists, then the migrator copies the rows and
-# exits the process. Safe to re-run: tables that already have rows are skipped.
-server:
-  # The app context needs its web stack (security config), so it still starts one - on a random free
-  # port that nothing routes to, and only for the few seconds the copy takes.
-  port: 0

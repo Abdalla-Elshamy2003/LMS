@@ -17,8 +17,7 @@ import java.nio.file.Path;
 @EnableScheduling
 public class ManarahApplication {
     public static void main(String[] args) {
-        // SQLite (Xerial) does not create parent directories; ensure they exist before the datasource initialises.
-        ensureDir("data");
+        // The default local file-storage provider writes under ./data/files; make sure it exists.
         ensureDir("data/files");
         SpringApplication.run(ManarahApplication.class, args);
     }

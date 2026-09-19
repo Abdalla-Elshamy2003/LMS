@@ -79,7 +79,7 @@ public class PasswordResetService {
      * Always succeeds from the caller's point of view — see {@link #GENERIC}.
      *
      * <p>Deliberately not {@code @Transactional}: sending the message means an SMTP handshake that
-     * can take seconds, and SQLite serialises writers behind a 5s busy timeout. Holding a write
+     * can take seconds, and holding a write
      * transaction open across that call would let one slow mail server stall every other write in
      * the app, so the token row is committed first and delivery happens after.
      */

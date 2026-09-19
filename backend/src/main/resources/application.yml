@@ -6,9 +6,7 @@ server:
 spring:
   application:
     name: manarah-lms
-  # PostgreSQL is the supported production database (see application-postgres.yml). The 'sqlite'
-  # profile (application-sqlite.yml) exists only for quick local development without Docker/Postgres
-  # and must never be used in production. Override with SPRING_PROFILES_ACTIVE if needed.
+  # PostgreSQL is the only supported database (see application-postgres.yml).
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:postgres}
   jpa:

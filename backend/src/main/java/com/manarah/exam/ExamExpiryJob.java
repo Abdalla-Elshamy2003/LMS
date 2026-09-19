@@ -28,9 +28,8 @@ public class ExamExpiryJob {
     @Scheduled(fixedDelayString = "${manarah.exams.expiry-interval-ms:30000}", initialDelay = 30000)
     public void finishExpired() {
         // With more than one backend instance, every instance fires this on the same schedule -
-        // an advisory lock keeps only one of them actually doing the work per cycle. On the
-        // 'sqlite' dev profile (no advisory locks, and only ever one instance anyway) the lock
-        // call fails and this just runs unconditionally.
+        // an advisory lock keeps only one of them actually doing the work per cycle. If the lock call itself
+        // fails, run unconditionally rather than skip the work.
         boolean locked;
         try {
             locked = Boolean.TRUE.equals(jdbc.queryForObject("SELECT pg_try_advisory_lock(?)", Boolean.class, LOCK_KEY));

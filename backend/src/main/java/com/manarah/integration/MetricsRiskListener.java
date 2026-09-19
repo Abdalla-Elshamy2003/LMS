@@ -10,7 +10,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * Recomputes materialised metrics and reassesses risk after the triggering transaction commits.
- * Runs in a fresh transaction (the original is already committed), so SQLite's single writer is free.
+ * Runs in a fresh transaction (the original is already committed), so it never extends the original write.
  */
 @Component
 public class MetricsRiskListener {

@@ -36,7 +36,7 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-      # PostgreSQL is what production runs, and SQLite hides mistakes Postgres rejects, so the suite runs on Postgres.
+      # The suite runs on PostgreSQL, the same database production uses.
       - name: Run backend tests (PostgreSQL + Redis services)
         working-directory: backend
         env:

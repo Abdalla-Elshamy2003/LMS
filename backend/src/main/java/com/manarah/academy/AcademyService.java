@@ -225,8 +225,8 @@ public class AcademyService {
 
     /**
      * Removes a student from the academy. Archives rather than hard-deletes: attendance records,
-     * grades, submissions and gate logs all point at this student row, and the SQLite connection
-     * runs with foreign_keys=true, so a real DELETE would either fail or take the student's whole
+     * grades, submissions and gate logs all point at this student row, and foreign keys are
+     * enforced, so a real DELETE would either fail or take the student's whole
      * history with it. Archiving gets the same visible result — gone from the academy's list, and
      * login refused, since AuthService only admits status ACTIVE — while the history survives.
      *
