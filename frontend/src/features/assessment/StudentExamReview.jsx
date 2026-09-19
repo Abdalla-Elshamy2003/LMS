@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { CheckCircle2, XCircle, Clock, Lightbulb, MessageSquare, ArrowRight } from 'lucide-react'
 import api, { fileUrl } from '../../lib/api'
 import { PageLoader } from '../../components/ui'
+import { apiErrorMessage } from '../../lib/apiError'
 
 /** A student's own post-exam review (Moodle "review options" style): what they answered, what was right, and why. */
 export default function StudentExamReview({ examId, onBack }) {
   const [data, setData] = useState(null), [error, setError] = useState(''), [filter, setFilter] = useState('all')
-  useEffect(() => { api.get(`/exams/${examId}/my-review`).then(r => setData(r.data)).catch(e => setError(e.response?.data?.message || 'تعذّر تحميل المراجعة')) }, [examId])
+  useEffect(() => { api.get(`/exams/${examId}/my-review`).then(r => setData(r.data)).catch(e => setError(apiErrorMessage(e, 'تعذّر تحميل المراجعة'))) }, [examId])
   if (error) return <div className="card p-6" role="alert">{error}<button onClick={onBack} className="btn-ghost mr-3">رجوع</button></div>
   if (!data) return <PageLoader />
   const rows = data.answers.filter(a => filter === 'all' || (filter === 'wrong' ? a.correct === false : filter === 'correct' ? a.correct === true : a.correct == null))

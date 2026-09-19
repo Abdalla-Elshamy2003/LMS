@@ -7,6 +7,7 @@ import { Modal, PageLoader, EmptyState, Spinner, stagger, fadeUp } from '../comp
 import { fmtMoney, GRADES } from '../lib/format'
 import { useAuth } from '../lib/auth'
 import { courseHref } from '../lib/courseNavigation'
+import { apiErrorMessage } from '../lib/apiError'
 
 const GRADIENTS = ['from-brand-500 to-indigo-700', 'from-emerald-500 to-teal-700', 'from-sky-500 to-blue-700', 'from-amber-500 to-orange-700', 'from-rose-500 to-pink-700', 'from-violet-500 to-purple-700']
 
@@ -165,7 +166,7 @@ function RedeemCodeModal({ course, onClose, onRedeemed }) {
     if (!code.trim()) { setError('اكتب الكود'); return }
     setBusy(true); setError('')
     try { await api.post('/courses/redeem-code', { code: code.trim() }); onRedeemed() }
-    catch (err) { setError(err.response?.data?.message || 'تعذّر تفعيل الكود') } finally { setBusy(false) }
+    catch (err) { setError(apiErrorMessage(err, 'تعذّر تفعيل الكود')) } finally { setBusy(false) }
   }
   return (
     <Modal open onClose={onClose} title={`تفعيل كود — ${course.title}`}>
@@ -196,7 +197,7 @@ function PaymentModal({ order, onClose, onPaid }) {
   const confirmDemoPay = async () => {
     setPaying(true); setError('')
     try { await api.post(`/checkout/orders/${order.reference}/pay`, { method }); onPaid() }
-    catch (e) { setError(e.response?.data?.message || 'تعذّر إتمام الدفع') }
+    catch (e) { setError(apiErrorMessage(e, 'تعذّر إتمام الدفع')) }
     finally { setPaying(false) }
   }
   return (

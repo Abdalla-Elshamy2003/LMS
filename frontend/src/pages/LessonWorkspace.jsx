@@ -26,6 +26,7 @@ import { useAuth } from "../lib/auth";
 import { PageLoader, EmptyState, ProgressBar } from "../components/ui";
 import { fmtDate } from "../lib/format";
 import { AddModule, AddLesson, AddMaterials } from "./CourseDetail";
+import { apiErrorMessage } from '../lib/apiError'
 
 function mediaUrl(material) {
   if (material?.fileKey) return fileUrl(material.fileKey);
@@ -171,7 +172,7 @@ export default function LessonWorkspace() {
       if (staff) api.get(`/learning/courses/${id}/watch-log`).then((r) => setWatchLog(r.data)).catch(() => setWatchLog([]));
     } catch (e) {
       setError(
-        e.response?.data?.message || "تعذّر تحميل الدروس. حاول مرة أخرى.",
+        apiErrorMessage(e, "تعذّر تحميل الدروس. حاول مرة أخرى."),
       );
     }
   };
@@ -474,7 +475,7 @@ export default function LessonWorkspace() {
                                   await load();
                                   setNotice("تم توليد ملخص الدرس وحفظه — الطلاب هيشوفوه تحت الفيديو.");
                                 } catch (e) {
-                                  setNotice(e.response?.data?.message || "تعذّر توليد الملخص");
+                                  setNotice(apiErrorMessage(e, "تعذّر توليد الملخص"));
                                 } finally { setSummarizing(false); }
                               }}
                             >

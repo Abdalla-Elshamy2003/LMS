@@ -7,6 +7,7 @@ import { useAuth } from '../lib/auth'
 import { Spinner, PageLoader } from '../components/ui'
 import MarketingNav from '../components/marketing/MarketingNav'
 import MarketingFooter from '../components/marketing/MarketingFooter'
+import { apiErrorMessage } from '../lib/apiError'
 
 /** No live payment gateway: the teacher confirms InstaPay/Vodafone Cash transfers manually and
  *  hands the student a one-time code. This page shows where to send the money, then lets the
@@ -48,7 +49,7 @@ export default function Checkout() {
       setDone(data)
       await loginWithToken(data.accessToken)
     } catch (err) {
-      setError(err.response?.data?.message || 'تعذّر إتمام العملية، حاول مرة أخرى')
+      setError(apiErrorMessage(err, 'تعذّر إتمام العملية، حاول مرة أخرى'))
     } finally {
       setSaving(false)
     }

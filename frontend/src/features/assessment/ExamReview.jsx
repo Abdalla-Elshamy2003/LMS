@@ -2,18 +2,19 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, CheckCircle2, XCircle, Clock } from 'lucide-react'
 import api from '../../lib/api'
 import { PageLoader } from '../../components/ui'
+import { apiErrorMessage } from '../../lib/apiError'
 
 /** Teacher view of one attempt: every answer with auto-grade result, plus manual grading for essays. */
 export default function ExamReview({ row, onBack }) {
   const [answers, setAnswers] = useState(null), [draft, setDraft] = useState({}), [error, setError] = useState(''), [busy, setBusy] = useState(false), [saved, setSaved] = useState(null)
-  const load = () => api.get(`/exams/attempts/${row.studentExamId}/answers`).then(r => setAnswers(r.data)).catch(e => setError(e.response?.data?.message || 'تعذّر تحميل الإجابات'))
+  const load = () => api.get(`/exams/attempts/${row.studentExamId}/answers`).then(r => setAnswers(r.data)).catch(e => setError(apiErrorMessage(e, 'تعذّر تحميل الإجابات')))
   useEffect(() => { load() }, [row.studentExamId])
   const save = async a => {
     const value = draft[a.questionId] || { points: a.awardedPoints, feedback: a.feedback || '' }
     if (value.points === '' || !Number.isFinite(Number(value.points)) || Number(value.points) < 0 || Number(value.points) > a.points) { setError(`الدرجة من صفر إلى ${a.points}`); return }
     setBusy(true); setError('')
     try { await api.post(`/exams/attempts/${row.studentExamId}/grade`, { questionId: a.questionId, points: Number(value.points), feedback: value.feedback }); await load(); setSaved(a.questionId); setTimeout(() => setSaved(null), 2000) }
-    catch (e) { setError(e.response?.data?.message || 'تعذّر حفظ التصحيح') } finally { setBusy(false) }
+    catch (e) { setError(apiErrorMessage(e, 'تعذّر حفظ التصحيح')) } finally { setBusy(false) }
   }
   const pending = (answers || []).filter(a => a.correct === null).length
   return <div className="space-y-4">

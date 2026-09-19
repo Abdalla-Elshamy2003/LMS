@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus, Trash2, CheckCircle2, ImagePlus, X } from 'lucide-react'
 import api, { fileUrl } from '../../lib/api'
 import { Modal } from '../../components/ui'
+import { apiErrorMessage } from '../../lib/apiError'
 
 export const TYPES = [['MCQ', 'اختيار من متعدد'], ['TRUE_FALSE', 'صح / خطأ'], ['MULTI_SELECT', 'اختيار متعدد الإجابات'], ['FILL_BLANK', 'أكمل الفراغ'], ['SHORT_ANSWER', 'إجابة قصيرة'], ['NUMERIC', 'رقمي'], ['ESSAY', 'مقالي (تصحيح يدوي)']]
 const withOptions = t => ['MCQ', 'TRUE_FALSE', 'MULTI_SELECT'].includes(t)
@@ -19,7 +20,7 @@ export default function QuestionEditor({ question, onClose, onSaved }) {
       const fd = new FormData(); fd.append('file', file); fd.append('folder', 'exams')
       const r = await api.post('/files/upload', fd)
       setForm(f => ({ ...f, imageKey: r.data.fileKey }))
-    } catch (e) { setErr(e.response?.data?.message || 'تعذّر رفع الصورة') } finally { setUploading(false) }
+    } catch (e) { setErr(apiErrorMessage(e, 'تعذّر رفع الصورة')) } finally { setUploading(false) }
   }
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
   const setType = t => setForm(f => ({ ...f, type: t, options: t === 'TRUE_FALSE' ? [{ text: 'صح', correct: true }, { text: 'خطأ', correct: false }] : withOptions(t) ? (f.options.length >= 2 && f.type !== 'TRUE_FALSE' ? f.options : [{ text: '', correct: true }, { text: '', correct: false }, { text: '', correct: false }, { text: '', correct: false }]) : [] }))
@@ -31,7 +32,7 @@ export default function QuestionEditor({ question, onClose, onSaved }) {
     setSaving(true); setErr('')
     const body = { type: form.type, difficulty: form.difficulty, subject: form.subject || null, chapter: form.chapter || null, stem: form.stem.trim(), points: Number(form.points) || 1, correctAnswer: withOptions(form.type) ? null : form.correctAnswer, explanation: form.explanation || null, tags: form.tags || null, imageKey: form.imageKey || null, options: withOptions(form.type) ? form.options.map((o, i) => ({ text: o.text.trim(), correct: o.correct, position: i })) : null }
     try { const r = question ? await api.put(`/exams/questions/${question.id}`, body) : await api.post('/exams/questions', body); onSaved(r.data) }
-    catch (e) { setErr(e.response?.data?.message || 'تعذّر حفظ السؤال') } finally { setSaving(false) }
+    catch (e) { setErr(apiErrorMessage(e, 'تعذّر حفظ السؤال')) } finally { setSaving(false) }
   }
   return <Modal open onClose={onClose} title={question ? 'تعديل سؤال' : 'سؤال جديد في البنك'} wide>
     <div className="space-y-4">

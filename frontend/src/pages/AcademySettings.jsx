@@ -21,6 +21,7 @@ import CoursePaymentCodes from "../features/payments/CoursePaymentCodes";
 import api from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { PageLoader, Spinner } from "../components/ui";
+import { apiErrorMessage } from '../lib/apiError'
 
 const blankAccount = {
   fullName: "",
@@ -86,7 +87,7 @@ export default function AcademySettings() {
   useEffect(() => {
     if (allowed)
       load().catch((e) => {
-        setError(e.response?.data?.message || "تعذّر تحميل المساحات");
+        setError(apiErrorMessage(e, "تعذّر تحميل المساحات"));
         setItems([]);
       });
   }, []);
@@ -126,7 +127,7 @@ export default function AcademySettings() {
       setMessage(success);
     } catch (e) {
       setError(
-        e.response?.data?.message || "تعذّر حفظ التغييرات. حاول مرة أخرى.",
+        apiErrorMessage(e, "تعذّر حفظ التغييرات. حاول مرة أخرى."),
       );
     } finally {
       setBusy(false);

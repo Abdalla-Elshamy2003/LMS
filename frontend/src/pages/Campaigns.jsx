@@ -4,6 +4,7 @@ import { Megaphone, Send, Users, MessageCircle, Smartphone, Mail, Bell, CheckCir
 import api from '../lib/api'
 import { PageLoader, EmptyState, Spinner, stagger, fadeUp } from '../components/ui'
 import { fmtDateTime, fmtMoney } from '../lib/format'
+import { apiErrorMessage } from '../lib/apiError'
 
 const AUDIENCES = [
   { key: 'ALL', label: 'الجميع' },
@@ -53,7 +54,7 @@ export default function Campaigns() {
         setDiscountCourseId('')
       }
     } catch (e) {
-      setDiscountError(e.response?.data?.message || 'تعذّر تطبيق الخصم')
+      setDiscountError(apiErrorMessage(e, 'تعذّر تطبيق الخصم'))
     } finally {
       setApplyingDiscount(false)
     }
@@ -74,7 +75,7 @@ export default function Campaigns() {
       setForm({ title: '', body: '', audience: 'ALL', channels: ['IN_APP'] })
       load()
     } catch (e) {
-      setError(e.response?.data?.message || 'تعذّر إرسال الحملة')
+      setError(apiErrorMessage(e, 'تعذّر إرسال الحملة'))
     } finally {
       setSending(false)
     }

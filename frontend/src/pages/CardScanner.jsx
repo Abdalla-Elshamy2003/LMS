@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, CheckCircle2, CreditCard, ScanLine, XCircle } from 'lucide-react'
 import api from '../lib/api'
 import { EmptyState } from '../components/ui'
+import { apiErrorMessage } from '../lib/apiError'
 
 /**
  * Door station for physical PVC cards.
@@ -50,7 +51,7 @@ export default function CardScanner() {
       setHistory((h) => [data, ...h].slice(0, 12))
     } catch (err) {
       setLast(null)
-      setError(err.response?.data?.message || 'تعذّر قراءة الكارت، جرّب مرة أخرى')
+      setError(apiErrorMessage(err, 'تعذّر قراءة الكارت، جرّب مرة أخرى'))
     } finally {
       setBusy(false)
       inputRef.current?.focus()

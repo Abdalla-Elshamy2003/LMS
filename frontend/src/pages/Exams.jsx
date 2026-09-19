@@ -13,6 +13,7 @@ import QuestionEditor, { TYPES } from '../features/assessment/QuestionEditor'
 import AiGenerateModal from '../features/assessment/AiGenerateModal'
 import QuestionImport from '../features/assessment/QuestionImport'
 import StudentExamReview from '../features/assessment/StudentExamReview'
+import { apiErrorMessage } from '../lib/apiError'
 
 const DIFF = { EASY: { label: 'سهل', c: 'bg-emerald-50 text-emerald-700' }, MEDIUM: { label: 'متوسط', c: 'bg-amber-50 text-amber-700' }, HARD: { label: 'صعب', c: 'bg-rose-50 text-rose-700' } }
 const TYPE = Object.fromEntries(TYPES)
@@ -27,7 +28,7 @@ export default function Exams() {
 /* ================= Student ================= */
 function StudentExams() {
   const [cards, setCards] = useState(null), [error, setError] = useState(''), [tab, setTab] = useState('OPEN'), [take, setTake] = useState(null), [review, setReview] = useState(null), [now, setNow] = useState(Date.now())
-  const load = () => { setError(''); return api.get('/exams/my').then(r => setCards(r.data)).catch(e => setError(e.response?.data?.message || 'تعذّر تحميل الامتحانات')) }
+  const load = () => { setError(''); return api.get('/exams/my').then(r => setCards(r.data)).catch(e => setError(apiErrorMessage(e, 'تعذّر تحميل الامتحانات'))) }
   useEffect(() => { load(); const t = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(t) }, [])
   if (error) return <div className="card p-6" role="alert">{error}<button onClick={load} className="btn-soft mr-3">إعادة المحاولة</button></div>
   if (!cards) return <PageLoader />
@@ -71,14 +72,14 @@ function StaffExams({ canAuthor }) {
   const [tab, setTab] = useState('exams'), [exams, setExams] = useState(null), [courses, setCourses] = useState([]), [loadError, setLoadError] = useState('')
   const [courseFilter, setCourseFilter] = useState(''), [status, setStatus] = useState(''), [query, setQuery] = useState('')
   const [builder, setBuilder] = useState(null), [results, setResults] = useState(null), [confirm, setConfirm] = useState(null), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false)
-  const load = () => { setLoadError(''); return api.get('/exams').then(r => setExams(r.data)).catch(e => setLoadError(e.response?.data?.message || 'تعذّر تحميل الامتحانات')) }
+  const load = () => { setLoadError(''); return api.get('/exams').then(r => setExams(r.data)).catch(e => setLoadError(apiErrorMessage(e, 'تعذّر تحميل الامتحانات'))) }
   useEffect(() => { load(); api.get('/courses').then(r => setCourses(r.data)).catch(() => {}) }, [])
   const now = Date.now()
   const state = e => e.status === 'DRAFT' ? 'DRAFT' : e.status === 'CLOSED' ? 'CLOSED' : e.startAt && Date.parse(e.startAt) > now ? 'SCHEDULED' : e.endAt && Date.parse(e.endAt) < now ? 'ENDED' : 'LIVE'
   const LABEL = { DRAFT: ['مسودة', 'bg-ink-100 text-ink-600'], SCHEDULED: ['مجدول', 'bg-sky-50 text-sky-700'], LIVE: ['متاح للطلاب', 'bg-emerald-50 text-emerald-700'], ENDED: ['انتهت نافذته', 'bg-amber-50 text-amber-700'], CLOSED: ['مغلق', 'bg-rose-50 text-rose-700'] }
   const filtered = (exams || []).filter(e => (!courseFilter || String(e.courseId) === courseFilter) && (!status || state(e) === status) && `${e.title} ${e.courseTitle || ''}`.includes(query))
-  const act = async (fn, ok) => { setBusy(true); setNotice(''); try { await fn(); await load(); setNotice(ok) } catch (e) { setNotice(e.response?.data?.message || 'تعذّر تنفيذ الإجراء') } finally { setBusy(false); setConfirm(null) } }
-  const openEdit = async e => { try { const { data } = await api.get(`/exams/${e.id}`); setBuilder({ existing: data }) } catch (x) { setNotice(x.response?.data?.message || 'تعذّر فتح الامتحان') } }
+  const act = async (fn, ok) => { setBusy(true); setNotice(''); try { await fn(); await load(); setNotice(ok) } catch (e) { setNotice(apiErrorMessage(e, 'تعذّر تنفيذ الإجراء')) } finally { setBusy(false); setConfirm(null) } }
+  const openEdit = async e => { try { const { data } = await api.get(`/exams/${e.id}`); setBuilder({ existing: data }) } catch (x) { setNotice(apiErrorMessage(x, 'تعذّر فتح الامتحان')) } }
   if (loadError) return <div className="card p-6" role="alert">{loadError}<button onClick={load} className="btn-soft mr-3">إعادة المحاولة</button></div>
   const pendingManual = (exams || []).reduce((n, e) => n + (e.pendingManual || 0), 0)
   return <div className="space-y-5">
@@ -126,7 +127,7 @@ function QuestionBank({ canAuthor }) {
   const load = () => api.get('/exams/questions', { params: { q, difficulty: diff, type, subject, mine, page, size: 20 } }).then(r => setData(r.data)).catch(() => setNotice('تعذّر تحميل البنك'))
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t) }, [q, diff, type, subject, mine, page])
   const subjects = useMemo(() => [...new Set((data?.content || []).map(x => x.subject).filter(Boolean))], [data])
-  const remove = async () => { try { await api.delete(`/exams/questions/${confirm.id}`); setNotice('تم حذف السؤال'); load() } catch (e) { setNotice(e.response?.data?.message || 'تعذّر الحذف') } finally { setConfirm(null) } }
+  const remove = async () => { try { await api.delete(`/exams/questions/${confirm.id}`); setNotice('تم حذف السؤال'); load() } catch (e) { setNotice(apiErrorMessage(e, 'تعذّر الحذف')) } finally { setConfirm(null) } }
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center gap-2">
       <label className="relative"><Search size={15} className="absolute right-3 top-3 text-ink-400" /><input value={q} onChange={e => { setQ(e.target.value); setPage(0) }} className="input w-56 pr-9" placeholder="ابحث في نص الأسئلة..." /></label>

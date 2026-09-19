@@ -4,6 +4,7 @@ import { GraduationCap, Plus, Search, Users2, Clock, BookOpen, ExternalLink, Lay
 import api from '../lib/api'
 import { Modal, PageLoader, EmptyState, stagger, fadeUp } from '../components/ui'
 import { initials } from '../lib/format'
+import { apiErrorMessage } from '../lib/apiError'
 
 export default function Staff() {
   const [teachers, setTeachers] = useState(null)
@@ -144,7 +145,7 @@ function NewTeacher({ open, onClose, onSaved }) {
   const save = async () => {
     setSaving(true); setErr('')
     try { await api.post('/users', form); setForm(empty); onSaved() }
-    catch (e) { setErr(e.response?.data?.message || 'تعذّر الحفظ') }
+    catch (e) { setErr(apiErrorMessage(e, 'تعذّر الحفظ')) }
     finally { setSaving(false) }
   }
   return (

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { KeyRound, Plus, Copy, Ban, CheckCircle2, Clock } from 'lucide-react'
 import api from '../../lib/api'
 import { PageLoader } from '../../components/ui'
+import { apiErrorMessage } from '../../lib/apiError'
 
 const STATUS = {
   UNUSED: ['متاح', 'bg-sky-50 text-sky-700'],
@@ -28,11 +29,11 @@ export default function CoursePaymentCodes({ courses }) {
       await api.post(`/courses/${courseId}/access-codes`, { count: Number(count) || 1 })
       await load(courseId)
       setNotice(`تم توليد ${count} كود جديد`)
-    } catch (e) { setNotice(e.response?.data?.message || 'تعذّر توليد الأكواد') } finally { setBusy(false) }
+    } catch (e) { setNotice(apiErrorMessage(e, 'تعذّر توليد الأكواد')) } finally { setBusy(false) }
   }
   const revoke = async (id) => {
     try { await api.delete(`/courses/access-codes/${id}`); load(courseId) }
-    catch (e) { setNotice(e.response?.data?.message || 'تعذّر الإلغاء') }
+    catch (e) { setNotice(apiErrorMessage(e, 'تعذّر الإلغاء')) }
   }
   const copyUnused = () => {
     const list = (codes || []).filter(c => c.status === 'UNUSED').map(c => c.code).join('\n')

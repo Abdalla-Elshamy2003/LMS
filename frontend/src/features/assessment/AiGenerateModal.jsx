@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Sparkles, CheckCircle2, Trash2, FileUp, X } from 'lucide-react'
 import api from '../../lib/api'
 import { Modal, Spinner } from '../../components/ui'
+import { apiErrorMessage } from '../../lib/apiError'
 
 /** AI-drafted questions: generate (from a topic, or from an uploaded PDF/page photo), review/edit, then save the accepted ones into the bank. */
 export default function AiGenerateModal({ onClose, onSaved }) {
@@ -24,7 +25,7 @@ export default function AiGenerateModal({ onClose, onSaved }) {
         r = await api.post('/exams/questions/ai-generate', { subject: form.subject || null, topic: form.topic || null, difficulty: form.difficulty, type: form.type, count: Number(form.count) })
       }
       setDrafts(r.data.map(d => ({ ...d, explanation: d.explanation || '' }))); setSelected(new Set(r.data.map((_, i) => i))); setPhase('review')
-    } catch (e) { setErr(e.response?.data?.message || 'تعذّر توليد الأسئلة') } finally { setLoading(false) }
+    } catch (e) { setErr(apiErrorMessage(e, 'تعذّر توليد الأسئلة')) } finally { setLoading(false) }
   }
   const toggleSelected = (i) => setSelected((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n })
   const editDraft = (i, patch) => setDrafts((d) => d.map((x, idx) => idx === i ? { ...x, ...patch } : x))
@@ -32,7 +33,7 @@ export default function AiGenerateModal({ onClose, onSaved }) {
   const saveSelected = async () => {
     setSaving(true); setErr('')
     try { for (const i of selected) await api.post('/exams/questions', drafts[i]); onSaved() }
-    catch (e) { setErr(e.response?.data?.message || 'تعذّر حفظ بعض الأسئلة') } finally { setSaving(false) }
+    catch (e) { setErr(apiErrorMessage(e, 'تعذّر حفظ بعض الأسئلة')) } finally { setSaving(false) }
   }
   return <Modal open onClose={onClose} title="توليد أسئلة بالذكاء الاصطناعي" wide>
     {phase === 'form' ? <div className="space-y-4">

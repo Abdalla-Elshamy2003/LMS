@@ -3,6 +3,7 @@ import { FileCheck, Search, Paperclip, ArrowLeft, RotateCcw, Download, Keyboard,
 import api, { fileUrl } from '../../lib/api'
 import { Modal, PageLoader, EmptyState } from '../../components/ui'
 import { downloadCsv } from '../../lib/csv'
+import { apiErrorMessage } from '../../lib/apiError'
 
 const labels = { SUBMITTED: 'بانتظار التصحيح', LATE: 'تسليم متأخر', GRADED: 'تم التصحيح', MISSING: 'لم يسلّم', RETURNED: 'أُعيد للتعديل' }
 const tone = { SUBMITTED: 'bg-sky-50 text-sky-700', LATE: 'bg-amber-50 text-amber-700', GRADED: 'bg-emerald-50 text-emerald-700', MISSING: 'bg-rose-50 text-rose-700', RETURNED: 'bg-violet-50 text-violet-700' }
@@ -21,7 +22,7 @@ export default function SubmissionReview({ assignment, onClose }) {
   const [bank, setBank] = useState([]), [bankOpen, setBankOpen] = useState(true), [preview, setPreview] = useState(0)
   const feedbackRef = useRef(null)
   const rubric = assignment.rubric || null
-  const load = async () => { try { const { data } = await api.get(`/homework/assignments/${assignment.id}/submissions`); setRows(data); const waiting = data.find(s => ['SUBMITTED', 'LATE'].includes(s.status)); if (!waiting) setFilter(f => f === 'waiting' ? 'all' : f); setSelected(id => id ?? waiting?.id ?? data.find(s => s.status === 'GRADED')?.id ?? data[0]?.id) } catch (e) { setError(e.response?.data?.message || 'تعذّر تحميل التسليمات') } }
+  const load = async () => { try { const { data } = await api.get(`/homework/assignments/${assignment.id}/submissions`); setRows(data); const waiting = data.find(s => ['SUBMITTED', 'LATE'].includes(s.status)); if (!waiting) setFilter(f => f === 'waiting' ? 'all' : f); setSelected(id => id ?? waiting?.id ?? data.find(s => s.status === 'GRADED')?.id ?? data[0]?.id) } catch (e) { setError(apiErrorMessage(e, 'تعذّر تحميل التسليمات')) } }
   useEffect(() => { load(); api.get('/homework/comments').then(r => setBank(r.data)).catch(() => {}) }, [assignment.id])
   const filtered = useMemo(() => (rows || []).filter(s => s.studentName.includes(query) && (filter === 'all' || (filter === 'waiting' ? ['SUBMITTED', 'LATE'].includes(s.status) : s.status === filter))), [rows, query, filter])
   const current = (rows || []).find(s => s.id === selected)
@@ -51,11 +52,11 @@ export default function SubmissionReview({ assignment, onClose }) {
       setRows(rs => rs.map(r => r.id === data.id ? data : r)); setDrafts(d => { const n = { ...d }; delete n[current.id]; return n })
       setNotice(action === 'grade' ? `تم اعتماد ${data.score} / ${assignment.maxScore}${data.penaltyPercent ? ` بعد خصم ${data.penaltyPercent}٪ للتأخير` : ''}` : 'أُعيد الواجب للطالب مع ملاحظتك')
       if (next) { const idx = filtered.findIndex(s => s.id === current.id); const after = [...filtered.slice(idx + 1), ...filtered.slice(0, idx)].find(s => ['SUBMITTED', 'LATE'].includes(s.status)); if (after) setSelected(after.id) }
-    } catch (e) { setError(e.response?.data?.message || 'تعذّر الحفظ؛ التعديلات ما زالت موجودة') } finally { setBusy(false) }
+    } catch (e) { setError(apiErrorMessage(e, 'تعذّر الحفظ؛ التعديلات ما زالت موجودة')) } finally { setBusy(false) }
   }
-  const missing = async () => { setBusy(true); setError(''); try { const { data } = await api.post(`/homework/assignments/${assignment.id}/mark-missing`); await load(); setNotice(`تم رصد ${data} طالب لم يسلّم من كل طلاب الكورس المؤهلين`) } catch (e) { setError(e.response?.data?.message || 'تعذّر رصد غير المسلّمين') } finally { setBusy(false) } }
+  const missing = async () => { setBusy(true); setError(''); try { const { data } = await api.post(`/homework/assignments/${assignment.id}/mark-missing`); await load(); setNotice(`تم رصد ${data} طالب لم يسلّم من كل طلاب الكورس المؤهلين`) } catch (e) { setError(apiErrorMessage(e, 'تعذّر رصد غير المسلّمين')) } finally { setBusy(false) } }
   const insert = async c => { change({ feedback: `${value.feedback}${value.feedback ? '\n' : ''}${c.text}` }); api.post(`/homework/comments/${c.id}/use`).then(r => setBank(b => b.map(x => x.id === c.id ? r.data : x))).catch(() => {}) }
-  const saveToBank = async () => { const text = value.feedback.trim(); if (!text) return; try { const { data } = await api.post('/homework/comments', { text }); setBank(b => [data, ...b]); setNotice('حُفظ التعليق في بنكك') } catch (e) { setError(e.response?.data?.message || 'تعذّر حفظ التعليق') } }
+  const saveToBank = async () => { const text = value.feedback.trim(); if (!text) return; try { const { data } = await api.post('/homework/comments', { text }); setBank(b => [data, ...b]); setNotice('حُفظ التعليق في بنكك') } catch (e) { setError(apiErrorMessage(e, 'تعذّر حفظ التعليق')) } }
   const exportCsv = () => downloadCsv(`${assignment.title}-grades.csv`, ['الطالب', 'الحالة', 'وقت التسليم', 'التأخير', 'الدرجة قبل الخصم', 'الخصم ٪', 'الدرجة', 'من', 'الملاحظة'], (rows || []).map(s => [s.studentName, labels[s.status], s.submittedAt ? new Date(s.submittedAt).toLocaleString('ar-EG') : '', lateText(s), s.rawScore ?? '', s.penaltyPercent || 0, s.score ?? '', assignment.maxScore, s.feedback || '']))
 
   useEffect(() => {

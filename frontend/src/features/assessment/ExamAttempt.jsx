@@ -3,6 +3,7 @@ import { CheckCircle2, Clock, Flag, ChevronLeft, ChevronRight, Cloud, CloudOff, 
 import api, { fileUrl } from '../../lib/api'
 import { PageLoader } from '../../components/ui'
 import StudentExamReview from './StudentExamReview'
+import { apiErrorMessage } from '../../lib/apiError'
 
 const TYPE_HINT = { MCQ: 'اختر إجابة واحدة', TRUE_FALSE: 'اختر صح أو خطأ', MULTI_SELECT: 'يمكن اختيار أكثر من إجابة', FILL_BLANK: 'أكمل الفراغ بكلمة أو عبارة قصيرة', SHORT_ANSWER: 'إجابة قصيرة', ESSAY: 'إجابة مقالية · تُصحَّح يدوياً', NUMERIC: 'اكتب الرقم فقط' }
 
@@ -29,7 +30,7 @@ export default function ExamAttempt({ exam, onClose }) {
     setSave({ state: 'ok', text: data.savedAt ? 'تمت استعادة إجاباتك المحفوظة' : 'إجاباتك تُحفظ تلقائياً' })
     if (data.savedAt) log('RESUME')
     if (data.fullscreen) hall.current?.requestFullscreen?.().catch(() => setFsWarning(true))
-  }).catch(e => setError(e.response?.data?.message || 'تعذّر بدء الامتحان')).finally(() => setStarting(false)) }
+  }).catch(e => setError(apiErrorMessage(e, 'تعذّر بدء الامتحان'))).finally(() => setStarting(false)) }
 
   const persist = () => {
     if (!attempt || result || inFlight.current) return queue.current
@@ -63,7 +64,7 @@ export default function ExamAttempt({ exam, onClose }) {
     if (!attempt || result || inFlight.current) return
     inFlight.current = true; setBusy(true); setError('')
     try { await queue.current.catch(() => {}); const { data } = await api.post(`/exams/attempts/${attempt.studentExamId}/submit`, payload()); setResult(data); if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}) }
-    catch (e) { setError(e.response?.data?.message || 'تعذّر تأكيد التسليم. الإجابات ما زالت في الصفحة؛ أعد المحاولة.') }
+    catch (e) { setError(apiErrorMessage(e, 'تعذّر تأكيد التسليم. الإجابات ما زالت في الصفحة؛ أعد المحاولة.')) }
     finally { inFlight.current = false; setBusy(false) }
   }; submitRef.current = submit
 

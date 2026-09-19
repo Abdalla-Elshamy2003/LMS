@@ -4,6 +4,7 @@ import api, { fileUrl } from '../../lib/api'
 import { Modal, PageLoader, Spinner } from '../../components/ui'
 import { toLocalInput } from '../../lib/csv'
 import { TYPES } from './QuestionEditor'
+import { apiErrorMessage } from '../../lib/apiError'
 
 const DIFF = { EASY: 'سهل', MEDIUM: 'متوسط', HARD: 'صعب' }
 const STEPS = [['details', 'التفاصيل'], ['content', 'الأسئلة'], ['settings', 'الحماية والمواعيد'], ['review', 'مراجعة ونشر']]
@@ -74,7 +75,7 @@ export default function ExamBuilder({ courses, existing, onClose, onSaved }) {
       }
       setExamId(id)
       const { data } = await api.get(`/exams/${id}`); setDetail(data); setStep('review')
-    } catch (e) { setErr(e.response?.data?.message || 'تعذّر حفظ الامتحان') } finally { setSaving(false) }
+    } catch (e) { setErr(apiErrorMessage(e, 'تعذّر حفظ الامتحان')) } finally { setSaving(false) }
   }
   const syncQuestions = async id => {
     const { data } = await api.get(`/exams/${id}`)
@@ -87,7 +88,7 @@ export default function ExamBuilder({ courses, existing, onClose, onSaved }) {
     }
     await api.put(`/exams/${id}/questions/order`, { questionIds: selected.map(s => s.id) })
   }
-  const publish = async () => { setSaving(true); setErr(''); try { await api.post(`/exams/${examId}/publish`); onSaved() } catch (e) { setErr(e.response?.data?.message || 'تعذّر النشر؛ المسودة محفوظة ويمكنك المحاولة مرة أخرى') } finally { setSaving(false) } }
+  const publish = async () => { setSaving(true); setErr(''); try { await api.post(`/exams/${examId}/publish`); onSaved() } catch (e) { setErr(apiErrorMessage(e, 'تعذّر النشر؛ المسودة محفوظة ويمكنك المحاولة مرة أخرى')) } finally { setSaving(false) } }
 
   return <Modal open onClose={onClose} title={existing ? `تعديل · ${existing.summary.title}` : 'امتحان جديد'} size="lg">
     <ol className="mb-5 grid grid-cols-4 gap-1 text-center text-[11px] font-bold sm:text-xs">{STEPS.map(([k, v], i) => { const idx = STEPS.findIndex(([s]) => s === step); return <li key={k} className={`rounded-xl py-2 ${i === idx ? 'bg-brand-600 text-white' : i < idx ? 'bg-emerald-50 text-emerald-700' : 'bg-ink-100 text-ink-400'}`}>{i + 1}. {v}</li> })}</ol>

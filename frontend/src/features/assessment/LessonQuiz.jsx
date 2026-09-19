@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CheckCircle2, XCircle, Lightbulb, Plus, Trash2, Search, Clock, ListChecks, PlayCircle } from 'lucide-react'
 import api, { fileUrl } from '../../lib/api'
 import { Modal, PageLoader } from '../../components/ui'
+import { apiErrorMessage } from '../../lib/apiError'
 
 const withOptions = t => ['MCQ', 'TRUE_FALSE', 'MULTI_SELECT'].includes(t)
 
@@ -75,7 +76,7 @@ export function LessonQuizOverlay({ lessonId, videoRef, endedAt }) {
       const r = await api.post(`/courses/checkpoints/${active.id}/answer`,
         { selectedOptions: withOptions(active.type) ? picked : null, answerText: withOptions(active.type) ? null : text })
       setResult(r.data)
-    } catch (e) { setResult({ correct: false, correctAnswer: e.response?.data?.message || 'تعذّر إرسال الإجابة' }) }
+    } catch (e) { setResult({ correct: false, correctAnswer: apiErrorMessage(e, 'تعذّر إرسال الإجابة') }) }
     finally { setBusy(false) }
   }
 
@@ -128,7 +129,7 @@ export function LessonQuizManager({ lessonId, videoRef }) {
 
   const remove = async id => {
     try { await api.delete(`/courses/checkpoints/${id}`); load() }
-    catch (e) { setNotice(e.response?.data?.message || 'تعذّر الحذف') }
+    catch (e) { setNotice(apiErrorMessage(e, 'تعذّر الحذف')) }
   }
 
   if (!lessonId) return null
@@ -172,7 +173,7 @@ function CheckpointPicker({ lessonId, videoRef, onClose, onSaved }) {
     try {
       await api.post(`/courses/lessons/${lessonId}/checkpoints`, { questionId: selected.id, atSeconds: parseClock(at) })
       onSaved()
-    } catch (e) { setErr(e.response?.data?.message || 'تعذّر إضافة السؤال') } finally { setSaving(false) }
+    } catch (e) { setErr(apiErrorMessage(e, 'تعذّر إضافة السؤال')) } finally { setSaving(false) }
   }
 
   return <Modal open onClose={onClose} title="أضف سؤالاً على الفيديو" wide>

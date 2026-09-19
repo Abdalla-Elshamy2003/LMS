@@ -9,6 +9,7 @@ import { useAuth } from '../lib/auth'
 import { Modal, PageLoader, EmptyState, stagger, fadeUp, Spinner } from '../components/ui'
 import { fmtDateTime } from '../lib/format'
 import { qrDataUrl } from '../lib/qr'
+import { apiErrorMessage } from '../lib/apiError'
 
 const STATUSES = [
   { key: 'PRESENT', label: 'حاضر', icon: Check, cls: 'bg-emerald-500 text-white', idle: 'text-emerald-600 bg-emerald-50' },
@@ -142,7 +143,7 @@ function StudentCheckInModal({ session, onClose }) {
       const r = await api.post('/attendance/check-in', { token: token.trim() })
       setResult(r.data)
     } catch (e) {
-      setErr(e.response?.data?.message || 'تعذّر تسجيل الحضور')
+      setErr(apiErrorMessage(e, 'تعذّر تسجيل الحضور'))
     } finally {
       setSaving(false)
     }

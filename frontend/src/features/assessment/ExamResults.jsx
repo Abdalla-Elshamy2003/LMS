@@ -4,6 +4,7 @@ import api from '../../lib/api'
 import { Modal, PageLoader, EmptyState } from '../../components/ui'
 import { downloadCsv, formatDuration } from '../../lib/csv'
 import ExamReview from './ExamReview'
+import { apiErrorMessage } from '../../lib/apiError'
 
 const STATUS = { GRADED: ['مُصحَّح', 'bg-emerald-50 text-emerald-700'], SUBMITTED: ['بانتظار التصحيح اليدوي', 'bg-amber-50 text-amber-700'], IN_PROGRESS: ['يحل الآن', 'bg-sky-50 text-sky-700'], NOT_STARTED: ['لم يبدأ', 'bg-ink-100 text-ink-500'] }
 const EVENT = { TAB_HIDDEN: 'غادر صفحة الامتحان', TAB_VISIBLE: 'عاد للصفحة', FULLSCREEN_EXIT: 'خرج من ملء الشاشة', FULLSCREEN_ENTER: 'عاد لملء الشاشة', COPY_BLOCKED: 'حاول النسخ', PASTE_BLOCKED: 'حاول اللصق', RESUME: 'استكمل محاولة محفوظة', WINDOW_BLUR: 'انتقل لنافذة أخرى' }
@@ -13,7 +14,7 @@ const flagLevel = r => (r.tabSwitches >= 3 || r.fullscreenExits >= 2) ? 'high' :
 export default function ExamResults({ exam, onClose }) {
   const [a, setA] = useState(null), [tab, setTab] = useState('overview'), [review, setReview] = useState(null), [integrity, setIntegrity] = useState(null), [error, setError] = useState('')
   const [query, setQuery] = useState(''), [filter, setFilter] = useState('all')
-  const load = () => api.get(`/exams/${exam.id}/results`).then(r => setA(r.data)).catch(e => setError(e.response?.data?.message || 'تعذّر تحميل النتائج'))
+  const load = () => api.get(`/exams/${exam.id}/results`).then(r => setA(r.data)).catch(e => setError(apiErrorMessage(e, 'تعذّر تحميل النتائج')))
   useEffect(() => { load() }, [exam.id])
   const rows = useMemo(() => (a?.rows || []).filter(r => r.studentName.includes(query) && (filter === 'all' || (filter === 'pending' ? r.needsManualGrade : filter === 'flagged' ? flagLevel(r) !== 'none' : filter === 'failed' ? r.status !== 'IN_PROGRESS' && r.percent < exam.passPercent : true))).sort((x, y) => y.percent - x.percent), [a, query, filter, exam.passPercent])
   const exportCsv = () => downloadCsv(`${exam.title}-results.csv`, ['الطالب', 'الحالة', 'الدرجة', 'من', 'النسبة', 'الوقت المستغرق', 'مغادرة الصفحة', 'خروج من ملء الشاشة', 'وقت التسليم'],

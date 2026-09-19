@@ -9,6 +9,7 @@ import api, { fileUrl } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { Modal, PageLoader, EmptyState, stagger, fadeUp } from '../components/ui'
 import { fmtMoney } from '../lib/format'
+import { apiErrorMessage } from '../lib/apiError'
 
 const MAT = {
   VIDEO: { icon: Video, c: 'bg-rose-50 text-rose-600', label: 'فيديو' },
@@ -24,7 +25,7 @@ export function AddModule({ courseId, onClose, onSaved }) {
   const [title, setTitle] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const save = async () => { setSaving(true); setError(''); try { await api.post(`/courses/${courseId}/modules`, { title: title.trim() }); onSaved() } catch (e) { setError(e.response?.data?.message || 'تعذّر حفظ الفصل') } finally { setSaving(false) } }
+  const save = async () => { setSaving(true); setError(''); try { await api.post(`/courses/${courseId}/modules`, { title: title.trim() }); onSaved() } catch (e) { setError(apiErrorMessage(e, 'تعذّر حفظ الفصل')) } finally { setSaving(false) } }
   return (
     <Modal open onClose={onClose} title="فصل جديد">
       <div className="space-y-4">
@@ -41,7 +42,7 @@ export function AddLesson({ moduleId, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
   const [error, setError] = useState('')
-  const save = async () => { setSaving(true); setError(''); try { await api.post(`/courses/modules/${moduleId}/lessons`, { ...form, title: form.title.trim(), durationMin: Math.max(0, Number(form.durationMin)) }); onSaved() } catch (e) { setError(e.response?.data?.message || 'تعذّر حفظ الدرس') } finally { setSaving(false) } }
+  const save = async () => { setSaving(true); setError(''); try { await api.post(`/courses/modules/${moduleId}/lessons`, { ...form, title: form.title.trim(), durationMin: Math.max(0, Number(form.durationMin)) }); onSaved() } catch (e) { setError(apiErrorMessage(e, 'تعذّر حفظ الدرس')) } finally { setSaving(false) } }
   return (
     <Modal open onClose={onClose} title="درس جديد">
       <div className="space-y-4">
@@ -88,7 +89,7 @@ export function AddMaterials({ lessonId, onClose, onSaved }) {
         update(rowIndex, { saved: true })
       }
       onSaved()
-    } catch (e) { setErr(e.response?.data?.message || e.message || 'تعذّر الرفع') } finally { setSaving(false) }
+    } catch (e) { setErr(apiErrorMessage(e, e.message || 'تعذّر الرفع')) } finally { setSaving(false) }
   }
 
   return (

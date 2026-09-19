@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Maximize, ShieldCheck, RotateCcw, MonitorSmartphone, EyeOff, Pause } from 'lucide-react'
 import api from '../../lib/api'
+import { apiErrorMessage } from '../../lib/apiError'
 
 function youtube(url) {
   try { const u = new URL(url); const id = u.hostname === 'youtu.be' ? u.pathname.slice(1) : ['youtube.com','www.youtube.com','m.youtube.com'].includes(u.hostname) ? u.searchParams.get('v') || u.pathname.split('/embed/')[1] : null; return /^[\w-]{11}$/.test(id || '') ? `https://www.youtube-nocookie.com/embed/${id}?fs=0` : null } catch { return null }
@@ -27,7 +28,7 @@ export default function ProtectedVideo({ material, videoRef, position = 0, onPro
       const academy = JSON.parse(sessionStorage.getItem('manarah_academy') || 'null')
       if (data.mode === 'SESSION' && academy) data.url += `&academy=${encodeURIComponent(academy.id)}`
       setSession(data); sessionRef.current = data
-    } catch(e) { setError(e.response?.data?.message || 'تعذّر بدء المشاهدة؛ أعد المحاولة') }
+    } catch(e) { setError(apiErrorMessage(e, 'تعذّر بدء المشاهدة؛ أعد المحاولة')) }
     finally { renew.current = false }
   }
   useEffect(() => {
@@ -51,7 +52,7 @@ export default function ProtectedVideo({ material, videoRef, position = 0, onPro
       if (v && !v.paused && lastTick.current) played.current += Math.min(60, (now - lastTick.current) / 1000)
       lastTick.current = now
       try { await api.post(`/files/playback/${material.id}/heartbeat`, { session: session.session, played: Math.round(played.current) }); played.current = 0 }
-      catch (e) { if (e.response?.status === 409 || e.response?.status === 403) { videoRef.current?.pause(); setEnded(e.response?.data?.message || 'انتهت جلسة المشاهدة') } }
+      catch (e) { if (e.response?.status === 409 || e.response?.status === 403) { videoRef.current?.pause(); setEnded(apiErrorMessage(e, 'انتهت جلسة المشاهدة')) } }
     }
     const t = setInterval(beat, (session.heartbeatSeconds || 20) * 1000); lastTick.current = Date.now()
     return () => clearInterval(t)

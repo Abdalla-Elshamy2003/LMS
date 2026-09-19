@@ -4,6 +4,7 @@ import { CheckCircle2, Clock3, XCircle, GraduationCap } from 'lucide-react'
 import api from '../lib/api'
 import { PageLoader } from '../components/ui'
 import { fmtMoney } from '../lib/format'
+import { apiErrorMessage } from '../lib/apiError'
 
 /** Where Paymob's Unified Checkout sends the browser back after a real-gateway payment. The
  *  actual confirmation happens server-side via the HMAC-verified webhook, which may land a few
@@ -27,7 +28,7 @@ export default function PaymentReturn() {
         if (data.status === 'PENDING' && attempts < 6) {
           setTimeout(() => alive && setAttempts((a) => a + 1), 2500)
         }
-      } catch (e) { if (alive) setError(e.response?.data?.message || 'تعذّر تحميل حالة الطلب') }
+      } catch (e) { if (alive) setError(apiErrorMessage(e, 'تعذّر تحميل حالة الطلب')) }
     }
     poll()
     return () => { alive = false }

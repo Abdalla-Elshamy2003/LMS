@@ -5,6 +5,7 @@ import { CalendarDays, Clock3, MapPin, Video, BookOpen, ClipboardList, FileQuest
 import api from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { Modal, PageLoader, EmptyState, fadeUp } from '../components/ui'
+import { apiErrorMessage } from '../lib/apiError'
 
 export const DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
 const MODE = { IN_PERSON: 'حضوري', ONLINE: 'أونلاين', HYBRID: 'هجين' }
@@ -91,8 +92,8 @@ function ScheduleModal({ slot, onClose, onSaved }) {
   useEffect(() => { Promise.all([api.get('/learning'), api.get('/org/rooms')]).then(([c, r]) => { setCourses(c.data.map(x => x.summary)); setRooms(r.data) }) }, [])
   useEffect(() => { if (!form.courseId) return setGroups([]); api.get(`/enrollments/course/${form.courseId}/groups`).then(r => setGroups(r.data)).catch(() => setGroups([])) }, [form.courseId])
   const set = key => e => setForm(f => ({ ...f, [key]: e.target.value }))
-  const save = async () => { setSaving(true); setError(''); try { const body = { ...form, courseId: Number(form.courseId), groupId: form.groupId ? Number(form.groupId) : null, roomId: form.roomId ? Number(form.roomId) : null, teacherId: form.teacherId || null, dayOfWeek: Number(form.dayOfWeek) }; slot ? await api.put(`/schedule/${slot.id}`, body) : await api.post('/schedule', body); onSaved() } catch (e) { setError(e.response?.data?.message || 'تعذّر حفظ الموعد') } finally { setSaving(false) } }
-  const remove = async () => { if (!window.confirm('حذف هذا الموعد الأسبوعي؟')) return; setSaving(true); try { await api.delete(`/schedule/${slot.id}`); onSaved() } catch (e) { setError(e.response?.data?.message || 'تعذّر حذف الموعد'); setSaving(false) } }
+  const save = async () => { setSaving(true); setError(''); try { const body = { ...form, courseId: Number(form.courseId), groupId: form.groupId ? Number(form.groupId) : null, roomId: form.roomId ? Number(form.roomId) : null, teacherId: form.teacherId || null, dayOfWeek: Number(form.dayOfWeek) }; slot ? await api.put(`/schedule/${slot.id}`, body) : await api.post('/schedule', body); onSaved() } catch (e) { setError(apiErrorMessage(e, 'تعذّر حفظ الموعد')) } finally { setSaving(false) } }
+  const remove = async () => { if (!window.confirm('حذف هذا الموعد الأسبوعي؟')) return; setSaving(true); try { await api.delete(`/schedule/${slot.id}`); onSaved() } catch (e) { setError(apiErrorMessage(e, 'تعذّر حذف الموعد')); setSaving(false) } }
   return <Modal open onClose={onClose} title={slot ? 'تعديل الموعد الأسبوعي' : 'إضافة موعد أسبوعي'} wide><div className="space-y-4">
     <div className="grid gap-3 sm:grid-cols-2"><div><label className="label">الكورس / المادة</label><select className="input" value={form.courseId} onChange={set('courseId')}><option value="">اختر الكورس</option>{courses.map(c => <option key={c.id} value={c.id}>{c.subject} — {c.title}</option>)}</select></div><div><label className="label">المجموعة</label><select className="input" value={form.groupId || ''} onChange={set('groupId')}><option value="">كل طلاب الكورس</option>{groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</select></div></div>
     <div><label className="label">عنوان الحصة</label><input className="input" value={form.title || ''} onChange={set('title')} placeholder="شرح ومراجعة الفصل الأول" /></div>

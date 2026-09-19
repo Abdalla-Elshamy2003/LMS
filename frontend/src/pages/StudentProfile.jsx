@@ -11,6 +11,7 @@ import { Avatar, Badge, ProgressRing, Modal, PageLoader, EmptyState, Spinner, st
 import { ACADEMIC_STATUS, STUDENT_STATUS, RISK_LEVEL, fmtDate, timeAgo } from '../lib/format'
 import { exportElementToPdf } from '../lib/pdf'
 import StudentReportPrint from '../components/reports/StudentReportPrint'
+import { apiErrorMessage } from '../lib/apiError'
 
 const TL_ICON = {
   'user-x': { icon: UserX, color: 'bg-rose-50 text-rose-600' },
@@ -305,7 +306,7 @@ function AddGradeForm({ studentId, onCancel, onSaved }) {
       })
       await onSaved()
     } catch (err) {
-      setError(err.response?.data?.message || 'تعذّر حفظ الدرجة')
+      setError(apiErrorMessage(err, 'تعذّر حفظ الدرجة'))
     } finally {
       setBusy(false)
     }
@@ -361,7 +362,7 @@ function AiInsightModal({ studentId, studentName, onClose }) {
   useEffect(() => {
     api.get(`/students/${studentId}/ai-insight`)
       .then((r) => setInsight(r.data))
-      .catch((e) => setError(e.response?.data?.message || 'تعذّر توليد التحليل'))
+      .catch((e) => setError(apiErrorMessage(e, 'تعذّر توليد التحليل')))
       .finally(() => setLoading(false))
   }, [studentId])
 

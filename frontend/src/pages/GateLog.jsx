@@ -4,6 +4,7 @@ import { LogIn, LogOut, DoorOpen, Users2, Clock, Search } from 'lucide-react'
 import api from '../lib/api'
 import { PageLoader, EmptyState, stagger, fadeUp } from '../components/ui'
 import { fmtDateTime } from '../lib/format'
+import { apiErrorMessage } from '../lib/apiError'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -19,7 +20,7 @@ export default function GateLog() {
     setRows(null); setError('')
     api.get('/gate/log', { params: { date } })
       .then(r => live && setRows(r.data))
-      .catch(e => live && setError(e.response?.data?.message || 'تعذّر تحميل السجل'))
+      .catch(e => live && setError(apiErrorMessage(e, 'تعذّر تحميل السجل')))
     return () => { live = false }
   }, [date])
 

@@ -5,6 +5,7 @@ import { CheckCircle2, XCircle, GraduationCap, ArrowLeft } from 'lucide-react'
 import api from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { PageLoader } from '../components/ui'
+import { apiErrorMessage } from '../lib/apiError'
 
 /**
  * Where a scanned attendance QR lands (see AttendanceService's rotateQr URL). A phone's native
@@ -23,7 +24,7 @@ export default function CheckIn() {
     if (authLoading || !user) return
     api.post('/attendance/check-in', { token })
       .then((r) => setResult(r.data))
-      .catch((e) => setErr(e.response?.data?.message || 'تعذّر تسجيل الحضور'))
+      .catch((e) => setErr(apiErrorMessage(e, 'تعذّر تسجيل الحضور')))
       .finally(() => setSubmitting(false))
   }, [authLoading, user, token])
 

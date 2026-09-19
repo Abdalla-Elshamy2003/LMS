@@ -5,6 +5,7 @@ import api from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { Modal, PageLoader, EmptyState, Spinner, fadeUp, stagger } from '../components/ui'
 import { timeAgo } from '../lib/format'
+import { apiErrorMessage } from '../lib/apiError'
 
 export default function Community() {
   const { user } = useAuth()
@@ -96,7 +97,7 @@ function TopicModal({ id, user, onClose, onChanged }) {
     if (!reply.trim()) return
     setSaving(true); setError('')
     try { await api.post(`/forum/topics/${id}/replies`, { body: reply }); setReply(''); await load(); onChanged() }
-    catch (e) { setError(e.response?.data?.message || 'تعذّر إرسال الرد') }
+    catch (e) { setError(apiErrorMessage(e, 'تعذّر إرسال الرد')) }
     finally { setSaving(false) }
   }
   const toggleLike = async () => {
@@ -152,7 +153,7 @@ function CreateTopic({ courses, onClose, onSaved }) {
     try {
       const { data } = await api.post('/forum/topics', { ...form, courseId: form.courseId ? Number(form.courseId) : null })
       onSaved(data)
-    } catch (e) { setError(e.response?.data?.message || 'تعذّر إنشاء الموضوع') }
+    } catch (e) { setError(apiErrorMessage(e, 'تعذّر إنشاء الموضوع')) }
     finally { setSaving(false) }
   }
 

@@ -5,6 +5,7 @@ import api from '../lib/api'
 import { Spinner } from '../components/ui'
 import MathBackdrop from '../components/MathBackdrop'
 import './teacher-landing.css'
+import { apiErrorMessage } from '../lib/apiError'
 
 /**
  * Step one of the reset: ask for the account, get a link sent. The server answers with the same
@@ -24,7 +25,7 @@ export default function ForgotPassword() {
       const { data } = await api.post('/auth/forgot-password', { identifier: identifier.trim() })
       setSent(data.message)
     } catch (err) {
-      setError(err.response?.data?.message || 'تعذّر إرسال الرابط، حاول مرة أخرى')
+      setError(apiErrorMessage(err, 'تعذّر إرسال الرابط، حاول مرة أخرى'))
     } finally {
       setBusy(false)
     }

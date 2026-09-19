@@ -6,6 +6,7 @@ import MarketingNav from '../components/marketing/MarketingNav'
 import MarketingFooter from '../components/marketing/MarketingFooter'
 import PageHero from '../components/marketing/PageHero'
 import { Spinner } from '../components/ui'
+import { apiErrorMessage } from '../lib/apiError'
 
 const INSTITUTION_TYPES = ['مدرس مستقل', 'أكاديمية أونلاين', 'مركز تدريب', 'مدرسة', 'جامعة', 'أخرى']
 const STUDENT_RANGES = ['1 - 50', '50 - 200', '200 - 500', '500 - 1,000', 'أكثر من 1,000']
@@ -30,7 +31,7 @@ export default function Contact() {
       await api.post('/public/contact', form)
       setDone(true)
     } catch (e) {
-      setErr(e.response?.data?.message || 'تعذّر إرسال رسالتك، حاول مرة أخرى')
+      setErr(apiErrorMessage(e, 'تعذّر إرسال رسالتك، حاول مرة أخرى'))
     } finally {
       setSaving(false)
     }

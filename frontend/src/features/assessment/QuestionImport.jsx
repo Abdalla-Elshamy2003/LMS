@@ -3,6 +3,7 @@ import { FileUp, Download, CheckCircle2, AlertTriangle } from 'lucide-react'
 import api from '../../lib/api'
 import { Modal, Spinner } from '../../components/ui'
 import { downloadCsv } from '../../lib/csv'
+import { apiErrorMessage } from '../../lib/apiError'
 
 const HEADERS = ['النوع', 'الصعوبة', 'المادة', 'الفصل', 'السؤال', 'الدرجة', 'اختيار1', 'اختيار2', 'اختيار3', 'اختيار4', 'الصحيح', 'الإجابة', 'الشرح']
 const SAMPLE = [
@@ -28,7 +29,7 @@ export default function QuestionImport({ onClose, onDone }) {
       const r = await api.post('/exams/questions/import', fd)
       setResult(r.data)
       if (r.data.created > 0) onDone?.()
-    } catch (e) { setErr(e.response?.data?.message || 'تعذّر استيراد الملف') } finally { setBusy(false) }
+    } catch (e) { setErr(apiErrorMessage(e, 'تعذّر استيراد الملف')) } finally { setBusy(false) }
   }
 
   return <Modal open onClose={onClose} title="استيراد أسئلة من ملف" wide>

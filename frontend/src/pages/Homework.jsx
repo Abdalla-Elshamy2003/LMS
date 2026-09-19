@@ -10,6 +10,7 @@ import AssessmentHeader from '../features/assessment/AssessmentHeader'
 import AttachmentPicker from '../features/assessment/AttachmentPicker'
 import SubmissionReview from '../features/assessment/SubmissionReview'
 import RubricBuilder, { rubricTotal, serializeRubric } from '../features/assessment/RubricBuilder'
+import { apiErrorMessage } from '../lib/apiError'
 
 const STATUS_CFG = {
   RETURNED: { label: 'مطلوب تعديل', c: 'bg-violet-50 text-violet-700' },
@@ -98,7 +99,7 @@ function SubmitModal({ assignment, onClose }) {
       setProgress('جارٍ تأكيد التسليم...')
       const { data } = await api.post('/homework/submit', { assignmentId: assignment.id, text: text.trim(), files: [...kept.map(k => ({ fileKey: k.fileKey, name: k.name, size: k.size })), ...done.map(({ fileKey, name, size }) => ({ fileKey, name, size }))] })
       setReceipt(data); try { sessionStorage.removeItem(draftKey) } catch {}
-    } catch (e) { setErr(e.response?.data?.message || 'تعذّر التسليم. إجابتك والملفات المرفوعة محفوظة للمحاولة مرة أخرى.') }
+    } catch (e) { setErr(apiErrorMessage(e, 'تعذّر التسليم. إجابتك والملفات المرفوعة محفوظة للمحاولة مرة أخرى.')) }
     finally { setSaving(false); setProgress('') }
   }
   return <Modal open wide title={'تسليم · ' + assignment.title} onClose={() => !saving && onClose()}>
@@ -128,7 +129,7 @@ function StaffHomework({ isStaff }) {
   const now = Date.now()
   const stateOf = a => a.deadline && Date.parse(a.deadline) < now ? 'CLOSED' : a.startAt && Date.parse(a.startAt) > now ? 'SCHEDULED' : 'OPEN'
   const filtered = items.filter((a) => `${a.title} ${a.courseTitle}`.includes(query) && (!courseFilter || String(a.courseId) === courseFilter) && (!status || (status === 'PENDING' ? a.submitted - a.graded > 0 : stateOf(a) === status))).sort((x, y) => (y.submitted - y.graded) - (x.submitted - x.graded))
-  const remove = async () => { try { await api.delete(`/homework/assignments/${confirm.id}`); setNotice('تم حذف الواجب'); load() } catch (e) { setNotice(e.response?.data?.message || 'تعذّر الحذف') } finally { setConfirm(null) } }
+  const remove = async () => { try { await api.delete(`/homework/assignments/${confirm.id}`); setNotice('تم حذف الواجب'); load() } catch (e) { setNotice(apiErrorMessage(e, 'تعذّر الحذف')) } finally { setConfirm(null) } }
   return (
     <div className="space-y-5">
       <AssessmentHeader title="الواجبات والتصحيح" description="انشر المطلوب مع معايير واضحة وسياسة تأخير، ثم صحّح من استوديو واحد: معاينة التسليم، معايير بنقرة، وبنك ملاحظاتك." stats={[['واجبات منشورة', items.length], ['بانتظار التصحيح', items.reduce((n, a) => n + a.submitted - a.graded, 0)], ['تم تصحيحها', items.reduce((n, a) => n + a.graded, 0)], ['لم يسلّموا', items.reduce((n, a) => n + a.missing, 0)]]} />
@@ -186,7 +187,7 @@ function AssignmentForm({ courses, assignment, onClose, onSaved }) {
       if (assignment) await api.put(`/homework/assignments/${assignment.id}`, { ...body, fileKey: fileKey || null, clearFile: !fileKey && !keepFile, clearDeadline: !form.deadline, clearRubric: !r, ...(frozen ? { maxScore: null, rubric: null, clearRubric: null } : {}) })
       else await api.post('/homework/assignments', { ...body, courseId: Number(form.courseId), fileKey })
       onSaved()
-    } catch (e) { setErr(e.response?.data?.message || 'تعذّر حفظ الواجب') } finally { setSaving(false) }
+    } catch (e) { setErr(apiErrorMessage(e, 'تعذّر حفظ الواجب')) } finally { setSaving(false) }
   }
   return (
     <Modal open onClose={onClose} title={assignment ? `تعديل · ${assignment.title}` : 'واجب جديد'} size="lg">

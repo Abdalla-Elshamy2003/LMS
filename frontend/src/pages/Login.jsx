@@ -6,6 +6,7 @@ import api from '../lib/api'
 import { Spinner } from '../components/ui'
 import MathBackdrop from '../components/MathBackdrop'
 import './teacher-landing.css'
+import { apiErrorMessage } from '../lib/apiError'
 
 export default function Login() {
   const { user, login } = useAuth()
@@ -40,7 +41,7 @@ export default function Login() {
         sessionStorage.setItem('manarah_academy', JSON.stringify({ id: profile.id, name: profile.name, slug: profile.slug }))
       nav(destination)
     } catch (e) {
-      setError(e.response?.data?.message || 'تعذّر تسجيل الدخول. راجع اسم المستخدم وكلمة المرور.')
+      setError(apiErrorMessage(e, 'تعذّر تسجيل الدخول. راجع اسم المستخدم وكلمة المرور.'))
     } finally {
       setBusy(false)
     }

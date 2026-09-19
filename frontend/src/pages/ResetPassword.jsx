@@ -5,6 +5,7 @@ import api from '../lib/api'
 import { Spinner } from '../components/ui'
 import MathBackdrop from '../components/MathBackdrop'
 import './teacher-landing.css'
+import { apiErrorMessage } from '../lib/apiError'
 
 /** Step two: the token from the emailed link plus a new password. */
 export default function ResetPassword() {
@@ -25,7 +26,7 @@ export default function ResetPassword() {
       const { data } = await api.post('/auth/reset-password', { token, password })
       setDone(data.message)
     } catch (err) {
-      setError(err.response?.data?.message || 'تعذّر تغيير كلمة المرور، حاول مرة أخرى')
+      setError(apiErrorMessage(err, 'تعذّر تغيير كلمة المرور، حاول مرة أخرى'))
     } finally {
       setBusy(false)
     }

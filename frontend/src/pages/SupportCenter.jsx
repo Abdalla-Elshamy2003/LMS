@@ -5,6 +5,7 @@ import api from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { Modal, PageLoader, EmptyState, Spinner, fadeUp, stagger } from '../components/ui'
 import { timeAgo } from '../lib/format'
+import { apiErrorMessage } from '../lib/apiError'
 
 const STATUS = {
   OPEN: { label: 'مفتوح', cls: 'bg-sky-50 text-sky-700' },
@@ -51,13 +52,13 @@ export default function SupportCenter() {
     if (!reply.trim()) return
     setSaving(true); setError('')
     try { await api.post(`/support/${selected.id}/messages`, { message: reply }); setReply(''); await load() }
-    catch (e) { setError(e.response?.data?.message || 'تعذّر إرسال الرد') }
+    catch (e) { setError(apiErrorMessage(e, 'تعذّر إرسال الرد')) }
     finally { setSaving(false) }
   }
   const changeStatus = async status => {
     setSaving(true); setError('')
     try { await api.put(`/support/${selected.id}/status`, { status }); await load() }
-    catch (e) { setError(e.response?.data?.message || 'تعذّر تحديث الحالة') }
+    catch (e) { setError(apiErrorMessage(e, 'تعذّر تحديث الحالة')) }
     finally { setSaving(false) }
   }
 
@@ -107,7 +108,7 @@ function CreateCase({ context, role, onClose, onSaved }) {
   const [saving, setSaving] = useState(false), [error, setError] = useState('')
   const courses = context.courses.filter(c => !form.studentId || c.studentId === Number(form.studentId))
   const set = key => e => setForm(f => ({ ...f, [key]: e.target.value, ...(key === 'studentId' ? { courseId: '' } : {}) }))
-  const save = async () => { setSaving(true); setError(''); try { const res = await api.post('/support', { ...form, studentId: form.studentId ? Number(form.studentId) : null, courseId: form.courseId ? Number(form.courseId) : null }); onSaved(res.data) } catch (e) { setError(e.response?.data?.message || 'تعذّر إرسال الطلب') } finally { setSaving(false) } }
+  const save = async () => { setSaving(true); setError(''); try { const res = await api.post('/support', { ...form, studentId: form.studentId ? Number(form.studentId) : null, courseId: form.courseId ? Number(form.courseId) : null }); onSaved(res.data) } catch (e) { setError(apiErrorMessage(e, 'تعذّر إرسال الطلب')) } finally { setSaving(false) } }
   return <Modal open onClose={onClose} title="طلب تواصل جديد" wide><div className="space-y-4">
     <div className="rounded-2xl bg-brand-50 p-4 text-sm leading-7 text-brand-800"><LifeBuoy size={18} className="ml-2 inline" />اختار الإدارة للاستفسارات العامة والشكاوى، أو مدرس المادة لسؤال دراسي مباشر.</div>
     {role === 'PARENT' && <div><label className="label">الطالب</label><select className="input" value={form.studentId} onChange={set('studentId')}><option value="">طلب عام بدون تحديد طالب</option>{context.students.map(s => <option key={s.id} value={s.id}>{s.name} · {s.code}</option>)}</select></div>}

@@ -4,6 +4,7 @@ import api from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { EmptyState, Spinner } from '../components/ui'
 import { exportElementToPdf } from '../lib/pdf'
+import { apiErrorMessage } from '../lib/apiError'
 
 /**
  * Periodic attendance + grade reports (monthly / term).
@@ -72,7 +73,7 @@ export default function Reports() {
       const { data: d } = await api.get(url, { params: params() })
       setData(d)
     } catch (e) {
-      setError(e.response?.data?.message || 'تعذّر تجهيز التقرير')
+      setError(apiErrorMessage(e, 'تعذّر تجهيز التقرير'))
     } finally {
       setBusy(false)
     }
