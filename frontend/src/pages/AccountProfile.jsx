@@ -6,7 +6,9 @@ import api from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { Avatar, Modal, PageLoader, Spinner, fadeUp, stagger } from '../components/ui'
 import { qrDataUrl } from '../lib/qr'
+import { studentVerifyUrl } from '../features/student-verification/studentVerificationApi'
 import { fmtDateTime } from '../lib/format'
+import { apiErrorMessage } from '../lib/apiError'
 
 const roleLinks = {
   STUDENT: [['/app/learning', 'مساحة التعلّم', BookOpen], ['/app/schedule', 'جدولي', CalendarDays], ['/app/notifications', 'إشعاراتي', Bell], ['/app/support', 'الدعم', LifeBuoy]],
@@ -44,20 +46,20 @@ function Info({ icon: Icon, label, value }) { return <div className="flex items-
 function EditProfile({ profile, onClose, onSaved }) {
   const [form, setForm] = useState(profile), [saving, setSaving] = useState(false), [error, setError] = useState('')
   const set = key => e => setForm(f => ({ ...f, [key]: e.target.value }))
-  const save = async () => { setSaving(true); setError(''); try { const r = await api.put('/users/me', form); onSaved(r.data) } catch (e) { setError(e.response?.data?.message || 'تعذّر حفظ الملف') } finally { setSaving(false) } }
+  const save = async () => { setSaving(true); setError(''); try { const r = await api.put('/users/me', form); onSaved(r.data) } catch (e) { setError(apiErrorMessage(e, 'تعذّر حفظ الملف')) } finally { setSaving(false) } }
   return <Modal open onClose={onClose} title="تعديل الملف الشخصي" wide><div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2"><div><label className="label">الاسم الكامل</label><input className="input" value={form.fullName || ''} onChange={set('fullName')} /></div><div><label className="label">رقم الهاتف</label><input className="input" value={form.phone || ''} onChange={set('phone')} /></div></div><div><label className="label"><Camera size={14} className="ml-1 inline" />رابط الصورة الشخصية</label><input type="url" className="input" value={form.photoUrl || ''} onChange={set('photoUrl')} placeholder="https://..." /></div>{profile.role === 'TEACHER' && <><div className="grid gap-3 sm:grid-cols-2"><div><label className="label">المسمى المهني</label><input className="input" value={form.title || ''} onChange={set('title')} /></div><div><label className="label">التخصصات</label><input className="input" value={form.subjects || ''} onChange={set('subjects')} placeholder="كيمياء · علوم" /></div></div><div><label className="label">مواعيدك</label><input className="input" value={form.schedule || ''} onChange={set('schedule')} /></div><div><label className="label">نبذة احترافية</label><textarea rows={4} className="input" value={form.bio || ''} onChange={set('bio')} /></div></>}{error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{error}</p>}<div className="flex justify-end gap-2"><button className="btn-ghost" onClick={onClose}>إلغاء</button><button className="btn-primary" disabled={saving || !form.fullName?.trim()} onClick={save}>{saving ? <Spinner className="h-4 w-4 border-white/40 border-t-white" /> : <Save size={16} />}حفظ التعديلات</button></div></div></Modal>
 }
 
 function PasswordModal({ onClose }) {
   const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirm: '' }), [saving, setSaving] = useState(false), [error, setError] = useState(''), [done, setDone] = useState(false)
-  const save = async () => { if (form.newPassword !== form.confirm) return setError('تأكيد كلمة المرور غير مطابق'); setSaving(true); setError(''); try { await api.put('/users/me/password', { currentPassword: form.currentPassword, newPassword: form.newPassword }); setDone(true) } catch (e) { setError(e.response?.data?.message || 'تعذّر تغيير كلمة المرور') } finally { setSaving(false) } }
+  const save = async () => { if (form.newPassword !== form.confirm) return setError('تأكيد كلمة المرور غير مطابق'); setSaving(true); setError(''); try { await api.put('/users/me/password', { currentPassword: form.currentPassword, newPassword: form.newPassword }); setDone(true) } catch (e) { setError(apiErrorMessage(e, 'تعذّر تغيير كلمة المرور')) } finally { setSaving(false) } }
   return <Modal open onClose={onClose} title="تغيير كلمة المرور"><div className="space-y-4">{done ? <div className="rounded-2xl bg-emerald-50 p-5 text-center font-bold text-emerald-700">تم تغيير كلمة المرور بنجاح</div> : <><div><label className="label">كلمة المرور الحالية</label><input type="password" className="input" value={form.currentPassword} onChange={e => setForm({ ...form, currentPassword: e.target.value })} /></div><div><label className="label">كلمة المرور الجديدة</label><input type="password" minLength={10} maxLength={72} className="input" value={form.newPassword} onChange={e => setForm({ ...form, newPassword: e.target.value })} /></div><div><label className="label">تأكيد كلمة المرور</label><input type="password" className="input" value={form.confirm} onChange={e => setForm({ ...form, confirm: e.target.value })} /></div>{error && <p className="rounded-xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{error}</p>}</>}<div className="flex justify-end gap-2"><button className="btn-ghost" onClick={onClose}>{done ? 'إغلاق' : 'إلغاء'}</button>{!done && <button className="btn-primary" disabled={saving || form.newPassword.length < 10 || !/[\p{L}]/u.test(form.newPassword) || !/\d/.test(form.newPassword)} onClick={save}>{saving ? <Spinner className="h-4 w-4 border-white/40 border-t-white" /> : <LockKeyhole size={16} />}تحديث</button>}</div></div></Modal>
 }
 
 /**
- * The student's personal entry/exit pass. The QR encodes the absolute /app/gate/<token> URL so a
- * staff phone's ordinary camera app opens it directly — same approach as the session attendance
- * QR, no in-app scanner needed. The token is minted server-side on first view.
+ * The student's personal entry/exit pass. The QR encodes the public /student/verify/<token> URL so
+ * any phone's ordinary camera app opens the verification page directly, without signing in; signed-in
+ * staff get a one-tap gate action there. The token is minted server-side on first view.
  */
 function GatePass() {
   const [pass, setPass] = useState(null)
@@ -71,11 +73,11 @@ function GatePass() {
       .then(async ({ data }) => {
         if (!live) return
         setPass(data)
-        setQr(await qrDataUrl(`${window.location.origin}/app/gate/${data.token}`, { width: 260 }))
+        setQr(await qrDataUrl(studentVerifyUrl(data.token), { width: 260 }))
         const log = await api.get(`/gate/students/${data.studentId}/log`)
         if (live) setHistory(log.data)
       })
-      .catch(e => live && setError(e.response?.data?.message || 'تعذّر تجهيز كارت الدخول'))
+      .catch(e => live && setError(apiErrorMessage(e, 'تعذّر تجهيز كارت الدخول')))
     return () => { live = false }
   }, [])
 

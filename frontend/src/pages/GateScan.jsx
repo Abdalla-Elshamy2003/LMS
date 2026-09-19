@@ -5,6 +5,7 @@ import { CheckCircle2, XCircle, LogIn, LogOut, GraduationCap, ArrowLeft } from '
 import api from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { fmtDateTime } from '../lib/format'
+import { apiErrorMessage } from '../lib/apiError'
 
 /**
  * Where a scanned student pass lands. A staff phone's native camera opens this URL directly, so
@@ -22,11 +23,13 @@ export default function GateScan() {
     if (loading || !user) return
     api.post(`/gate/scan/${token}`)
       .then(r => setResult(r.data))
-      .catch(e => setError(e.response?.data?.message || 'تعذّر تسجيل الحركة'))
+      .catch(e => setError(apiErrorMessage(e, 'تعذّر تسجيل الحركة')))
       .finally(() => setBusy(false))
   }, [loading, user, token])
 
-  if (!loading && !user) return <Navigate to={`/login?returnTo=${encodeURIComponent(`/app/gate/${token}`)}`} replace />
+  // Older QR codes point here. Someone who is not signed in is a member of the public scanning a card,
+  // not staff - show them the public verification page instead of a login wall.
+  if (!loading && !user) return <Navigate to={`/student/verify/${encodeURIComponent(token)}`} replace />
 
   const entering = result?.direction === 'IN'
   return (

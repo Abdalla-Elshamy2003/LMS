@@ -177,6 +177,7 @@ backend/src/main/java/com/manarah/
 ## 🔎 أهم مسارات الـ API
 
 - `POST /api/auth/login` · `GET /api/auth/me`
+- `GET /api/public/students/verify/{token}` — **عام بدون تسجيل دخول**: الـ QR على كارت/موبايل الطالب بيفتح صفحة `/student/verify/{token}` وبتعرض بيانات آمنة فقط (الاسم، الكود، الصف، الجهة، حالة التحقق). الـ token عشوائي 128-bit، والمسار محدود بـ rate limit، وأي كارت غير فعّال بيرجّع حالة INACTIVE من غير هوية.
 - `GET/POST /api/students` · `GET /api/students/{id}` · `/timeline`
 - `GET/POST /api/courses` · `/modules` · `/lessons` · `/materials`
 - `POST /api/attendance/sessions/{id}/mark` · `/qr` · `POST /api/attendance/check-in`

@@ -32,14 +32,25 @@ public class PublicEndpointRateLimitFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(PublicEndpointRateLimitFilter.class);
     private static final String KEY_PREFIX = "ratelimit:public:";
 
-    private record Rule(String method, String path, int maxRequests, Duration window) {}
+    /** {@code path} matches exactly, or - when {@code prefix} - as a path prefix (e.g. /verify/{token}). */
+    private record Rule(String method, String path, boolean prefix, int maxRequests, Duration window) {
+        Rule(String method, String path, int maxRequests, Duration window) {
+            this(method, path, false, maxRequests, window);
+        }
+
+        boolean matches(String requestMethod, String uri) {
+            return method.equalsIgnoreCase(requestMethod) && (prefix ? uri.startsWith(path) : uri.equals(path));
+        }
+    }
 
     private static final List<Rule> RULES = List.of(
             new Rule("POST", "/api/auth/forgot-password", 5, Duration.ofMinutes(15)),
             new Rule("POST", "/api/public/register", 10, Duration.ofMinutes(15)),
             new Rule("POST", "/api/public/checkout", 20, Duration.ofMinutes(15)),
             new Rule("POST", "/api/public/redeem-code", 10, Duration.ofMinutes(15)),
-            new Rule("POST", "/api/public/contact", 5, Duration.ofMinutes(15))
+            new Rule("POST", "/api/public/contact", 5, Duration.ofMinutes(15)),
+            // Student QR verification: a real scan is one request; this only stops token guessing/scraping.
+            new Rule("GET", "/api/public/students/verify/", true, 60, Duration.ofMinutes(5))
     );
 
     private final StringRedisTemplate redis;
@@ -52,7 +63,7 @@ public class PublicEndpointRateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         Rule rule = RULES.stream()
-                .filter(r -> r.method().equalsIgnoreCase(request.getMethod()) && r.path().equals(request.getRequestURI()))
+                .filter(r -> r.matches(request.getMethod(), request.getRequestURI()))
                 .findFirst().orElse(null);
 
         if (rule != null && !allow(rule, clientIp(request))) {

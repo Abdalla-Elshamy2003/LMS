@@ -7,41 +7,10 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
-import Dashboard from './pages/Dashboard'
-import Students from './pages/Students'
-import StudentProfile from './pages/StudentProfile'
-import Courses from './pages/Courses'
-import CourseDetail from './pages/LessonWorkspace'
-import LearningHub from './components/LearningHub'
-import Schedule from './pages/Schedule'
-import Attendance from './pages/Attendance'
-import Exams from './pages/Exams'
-import Homework from './pages/Homework'
-import Payments from './pages/Payments'
-import Leaderboard from './pages/Leaderboard'
-import Notifications from './pages/Notifications'
-import Rules from './pages/Rules'
-import Audit from './pages/Audit'
-import Staff from './pages/Staff'
-import Leads from './pages/Leads'
-import Certificates from './pages/Certificates'
-import VerifyCertificate from './pages/VerifyCertificate'
-import CheckIn from './pages/CheckIn'
-import SupportCenter from './pages/SupportCenter'
-import FamilyFinance from './pages/FamilyFinance'
-import AccountProfile from './pages/AccountProfile'
-import Campaigns from './pages/Campaigns'
-import AcademySettings from './pages/AcademySettings'
-import Community from './pages/Community'
-import PaymentReturn from './pages/PaymentReturn'
-import GateScan from './pages/GateScan'
-import GateLog from './pages/GateLog'
-import CardScanner from './pages/CardScanner'
-import CardPrint from './pages/CardPrint'
-import Reports from './pages/Reports'
 
-// Lazy-loaded: these are all public-only marketing pages (some pull in Three.js for 3D scenes)
-// split into their own chunks — an authenticated user going straight to /app never pays that cost.
+// Every page below is split into its own chunk: a visitor only downloads the code for the screen they
+// open. Public marketing pages (some pull in Three.js) and the signed-in app screens both benefit -
+// the initial bundle is just the shell, auth screens and router.
 const Landing = lazy(() => import('./pages/TeacherLanding'))
 const Home = lazy(() => import('./pages/Home'))
 const Features = lazy(() => import('./pages/Features'))
@@ -53,6 +22,40 @@ const Blog = lazy(() => import('./pages/Blog'))
 const BlogPost = lazy(() => import('./pages/BlogPost'))
 const TeacherProfile = lazy(() => import('./pages/TeacherProfile'))
 const Checkout = lazy(() => import('./pages/Checkout'))
+const VerifyCertificate = lazy(() => import('./pages/VerifyCertificate'))
+const StudentVerifyPage = lazy(() => import('./features/student-verification/StudentVerifyPage'))
+
+const CheckIn = lazy(() => import('./pages/CheckIn'))
+const GateScan = lazy(() => import('./pages/GateScan'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Students = lazy(() => import('./pages/Students'))
+const StudentProfile = lazy(() => import('./pages/StudentProfile'))
+const Courses = lazy(() => import('./pages/Courses'))
+const CourseDetail = lazy(() => import('./pages/LessonWorkspace'))
+const LearningHub = lazy(() => import('./components/LearningHub'))
+const Schedule = lazy(() => import('./pages/Schedule'))
+const Attendance = lazy(() => import('./pages/Attendance'))
+const Exams = lazy(() => import('./pages/Exams'))
+const Homework = lazy(() => import('./pages/Homework'))
+const Payments = lazy(() => import('./pages/Payments'))
+const Leaderboard = lazy(() => import('./pages/Leaderboard'))
+const Notifications = lazy(() => import('./pages/Notifications'))
+const Rules = lazy(() => import('./pages/Rules'))
+const Audit = lazy(() => import('./pages/Audit'))
+const Staff = lazy(() => import('./pages/Staff'))
+const Leads = lazy(() => import('./pages/Leads'))
+const Certificates = lazy(() => import('./pages/Certificates'))
+const SupportCenter = lazy(() => import('./pages/SupportCenter'))
+const FamilyFinance = lazy(() => import('./pages/FamilyFinance'))
+const AccountProfile = lazy(() => import('./pages/AccountProfile'))
+const Campaigns = lazy(() => import('./pages/Campaigns'))
+const AcademySettings = lazy(() => import('./pages/AcademySettings'))
+const Community = lazy(() => import('./pages/Community'))
+const PaymentReturn = lazy(() => import('./pages/PaymentReturn'))
+const GateLog = lazy(() => import('./pages/GateLog'))
+const CardScanner = lazy(() => import('./pages/CardScanner'))
+const CardPrint = lazy(() => import('./pages/CardPrint'))
+const Reports = lazy(() => import('./pages/Reports'))
 
 function Protected({ children }) {
   const { user, loading } = useAuth()
@@ -65,27 +68,32 @@ function FullPageLoader() {
   return <div className="min-h-screen grid place-items-center bg-[#f6fbff]"><PageLoader /></div>
 }
 
+/** A lazily loaded full-screen page (no app shell around it). */
+const standalone = (element) => <Suspense fallback={<FullPageLoader />}>{element}</Suspense>
+
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Suspense fallback={<FullPageLoader />}><Home /></Suspense>} />
-      <Route path="/t/:slug" element={<Suspense fallback={<FullPageLoader />}><Landing /></Suspense>} />
-      <Route path="/features" element={<Suspense fallback={<FullPageLoader />}><Features /></Suspense>} />
-      <Route path="/pricing" element={<Suspense fallback={<FullPageLoader />}><Pricing /></Suspense>} />
-      <Route path="/about" element={<Suspense fallback={<FullPageLoader />}><About /></Suspense>} />
-      <Route path="/contact" element={<Suspense fallback={<FullPageLoader />}><Contact /></Suspense>} />
-      <Route path="/success-stories" element={<Suspense fallback={<FullPageLoader />}><SuccessStories /></Suspense>} />
-      <Route path="/blog" element={<Suspense fallback={<FullPageLoader />}><Blog /></Suspense>} />
-      <Route path="/blog/:slug" element={<Suspense fallback={<FullPageLoader />}><BlogPost /></Suspense>} />
-      <Route path="/teachers/:id" element={<Suspense fallback={<FullPageLoader />}><TeacherProfile /></Suspense>} />
-      <Route path="/checkout/:courseId" element={<Suspense fallback={<FullPageLoader />}><Checkout /></Suspense>} />
+      <Route path="/" element={standalone(<Home />)} />
+      <Route path="/t/:slug" element={standalone(<Landing />)} />
+      <Route path="/features" element={standalone(<Features />)} />
+      <Route path="/pricing" element={standalone(<Pricing />)} />
+      <Route path="/about" element={standalone(<About />)} />
+      <Route path="/contact" element={standalone(<Contact />)} />
+      <Route path="/success-stories" element={standalone(<SuccessStories />)} />
+      <Route path="/blog" element={standalone(<Blog />)} />
+      <Route path="/blog/:slug" element={standalone(<BlogPost />)} />
+      <Route path="/teachers/:id" element={standalone(<TeacherProfile />)} />
+      <Route path="/checkout/:courseId" element={standalone(<Checkout />)} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/verify/:code" element={<VerifyCertificate />} />
-      <Route path="/app/checkin/:token" element={<CheckIn />} />
-      <Route path="/app/gate/:token" element={<GateScan />} />
+      <Route path="/verify/:code" element={standalone(<VerifyCertificate />)} />
+      {/* Public on purpose: the QR on a student's card/phone lands here and must never require login. */}
+      <Route path="/student/verify/:token" element={standalone(<StudentVerifyPage />)} />
+      <Route path="/app/checkin/:token" element={standalone(<CheckIn />)} />
+      <Route path="/app/gate/:token" element={standalone(<GateScan />)} />
       <Route path="/app" element={<Protected><Layout /></Protected>}>
         <Route index element={<Dashboard />} />
         <Route path="students" element={<Students />} />

@@ -10,6 +10,8 @@ import { useAuth } from '../lib/auth'
 import { Spinner } from '../components/ui'
 import { SCHOOL_YEARS } from '../lib/format'
 import { qrDataUrl } from '../lib/qr'
+import { studentVerifyUrl } from '../features/student-verification/studentVerificationApi'
+import { apiErrorMessage } from '../lib/apiError'
 
 const FEATURES = [
   { icon: Sparkles, title: 'حصة تجريبية مجانية', desc: 'ابدأ فوراً وجرّب المنصة قبل أي التزام' },
@@ -103,11 +105,11 @@ export default function Register() {
       try {
         const { data: pass } = await api.get('/gate/my-pass')
         setPass(pass)
-        setQr(await qrDataUrl(`${window.location.origin}/app/gate/${pass.token}`, { width: 280 }))
+        setQr(await qrDataUrl(studentVerifyUrl(pass.token), { width: 280 }))
       } catch { /* pass can be re-opened any time from the profile page */ }
       setStep(3)
     } catch (err) {
-      setError(err.response?.data?.message || 'تعذّر إتمام التسجيل، حاول مرة أخرى')
+      setError(apiErrorMessage(err, 'تعذّر إتمام التسجيل، حاول مرة أخرى'))
       if (err.response?.status === 409) setStep(1)
     } finally {
       setSaving(false)

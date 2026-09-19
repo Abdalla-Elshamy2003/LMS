@@ -6,19 +6,24 @@ import com.manarah.common.exception.ApiExceptions.ForbiddenException;
 import com.manarah.common.exception.ApiExceptions.NotFoundException;
 import com.manarah.common.tenant.TenantContext;
 import com.manarah.identity.repo.UserRepository;
+import com.manarah.identity.domain.User;
 import com.manarah.security.UserPrincipal;
 import com.manarah.student.domain.Student;
 import com.manarah.student.domain.StudentGateLog;
 import com.manarah.student.repo.StudentGateLogRepository;
 import com.manarah.student.repo.StudentRepository;
+import com.manarah.student.scan.ScannedCodeResolver;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -39,13 +44,15 @@ public class GateService {
     private final StudentGateLogRepository logs;
     private final UserRepository users;
     private final com.manarah.academy.TeacherAcademyRepository academies;
+    private final ScannedCodeResolver codeResolver;
 
     public GateService(StudentRepository students, StudentGateLogRepository logs, UserRepository users,
-                       com.manarah.academy.TeacherAcademyRepository academies) {
+                       com.manarah.academy.TeacherAcademyRepository academies, ScannedCodeResolver codeResolver) {
         this.students = students;
         this.logs = logs;
         this.users = users;
         this.academies = academies;
+        this.codeResolver = codeResolver;
     }
 
     public record PassView(String token, Long studentId, String code, String fullName, String grade,
@@ -71,11 +78,7 @@ public class GateService {
     @Transactional
     public PassView passFor(UserPrincipal actor, Long studentId) {
         requireStaff(actor);
-        Student s = scope(actor).stream()
-                .map(t -> students.findByTenantIdAndId(t, studentId).orElse(null))
-                .filter(java.util.Objects::nonNull).findFirst()
-                .orElseThrow(() -> NotFoundException.of("الطالب", studentId));
-        return toPass(ensureToken(s));
+        return toPass(ensureToken(visibleStudent(actor, studentId)));
     }
 
     /**
@@ -113,14 +116,10 @@ public class GateService {
      * every kind of card the academy already owns.
      */
     private Student resolve(UserPrincipal actor, String raw) {
-        String code = raw == null ? "" : raw.trim();
-        if (code.isEmpty()) throw new NotFoundException("لم يصل أي كود من القارئ");
+        if (raw == null || raw.isBlank()) throw new NotFoundException("لم يصل أي كود من القارئ");
         // Resolve across the academies this tenant manages, not just its own: a head-office admin
         // scanning at the door would otherwise never find a student who lives in an academy tenant.
-        var visible = scope(actor);
-        return students.findByTenantIdInAndPassToken(visible, code)
-                .or(() -> students.findByTenantIdInAndCardUid(visible, code.toUpperCase(Locale.ROOT)))
-                .or(() -> students.findByTenantIdInAndCode(visible, code.toUpperCase(Locale.ROOT)))
+        return codeResolver.resolve(scope(actor), raw)
                 .orElseThrow(() -> new NotFoundException("هذا الكارت غير معروف أو لا يخص طالباً في هذه المساحة"));
     }
 
@@ -135,9 +134,7 @@ public class GateService {
         String uid = cardUid == null ? "" : cardUid.trim().toUpperCase(Locale.ROOT);
         if (uid.length() < 4) throw new BadRequestException("مرّر الكارت على القارئ — الكود المقروء قصير جداً");
         var visible = scope(actor);
-        Student s = visible.stream().map(t -> students.findByTenantIdAndId(t, studentId).orElse(null))
-                .filter(java.util.Objects::nonNull).findFirst()
-                .orElseThrow(() -> NotFoundException.of("الطالب", studentId));
+        Student s = visibleStudent(actor, studentId);
         // The UID is unique across the table, so a card already issued to someone else has to be
         // reported rather than silently moved — otherwise a mis-tap quietly deactivates a student.
         students.findByTenantIdInAndCardUid(visible, uid)
@@ -154,10 +151,7 @@ public class GateService {
     @Transactional
     public void unbindCard(UserPrincipal actor, Long studentId) {
         requireStaff(actor);
-        Student s = scope(actor).stream()
-                .map(t -> students.findByTenantIdAndId(t, studentId).orElse(null))
-                .filter(java.util.Objects::nonNull).findFirst()
-                .orElseThrow(() -> NotFoundException.of("الطالب", studentId));
+        Student s = visibleStudent(actor, studentId);
         s.setCardUid(null);
         students.save(s);
     }
@@ -191,8 +185,7 @@ public class GateService {
         LocalDate d = date == null ? LocalDate.now(ZONE) : date;
         Instant from = d.atStartOfDay(ZONE).toInstant();
         Instant to = d.plusDays(1).atStartOfDay(ZONE).toInstant();
-        return logs.findByTenantIdInAndAtBetweenOrderByAtDesc(scope(actor), from, to)
-                .stream().map(l -> toRow(l.getTenantId(), l)).toList();
+        return toRows(logs.findByTenantIdInAndAtBetweenOrderByAtDesc(scope(actor), from, to));
     }
 
     /** One student's full history — shown on their profile so a parent/admin can review it. */
@@ -202,7 +195,16 @@ public class GateService {
             Long own = students.findByTenantIdAndUserId(tenantId, actor.getId()).map(Student::getId).orElse(null);
             if (!studentId.equals(own)) throw new ForbiddenException("غير مسموح بعرض سجل طالب آخر");
         }
-        return logs.findByTenantIdAndStudentIdOrderByAtDesc(tenantId, studentId).stream().map(l -> toRow(tenantId, l)).toList();
+        return toRows(logs.findByTenantIdAndStudentIdOrderByAtDesc(tenantId, studentId));
+    }
+
+    /** The student, if they belong to a tenant this actor may reach - otherwise not found (never "forbidden", so ids cannot be probed). */
+    private Student visibleStudent(UserPrincipal actor, Long studentId) {
+        return scope(actor).stream()
+                .map(t -> students.findByTenantIdAndId(t, studentId))
+                .flatMap(java.util.Optional::stream)
+                .findFirst()
+                .orElseThrow(() -> NotFoundException.of("الطالب", studentId));
     }
 
     private Student ensureToken(Student s) {
@@ -220,15 +222,26 @@ public class GateService {
                 s.getCardUid(), last == null ? null : last.getDirection(), last == null ? null : last.getAt());
     }
 
-    private LogRow toRow(Long tenantId, StudentGateLog l) {
-        var s = students.findByTenantIdAndId(tenantId, l.getStudentId()).orElse(null);
-        // Not tenant-scoped: whoever scanned may sit in the managing tenant rather than the
-        // student's own, and this is only resolving a display name for an id we recorded ourselves.
-        String by = l.getRecordedByUserId() == null ? null
-                : users.findById(l.getRecordedByUserId()).map(u -> u.getFullName()).orElse(null);
-        return new LogRow(l.getId(), l.getStudentId(), s == null ? "" : s.getCode(),
-                s == null ? "—" : s.getFullName(), s == null ? "" : s.getGrade(),
-                l.getDirection(), l.getAt(), by);
+    /**
+     * Builds display rows with two batched lookups instead of one student and one user query per row.
+     * The recorder may sit in the managing tenant rather than the student's own, so users are looked
+     * up by id alone - this only resolves a display name for an id we recorded ourselves.
+     */
+    private List<LogRow> toRows(List<StudentGateLog> entries) {
+        Map<Long, Student> studentsById = new HashMap<>();
+        students.findAllById(entries.stream().map(StudentGateLog::getStudentId).distinct().toList())
+                .forEach(s -> studentsById.put(s.getId(), s));
+        Map<Long, String> recorderNames = new HashMap<>();
+        for (User u : users.findAllById(entries.stream().map(StudentGateLog::getRecordedByUserId)
+                .filter(Objects::nonNull).distinct().toList())) {
+            recorderNames.put(u.getId(), u.getFullName());
+        }
+        return entries.stream().map(l -> {
+            Student s = studentsById.get(l.getStudentId());
+            return new LogRow(l.getId(), l.getStudentId(), s == null ? "" : s.getCode(),
+                    s == null ? "—" : s.getFullName(), s == null ? "" : s.getGrade(),
+                    l.getDirection(), l.getAt(), recorderNames.get(l.getRecordedByUserId()));
+        }).toList();
     }
 
     private void requireStaff(UserPrincipal actor) {

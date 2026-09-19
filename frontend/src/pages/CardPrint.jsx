@@ -2,13 +2,17 @@ import { useEffect, useState } from 'react'
 import { CreditCard, Link2, Link2Off, Printer, Search } from 'lucide-react'
 import api from '../lib/api'
 import { qrDataUrl } from '../lib/qr'
+import { studentVerifyUrl } from '../features/student-verification/studentVerificationApi'
 import { EmptyState, Spinner } from '../components/ui'
+import { apiErrorMessage } from '../lib/apiError'
 
 /**
  * Issuing physical cards: prints a sheet of student cards, and binds RFID/NFC cards to students.
  *
- * The printed card carries the student's pass token as a QR — the same token the phone QR uses, so
- * a card and a phone are interchangeable at the door. QR rather than a 1D barcode because the
+ * The printed card carries the same public /student/verify/<token> URL as the phone QR, so a card and
+ * a phone are interchangeable: a phone camera opens the public verification page, and a keyboard-style
+ * reader types the URL into the card scanner, which the server reduces back to the token. Cards printed
+ * earlier with a bare token keep working. QR rather than a 1D barcode because the
  * `qrcode` library is already bundled; a 1D-only scanner would need a barcode library added, which
  * isn't worth a dependency unless the academy's reader can't do 2D.
  *
@@ -39,7 +43,7 @@ export default function CardPrint() {
       if (!qrs[s.id]) {
         try {
           const { data: pass } = await api.get(`/gate/students/${s.id}/pass`)
-          const url = await qrDataUrl(pass.token, { width: 320 })
+          const url = await qrDataUrl(studentVerifyUrl(pass.token), { width: 320 })
           setQrs((q) => ({ ...q, [s.id]: { url, pass } }))
         } catch {
           setError(`تعذّر تجهيز كارت ${s.fullName}`)
@@ -57,7 +61,7 @@ export default function CardPrint() {
       setMessage('تم ربط الكارت بالطالب')
       setBinding(null)
     } catch (e) {
-      setError(e.response?.data?.message || 'تعذّر ربط الكارت')
+      setError(apiErrorMessage(e, 'تعذّر ربط الكارت'))
     } finally {
       setBusy(false)
     }
@@ -69,7 +73,7 @@ export default function CardPrint() {
       await api.delete(`/gate/students/${studentId}/card`)
       setMessage('تم فك ارتباط الكارت — تقدر تصدر كارت بديل')
     } catch (e) {
-      setError(e.response?.data?.message || 'تعذّر فك الارتباط')
+      setError(apiErrorMessage(e, 'تعذّر فك الارتباط'))
     } finally {
       setBusy(false)
     }

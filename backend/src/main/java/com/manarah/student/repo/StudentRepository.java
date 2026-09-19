@@ -16,6 +16,9 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
 
     Optional<Student> findByTenantIdAndUserId(Long tenantId, Long userId);
 
+    /** Public QR verification: the pass token is globally unique (idx_students_pass_token), so no tenant scope is needed. */
+    Optional<Student> findByPassToken(String passToken);
+
     /** Looks a student up from their personal entry/exit pass QR — see GateService. */
     Optional<Student> findByTenantIdAndPassToken(Long tenantId, String passToken);
 
