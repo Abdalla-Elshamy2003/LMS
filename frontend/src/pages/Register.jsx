@@ -8,7 +8,7 @@ import {
 import api from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { Spinner } from '../components/ui'
-import { SCHOOL_YEARS } from '../lib/format'
+import { SCHOOL_YEARS, GRADES } from '../lib/format'
 import { qrDataUrl } from '../lib/qr'
 import { studentVerifyUrl } from '../features/student-verification/studentVerificationApi'
 import { apiErrorMessage } from '../lib/apiError'
@@ -24,6 +24,11 @@ const EDUCATION_TYPES = [
   ['لغات', 'لغات'],
   ['تجريبي', 'تجريبي'],
 ]
+
+// Course years are typed by teachers ("الثالث الثانوي" or "الصف الثالث الثانوي"); map either to the
+// standard label so the dropdown, the filter and the year saved on the student all agree.
+const stripPrefix = (s) => String(s || '').replace(/^الصف\s+/, '').trim()
+const canonicalYear = (y) => (y ? GRADES.find((g) => stripPrefix(g) === stripPrefix(y)) || y : '')
 
 export default function Register() {
   const { user, loginWithToken } = useAuth()
@@ -44,19 +49,44 @@ export default function Register() {
   const [pass, setPass] = useState(null), [qr, setQr] = useState("")
   const [error, setError] = useState('')
 
+  // A course opened from a card/landing page carries its year with it, so the year dropdown and the
+  // course list are already consistent when the form appears.
+  const applyCourses = (list) => {
+    setCourses(list)
+    const wanted = params.get('course')
+    const pre = wanted && list.find((c) => String(c.id) === wanted)
+    if (pre?.year) setForm((f) => ({ ...f, grade: f.grade || canonicalYear(pre.year) }))
+  }
+
   useEffect(() => {
     if (academy) {
       api.get(`/public/academies/${encodeURIComponent(academy)}`)
-        .then((r) => { setCourses(r.data.courses || []); setTeacherName(r.data.profile?.name || '') })
+        .then((r) => { applyCourses(r.data.courses || []); setTeacherName(r.data.profile?.name || '') })
         .catch(() => setError('صفحة المستر دي مش متاحة حالياً'))
     } else {
-      api.get('/public/landing').then((r) => setCourses(r.data.courses || [])).catch(() => {})
+      api.get('/public/landing').then((r) => applyCourses(r.data.courses || [])).catch(() => {})
     }
   }, [academy])
 
   if (user) return <Navigate to="/app" replace />
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+
+  // Only the years this teacher actually teaches, and only the courses of the chosen year. A course
+  // with no year set applies to every year. If no course states a year, nothing is filtered.
+  const courseYears = [...new Set(courses.map((c) => canonicalYear(c.year)).filter(Boolean))]
+    .sort((a, b) => (GRADES.indexOf(a) + 1 || 999) - (GRADES.indexOf(b) + 1 || 999))
+  const yearOptions = courseYears.length ? courseYears : SCHOOL_YEARS
+  const needsYear = courseYears.length > 0 && !form.grade
+  const visibleCourses = courses.filter((c) => !form.grade || !c.year || canonicalYear(c.year) === form.grade)
+  const setGrade = (e) => {
+    const grade = e.target.value
+    setForm((f) => {
+      const current = courses.find((c) => String(c.id) === String(f.courseId))
+      const keep = !current || !current.year || !grade || canonicalYear(current.year) === grade
+      return { ...f, grade, courseId: keep ? f.courseId : '' }
+    })
+  }
 
   const validateStep1 = () => {
     if (!form.fullName.trim()) return 'الاسم الكامل مطلوب'
@@ -243,9 +273,9 @@ export default function Register() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">السنة الدراسية</label>
-                  <select className="input" value={form.grade} onChange={set('grade')}>
+                  <select className="input" value={form.grade} onChange={setGrade}>
                     <option value="">— اختر —</option>
-                    {SCHOOL_YEARS.map((g) => <option key={g} value={g}>{g}</option>)}
+                    {yearOptions.map((g) => <option key={g} value={g}>{g}</option>)}
                   </select>
                 </div>
                 <div>
@@ -265,10 +295,13 @@ export default function Register() {
               </div>
               <div>
                 <label className="label">{teacherName ? `كورسات ${teacherName}` : 'الكورس المهتم به'}</label>
-                <select className="input" value={form.courseId} onChange={set('courseId')}>
-                  <option value="">— اختر (اختياري) —</option>
-                  {courses.map((c) => <option key={c.id} value={c.id}>{c.title}{Number(c.finalPrice ?? c.price) > 0 ? '' : ' · مجاني'}</option>)}
+                <select className="input" value={form.courseId} onChange={set('courseId')} disabled={needsYear}>
+                  <option value="">{needsYear ? '— اختر السنة الدراسية الأول —' : '— اختر (اختياري) —'}</option>
+                  {visibleCourses.map((c) => <option key={c.id} value={c.id}>{c.title}{Number(c.finalPrice ?? c.price) > 0 ? '' : ' · مجاني'}</option>)}
                 </select>
+                {!needsYear && form.grade && visibleCourses.length === 0 && (
+                  <p className="mt-1 text-xs text-amber-600">مفيش كورسات متاحة للسنة دي حالياً.</p>
+                )}
                 {teacherName && <p className="mt-1 text-xs text-ink-400">هيتعملك حساب في مساحة المستر {teacherName}. الكورس المجاني يتفتح فوراً، والمدفوع بعد إتمام الدفع.</p>}
               </div>
 

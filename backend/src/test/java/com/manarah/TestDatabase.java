@@ -11,7 +11,7 @@ public final class TestDatabase {
     private TestDatabase() {}
 
     public static void register(DynamicPropertyRegistry props, String run) {
-        String pgUrl = System.getenv().getOrDefault(MANARAH_TEST_PG_URL, jdbc:postgresql://localhost:5432/manarah);
+        String pgUrl = System.getenv().getOrDefault("MANARAH_TEST_PG_URL", "jdbc:postgresql://localhost:5432/manarah");
         String schema = run.toLowerCase().replaceAll("[^a-z0-9]", "_");
         props.add("spring.datasource.url", () -> pgUrl + (pgUrl.contains("?") ? "&" : "?") + "currentSchema=" + schema);
         props.add("spring.datasource.username", () -> System.getenv().getOrDefault("MANARAH_TEST_PG_USER", "manarah"));
