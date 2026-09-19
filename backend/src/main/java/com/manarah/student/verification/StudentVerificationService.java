@@ -1,10 +1,7 @@
 package com.manarah.student.verification;
 
-import com.manarah.academy.TeacherAcademy;
-import com.manarah.academy.TeacherAcademyRepository;
 import com.manarah.common.exception.ApiExceptions.NotFoundException;
-import com.manarah.org.domain.Tenant;
-import com.manarah.org.repo.TenantRepository;
+import com.manarah.student.InstitutionNameResolver;
 import com.manarah.student.domain.Student;
 import com.manarah.student.repo.StudentRepository;
 import org.slf4j.Logger;
@@ -37,13 +34,11 @@ public class StudentVerificationService {
     private static final String UNKNOWN_CODE = "رمز التحقق غير صالح";
 
     private final StudentRepository students;
-    private final TeacherAcademyRepository academies;
-    private final TenantRepository tenants;
+    private final InstitutionNameResolver institutions;
 
-    public StudentVerificationService(StudentRepository students, TeacherAcademyRepository academies, TenantRepository tenants) {
+    public StudentVerificationService(StudentRepository students, InstitutionNameResolver institutions) {
         this.students = students;
-        this.academies = academies;
-        this.tenants = tenants;
+        this.institutions = institutions;
     }
 
     @Transactional(readOnly = true)
@@ -58,7 +53,7 @@ public class StudentVerificationService {
             return new NotFoundException(UNKNOWN_CODE);
         });
 
-        String institution = institutionName(student.getTenantId());
+        String institution = institutions.nameOf(student.getTenantId()).orElse(null);
         if (!VALID_STATUSES.contains(student.getStatus())) {
             log.info("student_verification outcome=inactive fingerprint={} status={}", fingerprint(candidate), student.getStatus());
             return PublicStudentProfileDto.inactive(institution);
@@ -67,12 +62,6 @@ public class StudentVerificationService {
         return new PublicStudentProfileDto(PublicStudentProfileDto.VerificationStatus.VERIFIED, institution,
                 student.getFullName(), student.getCode(), student.getGrade(), student.getGradeLevel(),
                 student.getEducationType(), student.getStatus());
-    }
-
-    private String institutionName(Long tenantId) {
-        return academies.findByTenantId(tenantId).map(TeacherAcademy::getName)
-                .or(() -> tenants.findById(tenantId).map(Tenant::getName))
-                .orElse(null);
     }
 
     /** Short one-way hash so repeated failures can be correlated in logs without ever logging a usable token. */

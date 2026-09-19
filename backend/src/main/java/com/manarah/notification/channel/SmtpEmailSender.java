@@ -4,8 +4,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import jakarta.mail.MessagingException;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 /**
@@ -52,6 +55,41 @@ public class SmtpEmailSender implements ExternalMessageSender {
     @Override
     public String channel() {
         return "EMAIL";
+    }
+
+    /** True when a real message can be sent: the channel is enabled, SMTP is configured and a sender address is set. */
+    public boolean isDeliverable() {
+        return enabled && !from.isEmpty() && mailer.getIfAvailable() != null;
+    }
+
+    /** A PNG shown inline in the HTML body, referenced there as {@code <img src="cid:contentId">}. */
+    public record InlineImage(String contentId, byte[] png) {}
+
+    /**
+     * Sends an HTML email (with a plain-text alternative) that embeds one inline image. Same contract as
+     * {@link #send}: returns false - never throws - when SMTP is not configured or delivery fails.
+     */
+    public boolean sendHtml(String recipient, String subject, String text, String html, InlineImage image) {
+        JavaMailSender sender = enabled ? mailer.getIfAvailable() : null;
+        if (sender == null || from.isEmpty() || recipient == null || recipient.isBlank()) {
+            log.info("[EMAIL STUB] would deliver HTML to '{}' :: {}", recipient, subject);
+            return false;
+        }
+        try {
+            var message = sender.createMimeMessage();
+            var helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(from);
+            helper.setTo(recipient.trim());
+            helper.setSubject(subject.replaceAll("[\\r\\n]+", " "));
+            helper.setText(text, html);
+            if (image != null) helper.addInline(image.contentId(), new ByteArrayResource(image.png()), "image/png");
+            sender.send(message);
+            log.info("[EMAIL] delivered HTML to '{}' :: {}", recipient, subject);
+            return true;
+        } catch (MessagingException | RuntimeException e) {
+            log.warn("[EMAIL] HTML delivery to '{}' failed: {}", recipient, e.toString());
+            return false;
+        }
     }
 
     @Override

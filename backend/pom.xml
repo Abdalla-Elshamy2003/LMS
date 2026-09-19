@@ -88,6 +88,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
+        <!-- Generates the student QR code emailed at registration (encoding only; the browser draws its own). -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version>
+        </dependency>
         <!-- S3-compatible object storage for lesson/homework files, shared across backend instances. -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>

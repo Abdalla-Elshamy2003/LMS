@@ -23,6 +23,7 @@ import com.manarah.student.domain.StudentGuardian;
 import com.manarah.student.repo.GuardianRepository;
 import com.manarah.student.repo.StudentGuardianRepository;
 import com.manarah.student.repo.StudentRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -62,13 +63,15 @@ public class RegistrationService {
     private final JwtService jwtService;
     private final CourseCheckoutService checkout;
     private final com.manarah.academy.AcademyAccess academyAccess;
+    private final ApplicationEventPublisher events;
 
     public RegistrationService(TenantRepository tenants, BranchRepository branches, CourseRepository courses,
                                StudentRepository students, GuardianRepository guardians,
                                StudentGuardianRepository links, EnrollmentRepository enrollments,
                                UserRepository users, PasswordEncoder passwordEncoder, JwtService jwtService,
                                CourseCheckoutService checkout, com.manarah.academy.AcademyAccess academyAccess,
-                               com.manarah.payment.CourseAccessCodeService accessCodes) {
+                               com.manarah.payment.CourseAccessCodeService accessCodes, ApplicationEventPublisher events) {
+        this.events = events;
         this.accessCodes = accessCodes;
         this.academyAccess = academyAccess;
         this.tenants = tenants;
@@ -280,6 +283,9 @@ public class RegistrationService {
             link.setRelation("ولي أمر");
             links.save(link);
         }
+
+        // Consumed after the surrounding transaction commits (e.g. to email the student their QR pass).
+        events.publishEvent(new com.manarah.common.events.DomainEvents.StudentRegistered(tenantId, s.getId()));
 
         return new Account(user, s);
     }

@@ -12,6 +12,7 @@ import com.manarah.student.domain.Student;
 import com.manarah.student.domain.StudentGateLog;
 import com.manarah.student.repo.StudentGateLogRepository;
 import com.manarah.student.repo.StudentRepository;
+import com.manarah.student.pass.StudentPassTokens;
 import com.manarah.student.scan.ScannedCodeResolver;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +25,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * The student's personal entry/exit pass: a stable token they carry as a QR on their profile,
@@ -45,14 +45,17 @@ public class GateService {
     private final UserRepository users;
     private final com.manarah.academy.TeacherAcademyRepository academies;
     private final ScannedCodeResolver codeResolver;
+    private final StudentPassTokens passTokens;
 
     public GateService(StudentRepository students, StudentGateLogRepository logs, UserRepository users,
-                       com.manarah.academy.TeacherAcademyRepository academies, ScannedCodeResolver codeResolver) {
+                       com.manarah.academy.TeacherAcademyRepository academies, ScannedCodeResolver codeResolver,
+                       StudentPassTokens passTokens) {
         this.students = students;
         this.logs = logs;
         this.users = users;
         this.academies = academies;
         this.codeResolver = codeResolver;
+        this.passTokens = passTokens;
     }
 
     public record PassView(String token, Long studentId, String code, String fullName, String grade,
@@ -71,14 +74,14 @@ public class GateService {
         Long tenantId = TenantContext.require();
         Student s = students.findByTenantIdAndUserId(tenantId, actor.getId())
                 .orElseThrow(() -> new NotFoundException("لا يوجد ملف طالب مرتبط بالحساب"));
-        return toPass(ensureToken(s));
+        return toPass(passTokens.ensure(s));
     }
 
     /** Staff looking up a specific student's pass — e.g. to print or re-share it. */
     @Transactional
     public PassView passFor(UserPrincipal actor, Long studentId) {
         requireStaff(actor);
-        return toPass(ensureToken(visibleStudent(actor, studentId)));
+        return toPass(passTokens.ensure(visibleStudent(actor, studentId)));
     }
 
     /**
@@ -144,7 +147,7 @@ public class GateService {
                 });
         s.setCardUid(uid);
         students.save(s);
-        return toPass(ensureToken(s));
+        return toPass(passTokens.ensure(s));
     }
 
     /** Unbinds a lost or damaged card so a replacement can be issued. */
@@ -205,14 +208,6 @@ public class GateService {
                 .flatMap(java.util.Optional::stream)
                 .findFirst()
                 .orElseThrow(() -> NotFoundException.of("الطالب", studentId));
-    }
-
-    private Student ensureToken(Student s) {
-        if (s.getPassToken() == null || s.getPassToken().isBlank()) {
-            s.setPassToken(UUID.randomUUID().toString().replace("-", ""));
-            students.save(s);
-        }
-        return s;
     }
 
     private PassView toPass(Student s) {

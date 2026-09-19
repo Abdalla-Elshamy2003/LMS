@@ -19,6 +19,10 @@ public final class DomainEvents {
         Long studentId();
     }
 
+    /** A student account was just created through self-registration, checkout or code redemption. */
+    public record StudentRegistered(Long tenantId, Long studentId) {
+    }
+
     public record StudentAbsent(Long tenantId, Long studentId, Long sessionId, String courseTitle, Instant when)
             implements StudentEvent {
     }
