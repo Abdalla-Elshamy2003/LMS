@@ -1,7 +1,7 @@
 import {
   Award, BarChart3, Bell, BookOpen, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, CreditCard, DoorOpen,
   FileQuestion, GraduationCap, HeartHandshake, Inbox, LayoutDashboard, LogOut, Megaphone, MessagesSquare,
-  ScanLine, ShieldCheck, SlidersHorizontal, Trophy, UserRound, Users, Wallet,
+  ScanLine, ShieldCheck, SlidersHorizontal, Trophy, UserCog, UserRound, Users, Wallet,
 } from 'lucide-react'
 import { ADMIN_ROLES } from '../../lib/roles'
 
@@ -16,6 +16,7 @@ const ITEMS = {
   dashboard: { to: '/app', end: true, label: 'الرئيسية', icon: LayoutDashboard, roles: ALL },
   assistantDesk: { to: '/app/assistant', label: 'مكتب اليوم والمهام', icon: ClipboardCheck, roles: ['TEACHER', 'ASSISTANT'] },
   academy: { to: '/app/academy', label: 'صفحة المستر وحسابات الطلاب', icon: UserRound, roles: [...ADMIN_ROLES, 'TEACHER', 'ASSISTANT'] },
+  assistants: { to: '/app/assistants', label: 'المساعدون (إنشاء حساب)', icon: UserCog, roles: ['TEACHER'] },
   family: { to: '/app/family', label: 'متابعة الأبناء', icon: HeartHandshake, roles: ['PARENT'] },
   familyFinance: { to: '/app/family/finance', label: 'مصروفات الأبناء', icon: Wallet, roles: ['PARENT'] },
   learning: { to: '/app/learning', label: 'مساحة التعلّم', icon: BookOpen, roles: ['STUDENT', 'TEACHER', 'ASSISTANT', ...ADMIN_ROLES, 'CONTENT_MANAGER'] },
@@ -60,7 +61,7 @@ const LAYOUTS = {
   ],
   teacher: [
     { id: 'overview', title: 'نظرة عامة', items: ['dashboard', 'assistantDesk', 'reports', 'schedule'] },
-    { id: 'teaching', title: 'التدريس', items: ['academy', 'courses', 'learning', 'students'] },
+    { id: 'teaching', title: 'التدريس', items: ['academy', 'assistants', 'courses', 'learning', 'students'] },
     { id: 'assessment', title: 'التقييم', items: ['exams', 'homework', 'certificates'] },
     { id: 'students', title: 'متابعة الطلاب', items: ['attendance', 'gateLog', 'cardScanner', 'leaderboard'] },
     { id: 'communication', title: 'التواصل', items: ['notifications', 'support', 'community'] },

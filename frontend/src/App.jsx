@@ -57,6 +57,7 @@ const CardScanner = lazy(() => import('./pages/CardScanner'))
 const CardPrint = lazy(() => import('./pages/CardPrint'))
 const Reports = lazy(() => import('./pages/Reports'))
 const AssistantDesk = lazy(() => import('./pages/AssistantDesk'))
+const Assistants = lazy(() => import('./pages/Assistants'))
 
 function Protected({ children }) {
   const { user, loading } = useAuth()
@@ -126,6 +127,7 @@ export default function App() {
         <Route path="campaigns" element={<Campaigns />} />
         <Route path="academy" element={<AcademySettings />} />
         <Route path="assistant" element={<AssistantDesk />} />
+        <Route path="assistants" element={<Assistants />} />
         <Route path="rules" element={<Rules />} />
         <Route path="audit" element={<Audit />} />
       </Route>
