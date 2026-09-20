@@ -83,6 +83,8 @@ public class AssistantService {
 
     @Transactional
     public TaskView createTask(UserPrincipal actor, TaskRequest req) {
+        // The teacher decides what the assistant works on; the assistant picks tasks up and closes them.
+        if (actor.getRole() == Role.ASSISTANT) throw new ForbiddenException("المدرس هو من يكلّف المساعد بالمهام");
         Long tenantId = actor.getTenantId();
         String title = req.title() == null ? "" : req.title().trim();
         if (title.isEmpty() || title.length() > 150) throw new BadRequestException("اكتب عنوان المهمة (حتى 150 حرفاً)");
@@ -97,9 +99,7 @@ public class AssistantService {
         t.setTenantId(tenantId); t.setTitle(title); t.setDetails(details); t.setPriority(priority);
         t.setDueDate(req.dueDate()); t.setStudentId(req.studentId()); t.setCourseId(req.courseId());
         t.setCreatedBy(actor.getId());
-        if (actor.getRole() == Role.ASSISTANT) {
-            t.setAssignedTo(actor.getId());   // an assistant's own to-do, never a job pushed onto a colleague
-        } else if (req.assignedTo() != null) {
+        if (req.assignedTo() != null) {
             users.findByTenantIdAndId(tenantId, req.assignedTo())
                     .filter(u -> u.getRole() == Role.ASSISTANT && "ACTIVE".equals(u.getStatus()))
                     .orElseThrow(() -> new BadRequestException("اختر مساعداً نشطاً من هذه المساحة"));
@@ -131,8 +131,7 @@ public class AssistantService {
     @Transactional
     public void deleteTask(UserPrincipal actor, Long id) {
         AssistantTask t = tasks.findByTenantIdAndId(actor.getTenantId(), id).orElseThrow(() -> NotFoundException.of("المهمة", id));
-        if (actor.getRole() == Role.ASSISTANT && !Objects.equals(t.getCreatedBy(), actor.getId()))
-            throw new ForbiddenException("يحذف المهمة المدرس أو من أنشأها");
+        if (actor.getRole() == Role.ASSISTANT) throw new ForbiddenException("حذف المهام للمدرس فقط");
         tasks.delete(t);
     }
 

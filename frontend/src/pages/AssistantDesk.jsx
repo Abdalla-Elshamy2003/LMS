@@ -89,7 +89,7 @@ function Desk({ user, goTo }) {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <motion.div variants={fadeUp} className="card p-6">
-          <h3 className="mb-4 text-base font-extrabold text-ink-800">مهامي</h3>
+          <h3 className="mb-4 text-base font-extrabold text-ink-800">{user.role === 'TEACHER' ? 'مهام المساعد المفتوحة' : 'مهامي'}</h3>
           {desk.tasks.length === 0 ? <EmptyState icon={CheckCircle2} title="مفيش مهام مفتوحة" hint="كل حاجة خلصانة." /> : (
             <ul className="space-y-3">
               {desk.tasks.map((t) => (
@@ -218,11 +218,13 @@ function Tasks({ user }) {
         {[['OPEN', 'المفتوحة'], ['TODO', 'لم تبدأ'], ['DOING', 'جارية'], ['DONE', 'تمت'], ['ALL', 'الكل']].map(([key, label]) => (
           <button key={key} onClick={() => setFilter(key)} className={`chip border ${filter === key ? 'border-brand-600 bg-brand-600 text-white' : 'border-ink-200 bg-white text-ink-600'}`}>{label}</button>
         ))}
-        <button onClick={() => setOpen((v) => !v)} className="btn-primary mr-auto"><Plus size={16} /> مهمة جديدة</button>
+        {isTeacher
+          ? <button onClick={() => setOpen((v) => !v)} className="btn-primary mr-auto"><Plus size={16} /> كلّف المساعد بمهمة</button>
+          : <p className="mr-auto text-xs font-semibold text-ink-400">المهام بيكلّفك بيها المدرس</p>}
       </div>
       {error && <div role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
 
-      {open && (
+      {isTeacher && open && (
         <form onSubmit={create} className="card grid gap-4 p-6 sm:grid-cols-2">
           <label className="block text-xs font-bold sm:col-span-2">عنوان المهمة
             <input required maxLength={150} className="input mt-2" value={form.title} onChange={set('title')} placeholder="مثال: اتصل بأولياء أمور الغايبين" />
@@ -265,7 +267,7 @@ function Tasks({ user }) {
         </form>
       )}
 
-      {visible.length === 0 ? <div className="card"><EmptyState icon={ListTodo} title="لا توجد مهام هنا" hint={isTeacher ? 'كلّف مساعدك بمهمة من زر "مهمة جديدة".' : undefined} /></div> : (
+      {visible.length === 0 ? <div className="card"><EmptyState icon={ListTodo} title="لا توجد مهام هنا" hint={isTeacher ? 'كلّف مساعدك بمهمة من زر "كلّف المساعد بمهمة".' : 'لسه المدرس ما كلّفكش بمهام.'} /></div> : (
         <ul className="space-y-3">
           {visible.map((t) => (
             <li key={t.id} className="card p-4">
@@ -287,7 +289,7 @@ function Tasks({ user }) {
                   {t.status === 'TODO' && <button disabled={busy} onClick={() => setStatus(t, 'DOING')} className="btn-soft text-xs">ابدأ</button>}
                   {t.status !== 'DONE' && <button disabled={busy} onClick={() => setStatus(t, 'DONE')} className="btn-soft text-xs"><CheckCircle2 size={15} /> تمت</button>}
                   {t.status === 'DONE' && <button disabled={busy} onClick={() => setStatus(t, 'TODO')} className="btn-ghost text-xs">إعادة فتح</button>}
-                  {(isTeacher || t.createdBy === user.id) && <button disabled={busy} onClick={() => remove(t)} aria-label={`حذف ${t.title}`} className="btn-ghost text-xs text-rose-600"><Trash2 size={15} /></button>}
+                  {isTeacher && <button disabled={busy} onClick={() => remove(t)} aria-label={`حذف ${t.title}`} className="btn-ghost text-xs text-rose-600"><Trash2 size={15} /></button>}
                 </div>
               </div>
             </li>

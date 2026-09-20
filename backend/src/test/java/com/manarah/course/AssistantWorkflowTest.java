@@ -166,10 +166,10 @@ class AssistantWorkflowTest {
         var teacherView = getJson("/api/assistant/tasks", teacher);
         assertThat(teacherView).hasSize(2);
         assertThat(teacherView.findValuesAsText("resultNote")).contains("تم الاتصال وتأكيد الحضور");
-        long selfMade = postJson("/api/assistant/tasks", assistant, Map.of("title", "مهمة كتبتها لنفسي", "assignedTo", second.path("id").asLong())).path("id").asLong();
-        assertThat(getJson("/api/assistant/tasks", assistant2).findValuesAsText("title")).doesNotContain("مهمة كتبتها لنفسي"); // an assistant cannot push work onto a colleague
-        send(delete("/api/assistant/tasks/" + mine), assistant, null).andExpect(status().isForbidden());       // not theirs to delete
-        send(delete("/api/assistant/tasks/" + selfMade), assistant, null).andExpect(status().isOk());
+        // Only the teacher hands out work: an assistant can neither create nor delete tasks.
+        send(post("/api/assistant/tasks"), assistant, Map.of("title", "مهمة كتبتها لنفسي")).andExpect(status().isForbidden());
+        send(delete("/api/assistant/tasks/" + mine), assistant, null).andExpect(status().isForbidden());
+        assertThat(getJson("/api/assistant/tasks", assistant2).findValuesAsText("title")).doesNotContain("مهمة كتبتها لنفسي");
         send(delete("/api/assistant/tasks/" + mine), teacher, null).andExpect(status().isOk());
 
         // ---- Follow-up notes: private to the teacher's staff. ----
