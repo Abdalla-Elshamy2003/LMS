@@ -19,7 +19,7 @@ export default function Courses() {
   const [showNew, setShowNew] = useState(false)
   const [myCourseIds, setMyCourseIds] = useState(null)
   const [enrollingId, setEnrollingId] = useState(null)
-  const canManage = ['SUPER_ADMIN', 'BRANCH_ADMIN', 'ACADEMIC_MANAGER', 'TEACHER', 'CONTENT_MANAGER'].includes(user.role)
+  const canManage = ['SUPER_ADMIN', 'BRANCH_ADMIN', 'ACADEMIC_MANAGER', 'TEACHER', 'ASSISTANT', 'CONTENT_MANAGER'].includes(user.role)
   const isStudent = user.role === 'STUDENT'
   const isParent = user.role === 'PARENT'
   const [childrenCourseIds, setChildrenCourseIds] = useState(null)

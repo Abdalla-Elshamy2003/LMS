@@ -13,4 +13,5 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     Optional<Submission> findByTenantIdAndFileKey(Long tenantId, String fileKey);
     long countByTenantIdAndStudentId(Long tenantId, Long studentId);
     long countByTenantIdAndStudentIdAndStatus(Long tenantId, Long studentId, String status);
+    long countByTenantIdAndStatusIn(Long tenantId, java.util.Collection<String> statuses);
 }

@@ -121,6 +121,7 @@ export default function LessonWorkspace() {
     "BRANCH_ADMIN",
     "ACADEMIC_MANAGER",
     "TEACHER",
+    "ASSISTANT",
     "CONTENT_MANAGER",
   ].includes(user.role);
   const [params, setParams] = useSearchParams();

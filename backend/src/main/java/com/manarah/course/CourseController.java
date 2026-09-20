@@ -32,7 +32,7 @@ public class CourseController {
 
     /** Generates (and stores) an AI recap of a lesson; the teacher may pass their own notes or a transcript. */
     @PostMapping("/lessons/{lessonId}/summary")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public LessonSummaryService.SummaryView summarize(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long lessonId,
                                                       @RequestBody(required = false) LessonSummaryService.SummaryRequest req) {
         return summaryService.summarize(actor, lessonId, req);
@@ -65,20 +65,20 @@ public class CourseController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public CourseDetail create(@AuthenticationPrincipal UserPrincipal actor, @Valid @RequestBody CreateCourseRequest req) {
         return service.create(actor, req);
     }
 
     @PostMapping("/{id}/modules")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public ModuleView addModule(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @Valid @RequestBody CreateModuleRequest req) {
         learning.access(actor, id, true);
         return service.addModule(id, req);
     }
 
     @PostMapping("/modules/{moduleId}/lessons")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public LessonView addLesson(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long moduleId, @Valid @RequestBody CreateLessonRequest req) {
         learning.access(actor, learning.moduleCourse(actor, moduleId), true);
         return service.addLesson(moduleId, req);
@@ -113,7 +113,7 @@ public class CourseController {
     }
 
     @PostMapping("/lessons/{lessonId}/materials")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public MaterialView addMaterial(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long lessonId, @Valid @RequestBody CreateMaterialRequest req) {
         learning.access(actor, learning.lessonCourse(actor, lessonId), true);
         return service.addMaterial(lessonId, req);
@@ -122,14 +122,14 @@ public class CourseController {
     // ---- In-video checkpoint questions (the video pauses and asks; no timestamp = end-of-lesson test) ----
 
     @GetMapping("/lessons/{lessonId}/checkpoints")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public List<LessonCheckpointService.CheckpointView> checkpoints(@AuthenticationPrincipal UserPrincipal actor,
                                                                     @PathVariable Long lessonId) {
         return checkpointService.list(actor, lessonId);
     }
 
     @PostMapping("/lessons/{lessonId}/checkpoints")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public LessonCheckpointService.CheckpointView addCheckpoint(@AuthenticationPrincipal UserPrincipal actor,
                                                                 @PathVariable Long lessonId,
                                                                 @RequestBody LessonCheckpointService.CreateCheckpointRequest req) {
@@ -137,7 +137,7 @@ public class CourseController {
     }
 
     @DeleteMapping("/checkpoints/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public void removeCheckpoint(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id) {
         checkpointService.remove(actor, id);
     }
@@ -162,21 +162,21 @@ public class CourseController {
     public record GenerateCodesRequest(Integer count) {}
 
     @PostMapping("/{id}/access-codes")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public java.util.List<com.manarah.payment.CourseAccessCodeService.CodeView> generateCodes(
             @AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @RequestBody GenerateCodesRequest req) {
         return accessCodeService.generate(actor, id, req.count() == null ? 1 : req.count());
     }
 
     @GetMapping("/{id}/access-codes")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public java.util.List<com.manarah.payment.CourseAccessCodeService.CodeView> listCodes(
             @AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id) {
         return accessCodeService.list(actor, id);
     }
 
     @DeleteMapping("/access-codes/{codeId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public void revokeCode(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long codeId) {
         accessCodeService.revoke(actor, codeId);
     }
@@ -194,7 +194,7 @@ public class CourseController {
      *  campaigns page. The checkout price always follows this value, so a displayed discount can
      *  never drift from what a student is actually charged. */
     @PutMapping("/{id}/discount")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public CourseSummary setDiscount(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @RequestBody SetDiscountRequest req) {
         learning.access(actor, id, true);
         return service.setDiscount(id, req);

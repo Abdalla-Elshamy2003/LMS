@@ -12,10 +12,10 @@ public class ScheduleController {
     private final ScheduleService service;
     public ScheduleController(ScheduleService service) { this.service = service; }
     @GetMapping public ScheduleService.ScheduleView view(@AuthenticationPrincipal UserPrincipal actor) { return service.view(actor); }
-    @PostMapping @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PostMapping @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public ScheduleService.SlotView create(@AuthenticationPrincipal UserPrincipal actor, @RequestBody ScheduleService.SaveRequest req) { return service.create(actor, req); }
-    @PutMapping("/{id}") @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PutMapping("/{id}") @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public ScheduleService.SlotView update(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @RequestBody ScheduleService.SaveRequest req) { return service.update(actor, id, req); }
-    @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public void delete(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id) { service.delete(actor, id); }
 }

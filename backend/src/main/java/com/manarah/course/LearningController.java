@@ -16,7 +16,7 @@ public class LearningController {
     public LearningController(LearningService service, VideoWatchService watch) { this.service = service; this.watch = watch; }
     /** Who watched this course's protected videos, from where and on how many devices. */
     @GetMapping("/courses/{id}/watch-log")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public List<VideoWatchService.WatchLogRow> watchLog(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id) { return watch.watchLog(actor, id); }
     @GetMapping
     public List<LearningService.LearningCourse> library(@AuthenticationPrincipal UserPrincipal actor) { return service.library(actor); }
@@ -30,6 +30,6 @@ public class LearningController {
         return service.save(actor, id, req.position(), req.completed());
     }
     @GetMapping("/courses/{id}/learners")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public List<LearningService.LearnerView> learners(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id) { return service.learners(actor, id); }
 }

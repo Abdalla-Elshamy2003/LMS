@@ -11,6 +11,7 @@ import { Avatar, Badge, ProgressRing, Modal, PageLoader, EmptyState, Spinner, st
 import { ACADEMIC_STATUS, STUDENT_STATUS, RISK_LEVEL, fmtDate, timeAgo } from '../lib/format'
 import { exportElementToPdf } from '../lib/pdf'
 import StudentReportPrint from '../components/reports/StudentReportPrint'
+import StudentNotes from '../features/assistant/StudentNotes'
 import { apiErrorMessage } from '../lib/apiError'
 
 const TL_ICON = {
@@ -41,7 +42,7 @@ export default function StudentProfile() {
   // conditional return changes the hook order between renders and blanks the page.
   const [addingGrade, setAddingGrade] = useState(false)
   const printRef = useRef(null)
-  const canGrade = ['SUPER_ADMIN', 'BRANCH_ADMIN', 'ACADEMIC_MANAGER', 'TEACHER'].includes(user.role)
+  const canGrade = ['SUPER_ADMIN', 'BRANCH_ADMIN', 'ACADEMIC_MANAGER', 'TEACHER', 'ASSISTANT'].includes(user.role)
 
   useEffect(() => {
     setLoading(true)
@@ -224,6 +225,10 @@ export default function StudentProfile() {
           </motion.div>
         </div>
       </div>
+
+      {['TEACHER', 'ASSISTANT'].includes(user.role) && resolvedId && (
+        <motion.div variants={fadeUp}><StudentNotes studentId={resolvedId} /></motion.div>
+      )}
 
       {/* Gradebook */}
       <motion.div variants={fadeUp} className="card p-6">

@@ -35,7 +35,7 @@ public class AcademyController {
         return Map.of("stats", Map.of("teachers", published.size(), "courses", courseCount, "students", studentCount),
                 "teachers", directory());
     }
-    @GetMapping("/academies") @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER')")
+    @GetMapping("/academies") @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT')")
     public Object list(@AuthenticationPrincipal UserPrincipal actor) { return service.list(actor); }
     @GetMapping("/academy-context")
     public Object context(@AuthenticationPrincipal UserPrincipal actor) {
@@ -68,6 +68,14 @@ public class AcademyController {
     public void access(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @PathVariable Long studentId, @RequestBody AcademyService.Account req) { service.access(actor, id, studentId, req); }
     @DeleteMapping("/academies/{id}/students/{studentId}")
     public void removeStudent(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @PathVariable Long studentId) { service.removeStudent(actor, id, studentId); }
+    @GetMapping("/academies/{id}/assistants")
+    public Object assistants(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id) { return service.assistants(actor, id); }
+    @PostMapping("/academies/{id}/assistants")
+    public Object createAssistant(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @RequestBody AcademyService.AssistantRequest req) { return service.createAssistant(actor, id, req); }
+    @PutMapping("/academies/{id}/assistants/{userId}")
+    public Object updateAssistant(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @PathVariable Long userId, @RequestBody AcademyService.AssistantRequest req) { return service.updateAssistant(actor, id, userId, req); }
+    @DeleteMapping("/academies/{id}/assistants/{userId}")
+    public void removeAssistant(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @PathVariable Long userId) { service.removeAssistant(actor, id, userId); }
     @PostMapping("/academies/{id}/images/{slot}") @Transactional
     public Object upload(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @PathVariable String slot, @RequestParam MultipartFile file) throws Exception {
         var a = service.manage(actor, id);

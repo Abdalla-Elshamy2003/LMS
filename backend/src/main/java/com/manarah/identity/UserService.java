@@ -72,7 +72,7 @@ public class UserService {
         if (req.fullName() != null && !req.fullName().isBlank()) u.setFullName(req.fullName().trim());
         if (req.phone() != null) u.setPhone(req.phone().trim());
         if (req.photoUrl() != null) u.setPhotoUrl(req.photoUrl().trim());
-        if (u.getRole() == Role.TEACHER) {
+        if (u.getRole() == Role.TEACHER || u.getRole() == Role.ASSISTANT) {
             if (req.title() != null) u.setTitle(req.title().trim());
             if (req.subjects() != null) u.setSubjects(req.subjects().trim());
             if (req.bio() != null) u.setBio(req.bio().trim());

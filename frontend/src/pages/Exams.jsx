@@ -22,7 +22,7 @@ const STAFF = ['SUPER_ADMIN', 'BRANCH_ADMIN', 'ACADEMIC_MANAGER', 'TEACHER', 'AS
 export default function Exams() {
   const { user } = useAuth()
   if (user.role === 'STUDENT') return <StudentExams />
-  return <StaffExams canAuthor={STAFF.filter(r => r !== 'ASSISTANT').includes(user.role)} />
+  return <StaffExams canAuthor={STAFF.includes(user.role)} />
 }
 
 /* ================= Student ================= */

@@ -70,8 +70,16 @@ public class AcademyService {
         var a = academies.findById(id).orElseThrow(() -> NotFoundException.of("صفحة المدرس", id));
         if ((actor.isAdmin() && (a.getManagerTenantId().equals(actor.getTenantId()) || a.getTenantId().equals(actor.getTenantId())))
                 || (actor.getRole() == Role.TEACHER && a.getTeacherId().equals(actor.getId()) && a.getTenantId().equals(actor.getTenantId()))
+                || (actor.getRole() == Role.ASSISTANT && a.getTenantId().equals(actor.getTenantId()))
                 || Objects.equals(a.getOwnerUserId(), actor.getId())) return a;
         throw new ForbiddenException("لا يمكنك إدارة مساحة مدرس آخر");
+    }
+
+    /** {@link #manage} minus assistants: the teacher's own decisions (who their assistants are, what the page says
+     *  about money) are not delegated to the people they delegate to. */
+    private TeacherAcademy manageAsOwner(UserPrincipal actor, Long id) {
+        if (actor.getRole() == Role.ASSISTANT) throw new ForbiddenException("هذا الإجراء متاح للمدرس والإدارة فقط");
+        return manage(actor, id);
     }
 
     /** Links an existing staff account to a teacher page so they manage it with their normal login. */
@@ -122,7 +130,7 @@ public class AcademyService {
     }
     @Transactional
     public TeacherAcademy save(UserPrincipal actor, Long id, Content req) {
-        var a = manage(actor, id); a.setName(required(req.name(), 120)); a.setTagline(required(req.tagline(), 150));
+        var a = manage(actor, id); boolean wasPublished = a.isPublished(); a.setName(required(req.name(), 120)); a.setTagline(required(req.tagline(), 150));
         a.setHeadline(required(req.headline(), 220)); a.setDescription(required(req.description(), 1500));
         a.setAboutText(required(req.aboutText(), 3000)); a.setSubject(required(req.subject(), 100));
         String phone = req.phone() == null ? "" : req.phone().trim();
@@ -134,6 +142,13 @@ public class AcademyService {
         if (vodafone.length() > 40) throw new BadRequestException("رقم فودافون كاش طويل جداً");
         String paymentNote = req.paymentNote() == null ? "" : req.paymentNote().trim();
         if (paymentNote.length() > 500) throw new BadRequestException("ملاحظة الدفع طويلة جداً");
+        // Where students send money, and whether the page is public, stay with the teacher: an assistant may
+        // fix a typo in the page text, but changing these has to be the teacher's own act.
+        if (actor.getRole() == Role.ASSISTANT && (wasPublished != req.published()
+                || !instapay.equals(Objects.toString(a.getInstapayNumber(), ""))
+                || !vodafone.equals(Objects.toString(a.getVodafoneCashNumber(), ""))
+                || !paymentNote.equals(Objects.toString(a.getPaymentNote(), ""))))
+            throw new ForbiddenException("بيانات الدفع ونشر الصفحة يعدّلها المدرس فقط");
         a.setInstapayNumber(instapay); a.setVodafoneCashNumber(vodafone); a.setPaymentNote(paymentNote);
         if (req.videos() != null) {
             if (req.videos().size() > 30) throw new BadRequestException("يمكن إضافة 30 فيديو بحد أقصى");
@@ -250,5 +265,80 @@ public class AcademyService {
                 u.setUsername(FREED_PREFIX + u.getId() + "-" + u.getUsername());
             users.save(u);
         });
+    }
+
+    // ---- The teacher's assistants ----------------------------------------------------------------------------
+    // An assistant is a user with role ASSISTANT inside the academy's own tenant, so everything they can reach is
+    // already fenced to this one teacher. They sign in with a real email address (or the username of any other
+    // academy login), and only the teacher (or a managing admin) can add, change or remove them.
+
+    private static final java.util.regex.Pattern EMAIL = java.util.regex.Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$");
+
+    public record AssistantRequest(String fullName, String email, String phone, String password, Boolean active) {}
+
+    public List<Map<String, Object>> assistants(UserPrincipal actor, Long id) {
+        var a = manageAsOwner(actor, id);
+        return users.findByTenantIdAndRole(a.getTenantId(), Role.ASSISTANT).stream()
+                .filter(u -> !ARCHIVED.equals(u.getStatus())).map(this::assistantView).toList();
+    }
+
+    @Transactional
+    public Map<String, Object> createAssistant(UserPrincipal actor, Long id, AssistantRequest req) {
+        var a = manageAsOwner(actor, id);
+        String email = requiredEmail(req.email());
+        var teacher = users.findById(a.getTeacherId()).orElseThrow();
+        var u = new User(); u.setTenantId(a.getTenantId()); u.setBranchId(teacher.getBranchId()); u.setRole(Role.ASSISTANT);
+        u.setFullName(required(req.fullName(), 120)); u.setEmail(email);
+        u.setPhone(req.phone() == null ? null : required(req.phone(), 25));
+        u.setPasswordHash(passwords.encode(PasswordPolicy.requireStrong(req.password()))); u.setStatus("ACTIVE");
+        users.save(u);
+        audit.record(actor, "ACADEMY_ASSISTANT_CREATED", "User", u.getId(), null, "academy=" + id);
+        return assistantView(u);
+    }
+
+    @Transactional
+    public Map<String, Object> updateAssistant(UserPrincipal actor, Long id, Long userId, AssistantRequest req) {
+        var a = manageAsOwner(actor, id);
+        var u = assistantOf(a, userId);
+        if (req.fullName() != null && !req.fullName().isBlank()) u.setFullName(required(req.fullName(), 120));
+        if (req.phone() != null) u.setPhone(req.phone().isBlank() ? null : required(req.phone(), 25));
+        if (req.password() != null && !req.password().isBlank())
+            u.setPasswordHash(passwords.encode(PasswordPolicy.requireStrong(req.password())));
+        if (req.active() != null) u.setStatus(req.active() ? "ACTIVE" : "INACTIVE");
+        users.save(u);
+        audit.record(actor, "ACADEMY_ASSISTANT_CHANGED", "User", userId, null, "academy=" + id);
+        return assistantView(u);
+    }
+
+    /** Archives rather than deletes: tasks, notes and grading history point at this user. The email is freed for reuse. */
+    @Transactional
+    public void removeAssistant(UserPrincipal actor, Long id, Long userId) {
+        var a = manageAsOwner(actor, id);
+        var u = assistantOf(a, userId);
+        u.setStatus(ARCHIVED);
+        if (!u.getEmail().startsWith(FREED_PREFIX)) u.setEmail(FREED_PREFIX + u.getId() + "-" + u.getEmail());
+        users.save(u);
+        audit.record(actor, "ACADEMY_ASSISTANT_REMOVED", "User", userId, null, "academy=" + id);
+    }
+
+    private User assistantOf(TeacherAcademy a, Long userId) {
+        return users.findByTenantIdAndId(a.getTenantId(), userId).filter(u -> u.getRole() == Role.ASSISTANT)
+                .orElseThrow(() -> NotFoundException.of("المساعد", userId));
+    }
+
+    private String requiredEmail(String raw) {
+        String email = required(raw, 120).toLowerCase(Locale.ROOT);
+        if (!EMAIL.matcher(email).matches()) throw new BadRequestException("البريد الإلكتروني غير صالح");
+        // Login looks the address up across every academy, so it has to be unique platform-wide, not per tenant.
+        if (users.findByEmailIgnoreCase(email).isPresent()) throw new ConflictException("البريد الإلكتروني مستخدم بالفعل");
+        return email;
+    }
+
+    private Map<String, Object> assistantView(User u) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", u.getId()); m.put("fullName", u.getFullName()); m.put("email", u.getEmail());
+        m.put("phone", Objects.toString(u.getPhone(), "")); m.put("status", u.getStatus());
+        m.put("lastLoginAt", u.getLastLoginAt()); m.put("createdAt", u.getCreatedAt());
+        return m;
     }
 }

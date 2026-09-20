@@ -33,11 +33,13 @@ public class ScheduleService {
     private final RoomRepository rooms;
     private final AssignmentRepository assignments;
     private final ExamRepository exams;
+    private final com.manarah.academy.TeacherScope teacherScope;
 
     public ScheduleService(ScheduleSlotRepository slots, CourseRepository courses, EnrollmentRepository enrollments,
             StudyGroupRepository groups, StudentRepository students, GuardianRepository guardians,
             StudentGuardianRepository studentGuardians, UserRepository users, RoomRepository rooms,
-            AssignmentRepository assignments, ExamRepository exams) {
+            AssignmentRepository assignments, ExamRepository exams, com.manarah.academy.TeacherScope teacherScope) {
+        this.teacherScope = teacherScope;
         this.slots = slots; this.courses = courses; this.enrollments = enrollments; this.groups = groups;
         this.students = students; this.guardians = guardians; this.studentGuardians = studentGuardians;
         this.users = users; this.rooms = rooms; this.assignments = assignments; this.exams = exams;
@@ -134,7 +136,7 @@ public class ScheduleService {
 
     private Course canManage(UserPrincipal actor, Long courseId) {
         Course c = courses.findByTenantIdAndId(actor.getTenantId(), courseId).orElseThrow(() -> NotFoundException.of("الكورس", courseId));
-        if (actor.isAdmin() || actor.getRole() == Role.CONTENT_MANAGER || (actor.getRole() == Role.TEACHER && Objects.equals(c.getTeacherId(), actor.getId()))) return c;
+        if (actor.isAdmin() || actor.getRole() == Role.CONTENT_MANAGER || (actor.getRole() == Role.ASSISTANT && teacherScope.actsForTeacher(actor)) || (actor.getRole() == Role.TEACHER && Objects.equals(c.getTeacherId(), actor.getId()))) return c;
         throw new ForbiddenException("يمكن للمدرس تنظيم مواعيد كورساته فقط");
     }
     private void validate(SaveRequest r) {

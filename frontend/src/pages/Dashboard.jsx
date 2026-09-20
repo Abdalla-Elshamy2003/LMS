@@ -10,6 +10,7 @@ import { fmtMoney, fmtDate, ACADEMIC_STATUS } from '../lib/format'
 import { exportElementToPdf } from '../lib/pdf'
 import ParentReportPrint from '../components/reports/ParentReportPrint'
 import LearningHub from '../components/LearningHub'
+import DeskSummary from '../features/assistant/DeskSummary'
 import { SchedulePreview } from './Schedule'
 
 const HW_STATUS = {
@@ -170,7 +171,8 @@ function TeacherDashboard({ data }) {
   const { user } = useAuth()
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
-      {user.role === 'TEACHER' && <LearningHub compact />}
+      {['TEACHER', 'ASSISTANT'].includes(user.role) && <DeskSummary />}
+      {['TEACHER', 'ASSISTANT'].includes(user.role) && <LearningHub compact />}
       <SchedulePreview />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Kpi icon={BookOpen} label="كورساتي" value={data.courses} tint="bg-brand-50 text-brand-600" />

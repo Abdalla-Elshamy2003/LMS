@@ -54,7 +54,7 @@ public class ReportController {
 
     /** The whole academy for a period, ranked — optionally narrowed to one course. */
     @GetMapping("/academy")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT')")
     public Map<String, Object> academy(@RequestParam(required = false) Long courseId,
                                        @RequestParam(required = false) String month,
                                        @RequestParam(required = false) String term,

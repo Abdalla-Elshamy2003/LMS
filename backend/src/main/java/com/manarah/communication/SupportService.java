@@ -42,13 +42,15 @@ public class SupportService {
     private final CourseRepository courses;
     private final EnrollmentRepository enrollments;
     private final NotificationService notifications;
+    private final com.manarah.academy.TeacherScope teacherScope;
 
     public SupportService(SupportCaseRepository cases, SupportMessageRepository messages, UserRepository users,
                           StudentRepository students, GuardianRepository guardians, StudentGuardianRepository links,
-                          CourseRepository courses, EnrollmentRepository enrollments, NotificationService notifications) {
+                          CourseRepository courses, EnrollmentRepository enrollments, NotificationService notifications,
+                          com.manarah.academy.TeacherScope teacherScope) {
         this.cases = cases; this.messages = messages; this.users = users; this.students = students;
         this.guardians = guardians; this.links = links; this.courses = courses; this.enrollments = enrollments;
-        this.notifications = notifications;
+        this.notifications = notifications; this.teacherScope = teacherScope;
     }
 
     public record PersonOption(Long id, String name, String code) {}
@@ -184,12 +186,17 @@ public class SupportService {
     }
 
     private boolean canView(UserPrincipal actor, SupportCase c) {
-        return isManager(actor) || Objects.equals(c.getCreatedByUserId(), actor.getId())
-                || (actor.getRole() == Role.TEACHER && Objects.equals(c.getAssignedTeacherId(), actor.getId()));
+        return isManager(actor) || Objects.equals(c.getCreatedByUserId(), actor.getId()) || handlesForTeacher(actor, c);
     }
 
     private boolean isHandler(UserPrincipal actor, SupportCase c) {
-        return isManager(actor) || (actor.getRole() == Role.TEACHER && Objects.equals(c.getAssignedTeacherId(), actor.getId()));
+        return isManager(actor) || handlesForTeacher(actor, c);
+    }
+
+    /** A teacher handles the cases addressed to them; their assistant handles the same ones on their behalf. */
+    private boolean handlesForTeacher(UserPrincipal actor, SupportCase c) {
+        Long teacherId = teacherScope.teacherIdFor(actor);
+        return teacherId != null && Objects.equals(c.getAssignedTeacherId(), teacherId);
     }
 
     private boolean isManager(UserPrincipal actor) {

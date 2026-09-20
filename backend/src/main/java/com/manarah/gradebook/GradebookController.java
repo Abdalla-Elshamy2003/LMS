@@ -32,14 +32,14 @@ public class GradebookController {
     /** Hand-entered grade — an oral test, a paper quiz, a participation mark. Staff only: a student
      *  who could reach this could award themselves marks. */
     @PostMapping("/grades")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT')")
     public GradeItem record(@AuthenticationPrincipal UserPrincipal actor,
                             @RequestBody GradebookService.ManualGrade body) {
         return service.record(actor.getTenantId(), body);
     }
 
     @DeleteMapping("/grades/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT')")
     public void remove(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id) {
         service.remove(actor.getTenantId(), id);
     }

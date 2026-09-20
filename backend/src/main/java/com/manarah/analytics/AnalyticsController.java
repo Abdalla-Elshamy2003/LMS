@@ -24,9 +24,12 @@ public class AnalyticsController {
     private final AuditService audit;
     private final com.manarah.student.StudentService studentService;
     private final StudentAccessPolicy accessPolicy;
+    private final com.manarah.academy.TeacherScope teacherScope;
 
     public AnalyticsController(AnalyticsService analytics, GamificationService gamification, AuditService audit,
-                              com.manarah.student.StudentService studentService, StudentAccessPolicy accessPolicy) {
+                              com.manarah.student.StudentService studentService, StudentAccessPolicy accessPolicy,
+                              com.manarah.academy.TeacherScope teacherScope) {
+        this.teacherScope = teacherScope;
         this.analytics = analytics;
         this.gamification = gamification;
         this.audit = audit;
@@ -43,7 +46,9 @@ public class AnalyticsController {
     @GetMapping("/teacher")
     public Map<String, Object> teacher(@AuthenticationPrincipal UserPrincipal me,
                                        @RequestParam(required = false) Long teacherId) {
-        return analytics.teacherDashboard(teacherId != null ? teacherId : me.getId());
+        // An assistant sees the dashboard of the teacher they work for, not an empty one of their own.
+        Long acting = teacherScope.teacherIdFor(me);
+        return analytics.teacherDashboard(teacherId != null ? teacherId : acting != null ? acting : me.getId());
     }
 
     @GetMapping("/student/{studentId}")
