@@ -19,7 +19,7 @@ RUN --mount=type=cache,id=s/a425938a-3969-4bf9-b17c-3161ea29cdc6-/root/.m2,targe
 
 # ---------- Runtime stage ----------
 # JRE-only image: no JDK/Maven in the shipped image, smaller attack surface.
-FROM eclipse-temurin:21-jre-jammy AS runtime
+FROM eclipse-temurin:22-jre-jammy AS runtime
 WORKDIR /app
 
 # Run as a dedicated non-root user for the actual JVM (see docker-entrypoint.sh, which starts
