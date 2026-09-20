@@ -19,7 +19,7 @@ const CATEGORY = {
   TECHNICAL: 'مشكلة تقنية', PAYMENT: 'المدفوعات', GENERAL: 'استفسار عام',
 }
 const PRIORITY = { NORMAL: 'عادي', HIGH: 'مهم', URGENT: 'عاجل' }
-const HANDLERS = ['SUPER_ADMIN', 'BRANCH_ADMIN', 'ACADEMIC_MANAGER', 'SUPPORT', 'TEACHER']
+const HANDLERS = ['SUPER_ADMIN', 'BRANCH_ADMIN', 'ACADEMIC_MANAGER', 'SUPPORT', 'TEACHER', 'ASSISTANT']
 
 export default function SupportCenter() {
   const { user } = useAuth()

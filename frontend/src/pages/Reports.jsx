@@ -22,7 +22,7 @@ const TERMS = [
 
 export default function Reports() {
   const { user } = useAuth()
-  const staff = ['SUPER_ADMIN', 'BRANCH_ADMIN', 'ACADEMIC_MANAGER', 'TEACHER'].includes(user.role)
+  const staff = ['SUPER_ADMIN', 'BRANCH_ADMIN', 'ACADEMIC_MANAGER', 'TEACHER', 'ASSISTANT'].includes(user.role)
   // A parent has no student record of their own, so /reports/me would fail for them — they always
   // report on one of their children, picked from the list below.
   const isParent = user.role === 'PARENT'

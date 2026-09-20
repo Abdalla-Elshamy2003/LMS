@@ -42,7 +42,7 @@ export function SchedulePreview() {
 
 export default function Schedule() {
   const { user } = useAuth()
-  const manage = ['SUPER_ADMIN', 'BRANCH_ADMIN', 'ACADEMIC_MANAGER', 'TEACHER', 'CONTENT_MANAGER'].includes(user.role)
+  const manage = ['SUPER_ADMIN', 'BRANCH_ADMIN', 'ACADEMIC_MANAGER', 'TEACHER', 'ASSISTANT', 'CONTENT_MANAGER'].includes(user.role)
   const [data, setData] = useState(null)
   const [subject, setSubject] = useState('')
   const [view, setView] = useState('week')

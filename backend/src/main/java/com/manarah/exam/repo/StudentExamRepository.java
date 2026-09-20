@@ -13,4 +13,5 @@ public interface StudentExamRepository extends JpaRepository<StudentExam, Long> 
     List<StudentExam> findByTenantIdAndExamId(Long tenantId, Long examId);
     List<StudentExam> findByTenantIdAndStudentId(Long tenantId, Long studentId);
     long countByTenantIdAndExamId(Long tenantId, Long examId);
+    long countByTenantIdAndStatus(Long tenantId, String status);
 }

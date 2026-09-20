@@ -1,5 +1,5 @@
 import {
-  Award, BarChart3, Bell, BookOpen, CalendarCheck, CalendarDays, ClipboardList, CreditCard, DoorOpen,
+  Award, BarChart3, Bell, BookOpen, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, CreditCard, DoorOpen,
   FileQuestion, GraduationCap, HeartHandshake, Inbox, LayoutDashboard, LogOut, Megaphone, MessagesSquare,
   ScanLine, ShieldCheck, SlidersHorizontal, Trophy, UserRound, Users, Wallet,
 } from 'lucide-react'
@@ -14,10 +14,11 @@ const ALL = 'ALL'
  */
 const ITEMS = {
   dashboard: { to: '/app', end: true, label: 'الرئيسية', icon: LayoutDashboard, roles: ALL },
-  academy: { to: '/app/academy', label: 'صفحة المستر وحسابات الطلاب', icon: UserRound, roles: [...ADMIN_ROLES, 'TEACHER'] },
+  assistantDesk: { to: '/app/assistant', label: 'مكتب اليوم والمهام', icon: ClipboardCheck, roles: ['TEACHER', 'ASSISTANT'] },
+  academy: { to: '/app/academy', label: 'صفحة المستر وحسابات الطلاب', icon: UserRound, roles: [...ADMIN_ROLES, 'TEACHER', 'ASSISTANT'] },
   family: { to: '/app/family', label: 'متابعة الأبناء', icon: HeartHandshake, roles: ['PARENT'] },
   familyFinance: { to: '/app/family/finance', label: 'مصروفات الأبناء', icon: Wallet, roles: ['PARENT'] },
-  learning: { to: '/app/learning', label: 'مساحة التعلّم', icon: BookOpen, roles: ['STUDENT', 'TEACHER', ...ADMIN_ROLES, 'CONTENT_MANAGER'] },
+  learning: { to: '/app/learning', label: 'مساحة التعلّم', icon: BookOpen, roles: ['STUDENT', 'TEACHER', 'ASSISTANT', ...ADMIN_ROLES, 'CONTENT_MANAGER'] },
   schedule: { to: '/app/schedule', label: 'الجدول الدراسي', icon: CalendarDays, roles: ['STUDENT', 'PARENT', 'TEACHER', 'ASSISTANT', ...ADMIN_ROLES, 'CONTENT_MANAGER'] },
   students: { to: '/app/students', label: 'الطلاب', icon: Users, roles: [...ADMIN_ROLES, 'TEACHER', 'ASSISTANT'] },
   staff: { to: '/app/staff', label: 'المدرسون والفريق', icon: GraduationCap, roles: ADMIN_ROLES },
@@ -25,7 +26,7 @@ const ITEMS = {
   gateLog: { to: '/app/gate-log', label: 'الدخول والخروج', icon: DoorOpen, roles: [...ADMIN_ROLES, 'TEACHER', 'ASSISTANT'] },
   cardScanner: { to: '/app/card-scanner', label: 'قارئ الكارتات', icon: ScanLine, roles: [...ADMIN_ROLES, 'TEACHER', 'ASSISTANT'] },
   cards: { to: '/app/cards', label: 'إصدار الكارتات', icon: CreditCard, roles: ADMIN_ROLES },
-  reports: { to: '/app/reports', label: 'التقارير الدورية', icon: BarChart3, roles: [...ADMIN_ROLES, 'TEACHER', 'STUDENT', 'PARENT'] },
+  reports: { to: '/app/reports', label: 'التقارير الدورية', icon: BarChart3, roles: [...ADMIN_ROLES, 'TEACHER', 'ASSISTANT', 'STUDENT', 'PARENT'] },
   attendance: { to: '/app/attendance', label: 'الحضور', icon: CalendarCheck, roles: [...ADMIN_ROLES, 'TEACHER', 'ASSISTANT', 'STUDENT'] },
   exams: { to: '/app/exams', label: 'الامتحانات', icon: FileQuestion, roles: ['STUDENT', 'TEACHER', 'ASSISTANT', 'CONTENT_MANAGER', ...ADMIN_ROLES] },
   homework: { to: '/app/homework', label: 'الواجبات', icon: ClipboardList, roles: ['STUDENT', 'TEACHER', 'ASSISTANT', ...ADMIN_ROLES] },
@@ -33,7 +34,7 @@ const ITEMS = {
   certificates: { to: '/app/certificates', label: 'الشهادات', icon: Award, roles: ALL },
   leaderboard: { to: '/app/leaderboard', label: 'لوحة الشرف', icon: Trophy, roles: ALL },
   notifications: { to: '/app/notifications', label: 'الإشعارات', icon: Bell, roles: ALL },
-  support: { to: '/app/support', label: 'الاستفسارات والشكاوى', icon: MessagesSquare, roles: ['STUDENT', 'PARENT', 'TEACHER', 'SUPPORT', ...ADMIN_ROLES] },
+  support: { to: '/app/support', label: 'الاستفسارات والشكاوى', icon: MessagesSquare, roles: ['STUDENT', 'PARENT', 'TEACHER', 'ASSISTANT', 'SUPPORT', ...ADMIN_ROLES] },
   community: { to: '/app/community', label: 'المجتمع التعليمي', icon: MessagesSquare, roles: ALL },
   campaigns: { to: '/app/campaigns', label: 'الحملات التسويقية', icon: Megaphone, roles: [...ADMIN_ROLES, 'SUPPORT'] },
   rules: { to: '/app/rules', label: 'محرّك التنبيهات', icon: SlidersHorizontal, roles: ADMIN_ROLES },
@@ -58,7 +59,7 @@ const LAYOUTS = {
     ACCOUNT,
   ],
   teacher: [
-    { id: 'overview', title: 'نظرة عامة', items: ['dashboard', 'reports', 'schedule'] },
+    { id: 'overview', title: 'نظرة عامة', items: ['dashboard', 'assistantDesk', 'reports', 'schedule'] },
     { id: 'teaching', title: 'التدريس', items: ['academy', 'courses', 'learning', 'students'] },
     { id: 'assessment', title: 'التقييم', items: ['exams', 'homework', 'certificates'] },
     { id: 'students', title: 'متابعة الطلاب', items: ['attendance', 'gateLog', 'cardScanner', 'leaderboard'] },

@@ -25,10 +25,13 @@ public class CourseService {
     private final EnrollmentRepository enrollments;
     private final UserRepository users;
     private final com.manarah.academy.TeacherAcademyRepository academies;
+    private final com.manarah.academy.TeacherScope teacherScope;
 
     public CourseService(CourseRepository courses, CourseModuleRepository modules, LessonRepository lessons,
                          LessonMaterialRepository materials, EnrollmentRepository enrollments, UserRepository users,
-                         com.manarah.academy.TeacherAcademyRepository academies) {
+                         com.manarah.academy.TeacherAcademyRepository academies,
+                         com.manarah.academy.TeacherScope teacherScope) {
+        this.teacherScope = teacherScope;
         this.courses = courses;
         this.modules = modules;
         this.lessons = lessons;
@@ -87,7 +90,9 @@ public class CourseService {
         c.setGradeLevel(req.gradeLevel());
         c.setDescription(req.description());
         c.setPrice(req.price() != null ? req.price() : BigDecimal.ZERO);
-        c.setTeacherId(actor.getRole() == com.manarah.identity.domain.Role.TEACHER ? actor.getId() : req.teacherId());
+        // A teacher's own courses are theirs; an assistant inside a teacher's academy creates courses for that teacher.
+        Long acting = teacherScope.teacherIdFor(actor);
+        c.setTeacherId(acting != null ? acting : req.teacherId());
         if (c.getTeacherId() == null) {
             var teachers = users.findByTenantIdAndRole(tenantId, com.manarah.identity.domain.Role.TEACHER);
             if (teachers.size() == 1) c.setTeacherId(teachers.getFirst().getId());

@@ -14,10 +14,12 @@ import {
   Trash2,
   Wallet,
   KeyRound,
+  UserCog,
   Copy,
   Ban,
 } from "lucide-react";
 import CoursePaymentCodes from "../features/payments/CoursePaymentCodes";
+import AssistantAccounts from "../features/assistant/AssistantAccounts";
 import api from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { PageLoader, Spinner } from "../components/ui";
@@ -54,7 +56,8 @@ export default function AcademySettings() {
   const admin = ["SUPER_ADMIN", "BRANCH_ADMIN", "ACADEMIC_MANAGER"].includes(
     user.role,
   );
-  const allowed = admin || user.role === "TEACHER";
+  const assistant = user.role === "ASSISTANT";
+  const allowed = admin || user.role === "TEACHER" || assistant;
   const [items, setItems] = useState(null),
     [selected, setSelected] = useState(""),
     [form, setForm] = useState(null);
@@ -420,6 +423,7 @@ export default function AcademySettings() {
               ["videos", "دروس الفيديو", PlayCircle],
               ["students", "حسابات الطلاب والكورسات", Users],
               ["payments", "الدفع وأكواد الاشتراك", Wallet],
+              ...(assistant ? [] : [["assistants", "المساعدون", UserCog]]),
               ...(admin ? [["credentials", "دخول المدرس", LockKeyhole]] : []),
             ].map(([key, label, Icon]) => (
               <button
@@ -490,6 +494,7 @@ export default function AcademySettings() {
                   <input
                     type="checkbox"
                     checked={form.published}
+                    disabled={assistant}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, published: e.target.checked }))
                     }
@@ -683,7 +688,7 @@ export default function AcademySettings() {
           )}
           {tab === "payments" && (
             <div className="space-y-6">
-              <form onSubmit={save} className="card space-y-4 p-6">
+              {!assistant && (<form onSubmit={save} className="card space-y-4 p-6">
                 <h3 className="font-extrabold">طرق الدفع اليدوي</h3>
                 <p className="text-sm leading-7 text-ink-500">
                   ديّ الأرقام اللي هتظهر للطالب في صفحة الدفع عشان يحوّل عليها. بعد ما تستلم التحويل، وّلد كوداً من قسم "أكواد الاشتراك" تحت وابعته للطالب — بمجرد ما يكتبه هيتفتحله الكورس فوراً من غير بوابة دفع إلكتروني.
@@ -717,10 +722,11 @@ export default function AcademySettings() {
                 <button disabled={busy} className="btn-primary">
                   {busy ? <Spinner /> : <Save size={17} />} حفظ طرق الدفع
                 </button>
-              </form>
+              </form>)}
               <CoursePaymentCodes courses={courses} />
             </div>
           )}
+          {tab === "assistants" && !assistant && <AssistantAccounts academyId={selected} />}
           {tab === "credentials" && admin && (
             <form
               className="card p-6 max-w-2xl space-y-5"

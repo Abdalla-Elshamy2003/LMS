@@ -26,11 +26,13 @@ public class LearningService {
     private final GuardianRepository guardians;
     private final StudentGuardianRepository studentGuardians;
     private final com.manarah.academy.TeacherAcademyRepository academies;
+    private final com.manarah.academy.TeacherScope teacherScope;
 
     public LearningService(CourseRepository courses, CourseModuleRepository modules, LessonRepository lessons,
             LessonProgressRepository progress, EnrollmentRepository enrollments, StudentRepository students, CourseService content,
             GuardianRepository guardians, StudentGuardianRepository studentGuardians,
-            com.manarah.academy.TeacherAcademyRepository academies) {
+            com.manarah.academy.TeacherAcademyRepository academies, com.manarah.academy.TeacherScope teacherScope) {
+        this.teacherScope = teacherScope;
         this.courses = courses; this.modules = modules; this.lessons = lessons; this.progress = progress;
         this.enrollments = enrollments; this.students = students; this.content = content;
         this.guardians = guardians; this.studentGuardians = studentGuardians;
@@ -42,7 +44,9 @@ public class LearningService {
                 .orElseThrow(() -> NotFoundException.of("الكورس", courseId));
         if (actor.isAdmin() || actor.getRole() == Role.CONTENT_MANAGER) return c;
         if (actor.getRole() == Role.TEACHER && Objects.equals(c.getTeacherId(), actor.getId())) return c;
-        if (!write && actor.getRole() == Role.ASSISTANT) return c;
+        // An assistant edits their own teacher's courses; an assistant with no single teacher to act for
+        // (a school tenant) keeps the read-only access the role always had.
+        if (actor.getRole() == Role.ASSISTANT && (!write || teacherScope.actsForTeacher(actor))) return c;
         if (!write && actor.getRole() == Role.PARENT) {
             var guardian = guardians.findByTenantIdAndUserId(actor.getTenantId(), actor.getId());
             if (guardian.isPresent() && studentGuardians.findByTenantIdAndGuardianId(actor.getTenantId(), guardian.get().getId()).stream()
@@ -99,7 +103,7 @@ public class LearningService {
             available = courses.findByTenantIdAndTeacherId(actor.getTenantId(), actor.getId());
         } else if (actor.isAdmin()) {
             available = courses.findByTenantIdIn(academies.visibleTenantIds(actor.getTenantId()));
-        } else if (actor.getRole() == Role.CONTENT_MANAGER) {
+        } else if (actor.getRole() == Role.CONTENT_MANAGER || actor.getRole() == Role.ASSISTANT) {
             available = courses.findByTenantId(actor.getTenantId());
         } else throw new ForbiddenException("غير مسموح");
         Set<Long> done = new HashSet<>();

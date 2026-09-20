@@ -71,6 +71,7 @@ class SecurityRegressionTest {
     @Autowired PasswordEncoder passwords;
     @Autowired JwtService jwt;
     @Autowired com.manarah.payment.repo.CoursePurchaseOrderRepository purchaseOrders;
+    @Autowired org.springframework.data.redis.core.StringRedisTemplate redis;
 
     private record Session(String token, String cookie) {}
 
@@ -134,8 +135,20 @@ class SecurityRegressionTest {
         }
     }
 
+    private boolean redisReachable() {
+        try {
+            redis.hasKey("redis-reachability-probe");
+            return true;
+        } catch (org.springframework.dao.DataAccessException e) {
+            return false;
+        }
+    }
+
     @Test
     void bruteForceIsRateLimitedWithoutAccountEnumeration() throws Exception {
+        // The limiter keeps its counters in Redis (and deliberately fails open without it), so this can only be
+        // proven where Redis runs - CI provides it. Skip, with the reason, instead of failing on a machine without one.
+        org.junit.jupiter.api.Assumptions.assumeTrue(redisReachable(), "needs a reachable Redis, as in CI");
         String body = "{\"email\":\"nobody-security-test@example.com\",\"password\":\"wrong-password-123\"}";
         for (int i = 0; i < 8; i++) mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.message").value("بيانات الدخول غير صحيحة"));

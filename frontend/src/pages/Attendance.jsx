@@ -182,7 +182,7 @@ function StudentCheckInModal({ session, onClose }) {
 
 function StaffAttendance() {
   const { user } = useAuth()
-  const isTeacher = user.role === 'TEACHER'
+  const isTeacher = ['TEACHER', 'ASSISTANT'].includes(user.role)
   const [sessions, setSessions] = useState(null)
   const [active, setActive] = useState(null)
   const [qr, setQr] = useState(null)

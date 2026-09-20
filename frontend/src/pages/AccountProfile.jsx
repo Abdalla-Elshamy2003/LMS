@@ -13,6 +13,7 @@ import { apiErrorMessage } from '../lib/apiError'
 const roleLinks = {
   STUDENT: [['/app/learning', 'مساحة التعلّم', BookOpen], ['/app/schedule', 'جدولي', CalendarDays], ['/app/notifications', 'إشعاراتي', Bell], ['/app/support', 'الدعم', LifeBuoy]],
   PARENT: [['/app/family', 'متابعة الأبناء', GraduationCap], ['/app/schedule', 'جداول الأبناء', CalendarDays], ['/app/notifications', 'الإشعارات', Bell], ['/app/support', 'التواصل', LifeBuoy]],
+  ASSISTANT: [['/app/assistant', 'مكتب اليوم والمهام', GraduationCap], ['/app/learning', 'استوديو المحتوى', BookOpen], ['/app/schedule', 'جدولي', CalendarDays], ['/app/support', 'تواصل الطلاب', LifeBuoy]],
   TEACHER: [['/app/learning', 'استوديو المحتوى', BookOpen], ['/app/schedule', 'جدولي', CalendarDays], ['/app/notifications', 'الإشعارات', Bell], ['/app/support', 'تواصل الطلاب', LifeBuoy]],
 }
 

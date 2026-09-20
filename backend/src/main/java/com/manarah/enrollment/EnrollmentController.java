@@ -70,7 +70,7 @@ public class EnrollmentController {
     }
 
     @PostMapping("/groups")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT')")
     public StudyGroup createGroup(@AuthenticationPrincipal UserPrincipal actor, @Valid @RequestBody CreateGroupRequest req) {
         service.assertCanManageCourse(actor, req.courseId());
         return service.createGroup(req.courseId(), req.name(), req.schedule(), req.teacherId(),

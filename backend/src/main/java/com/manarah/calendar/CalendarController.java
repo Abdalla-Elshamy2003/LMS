@@ -30,7 +30,7 @@ public class CalendarController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT')")
     public CalendarEvent create(@RequestBody EventRequest req) {
         CalendarEvent e = new CalendarEvent();
         e.setTenantId(TenantContext.require());
