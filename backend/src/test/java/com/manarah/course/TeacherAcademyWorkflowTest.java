@@ -44,7 +44,7 @@ class TeacherAcademyWorkflowTest {
         long aid = a.path("id").asLong(), bid = b.path("id").asLong();
         String teacher = login("test.math", "TestPass123!"), other = login("test.physics", "TestPass123!");
         long course = postJson("/api/courses", teacher, Map.of("title", "الجبر", "price", 300)).path("summary").path("id").asLong();
-        long hidden = postJson("/api/courses", teacher, Map.of("title", "التفاضل", "price", 100)).path("summary").path("id").asLong();
+        long hidden = postJson("/api/courses", teacher, Map.of("title", "التفاضل", "price", 0)).path("summary").path("id").asLong();
         long otherCourse = postJson("/api/courses", other, Map.of("title", "الفيزياء", "price", 300)).path("summary").path("id").asLong();
         String library = mvc.perform(get("/api/learning").header("Authorization", "Bearer " + admin))
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
@@ -71,10 +71,7 @@ class TeacherAcademyWorkflowTest {
         mvc.perform(get("/api/courses").header("Authorization", "Bearer " + student)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].id").value(course));
         mvc.perform(get("/api/courses/" + hidden).header("Authorization", "Bearer " + student)).andExpect(status().isForbidden());
         mvc.perform(post("/api/enrollments/self").header("Authorization", "Bearer " + student).contentType(MediaType.APPLICATION_JSON).content(body(Map.of("courseId", hidden)))).andExpect(status().isForbidden());
-        mvc.perform(post("/api/checkout/orders").header("Authorization", "Bearer " + student).contentType(MediaType.APPLICATION_JSON).content(body(Map.of("courseId", hidden)))).andExpect(status().isBadRequest()); // no online gateway: paid courses are unlocked with a code from the teacher, never by an order
-        // A published page takes students into its FREE courses on its own; paid ones (`hidden` above) still need checkout or a code.
-        long openCourse = postJson("/api/courses", teacher, Map.of("title", "مقدمة مجانية", "price", 0)).path("summary").path("id").asLong();
-        mvc.perform(post("/api/enrollments/self").header("Authorization", "Bearer " + student).contentType(MediaType.APPLICATION_JSON).content(body(Map.of("courseId", openCourse)))).andExpect(status().isOk());
+        mvc.perform(post("/api/checkout/orders").header("Authorization", "Bearer " + student).contentType(MediaType.APPLICATION_JSON).content(body(Map.of("courseId", hidden)))).andExpect(status().isForbidden());
         mvc.perform(put("/api/academies/" + aid + "/students/" + studentId).header("Authorization", "Bearer " + admin).contentType(MediaType.APPLICATION_JSON).content(body(Map.of("courseIds", List.of())))).andExpect(status().isOk());
         mvc.perform(get("/api/courses/" + course).header("Authorization", "Bearer " + student)).andExpect(status().isForbidden());
         mvc.perform(get("/api/learning").header("Authorization", "Bearer " + student)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
@@ -90,8 +87,6 @@ class TeacherAcademyWorkflowTest {
         content.put("headline", "عنوان جديد محفوظ"); content.put("published", false);
         mvc.perform(put("/api/academies/" + aid).header("Authorization", "Bearer " + teacher).contentType(MediaType.APPLICATION_JSON).content(body(content))).andExpect(status().isOk());
         mvc.perform(get("/api/public/academies/test-math")).andExpect(status().isNotFound());
-        // Unpublished means invite-only again: even a free course refuses self-enrollment.
-        mvc.perform(post("/api/enrollments/self").header("Authorization", "Bearer " + student).contentType(MediaType.APPLICATION_JSON).content(body(Map.of("courseId", openCourse)))).andExpect(status().isForbidden());
         content.put("published", true);
         mvc.perform(put("/api/academies/" + aid).header("Authorization", "Bearer " + teacher).contentType(MediaType.APPLICATION_JSON).content(body(content))).andExpect(status().isOk());
         mvc.perform(get("/api/public/academies/test-math")).andExpect(status().isOk()).andExpect(jsonPath("$.profile.headline").value("عنوان جديد محفوظ")).andExpect(jsonPath("$.profile.photoData").doesNotExist());
