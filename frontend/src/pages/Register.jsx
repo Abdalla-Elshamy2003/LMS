@@ -335,6 +335,7 @@ export default function Register() {
               <p className="rounded-2xl bg-brand-50 p-4 text-sm leading-7 text-brand-800">
                 ده كود الدخول الخاص بيك — بتدخل بيه الحصة، وفيه كل بياناتك.
                 احتفظ بيه، وهتلاقيه دايماً في صفحة <b>ملفك الشخصي</b>.
+                وهنبعت لك نسخة منه مع بياناتك على <b>{form.email.trim()}</b> (شوف الـ Spam لو ما وصلتش).
               </p>
 
               <div className="flex flex-wrap justify-center gap-2">
