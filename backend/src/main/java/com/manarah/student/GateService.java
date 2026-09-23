@@ -47,11 +47,14 @@ public class GateService {
     private final ScannedCodeResolver codeResolver;
     private final StudentPassTokens passTokens;
     private final StudentCourseSummaries courseSummaries;
+    private final com.manarah.academy.LinkedStudentAccounts linked;
 
     public GateService(StudentRepository students, StudentGateLogRepository logs, UserRepository users,
                        com.manarah.academy.TeacherAcademyRepository academies, ScannedCodeResolver codeResolver,
-                       StudentPassTokens passTokens, StudentCourseSummaries courseSummaries) {
+                       StudentPassTokens passTokens, StudentCourseSummaries courseSummaries,
+                       com.manarah.academy.LinkedStudentAccounts linked) {
         this.courseSummaries = courseSummaries;
+        this.linked = linked;
         this.students = students;
         this.logs = logs;
         this.users = users;
@@ -64,9 +67,15 @@ public class GateService {
                            String gradeLevel, String school, String phone, String status,
                            String academicStatus, String cardUid, String lastDirection, Instant lastAt) {}
 
+    /**
+     * What the scanner shows. {@code teacher} is who the attendance was recorded with — shown large so nobody
+     * wonders. When the card belongs to a student several of the caller's teachers share (a head-office admin at
+     * the door), nothing is recorded yet: {@code choices} lists those teachers and the scan is repeated with one.
+     */
     public record ScanResult(Long studentId, String code, String fullName, String grade, String phone,
                              String direction, Instant at, String message,
-                             List<StudentCourseSummaries.Line> courses) {}
+                             List<StudentCourseSummaries.Line> courses, Teacher teacher, List<Teacher> choices) {}
+    public record Teacher(Long academyId, String name, String subject, String photoUrl) {}
 
     public record LogRow(Long id, Long studentId, String code, String fullName, String grade,
                          String direction, Instant at, String recordedBy) {}
@@ -77,6 +86,13 @@ public class GateService {
         Long tenantId = TenantContext.require();
         Student s = students.findByTenantIdAndUserId(tenantId, actor.getId())
                 .orElseThrow(() -> new NotFoundException("لا يوجد ملف طالب مرتبط بالحساب"));
+        // One QR for all of a student's teachers: always the one from the account they sign in with, which
+        // every teacher they joined recognises (see resolve).
+        var owner = users.findById(actor.getId()).map(linked::owner).orElse(null);
+        if (owner != null && !owner.getId().equals(actor.getId())) {
+            var home = students.findByTenantIdAndUserId(owner.getTenantId(), owner.getId());
+            if (home.isPresent()) return toPass(passTokens.ensure(home.get()));
+        }
         return toPass(passTokens.ensure(s));
     }
 
@@ -104,8 +120,21 @@ public class GateService {
      */
     @Transactional
     public ScanResult scan(UserPrincipal actor, String token) {
+        return scan(actor, token, null);
+    }
+
+    /** As above; {@code academyId} picks the teacher when the card matches more than one of the caller's. */
+    @Transactional
+    public ScanResult scan(UserPrincipal actor, String token, Long academyId) {
         requireStaff(actor);
-        return record(actor, resolve(actor, token));
+        List<Student> here = resolve(actor, token, academyId);
+        if (here.size() > 1) {
+            Student any = here.get(0);
+            return new ScanResult(null, null, any.getFullName(), any.getGrade(), null, null, null,
+                    "الطالب ده مشترك عند أكتر من مدرس هنا — اختار المدرس اللي هيتسجل عنده الحضور", List.of(), null,
+                    here.stream().map(s -> teacherOf(s.getTenantId())).filter(Objects::nonNull).toList());
+        }
+        return record(actor, here.get(0));
     }
 
     /**
@@ -121,12 +150,36 @@ public class GateService {
      * Trying them in that order costs at most three indexed lookups and means one endpoint serves
      * every kind of card the academy already owns.
      */
-    private Student resolve(UserPrincipal actor, String raw) {
+    private List<Student> resolve(UserPrincipal actor, String raw, Long academyId) {
         if (raw == null || raw.isBlank()) throw new NotFoundException("لم يصل أي كود من القارئ");
         // Resolve across the academies this tenant manages, not just its own: a head-office admin
         // scanning at the door would otherwise never find a student who lives in an academy tenant.
-        return codeResolver.resolve(scope(actor), raw)
-                .orElseThrow(() -> new NotFoundException("هذا الكارت غير معروف أو لا يخص طالباً في هذه المساحة"));
+        List<Long> scope = scope(actor);
+        Student hit = codeResolver.resolve(scope, raw).orElse(null);
+        // One QR for all of a student's teachers: a pass token minted in another teacher's space still identifies
+        // the student here. Only the random pass token travels — student codes and card UIDs are per space and
+        // are never looked up outside the caller's own, so no teacher can probe another teacher's students.
+        if (hit == null) hit = students.findByPassToken(com.manarah.student.scan.ScannedCode.normalize(raw)).orElse(null);
+        if (hit == null) throw new NotFoundException("هذا الكارت غير معروف أو لا يخص طالباً في هذه المساحة");
+
+        Map<Long, Student> seats = new java.util.LinkedHashMap<>();
+        if (scope.contains(hit.getTenantId())) seats.put(hit.getTenantId(), hit);
+        List<Long> sameStudent = linked.userIdsOfStudent(hit);
+        if (!sameStudent.isEmpty())
+            for (Student s : students.findByTenantIdInAndUserIdIn(scope, sameStudent))
+                if (!"ARCHIVED".equals(s.getStatus())) seats.putIfAbsent(s.getTenantId(), s);
+        if (academyId != null) {
+            Long tenantId = academies.findById(academyId).map(a -> a.getTenantId()).orElse(null);
+            seats.keySet().removeIf(t -> !t.equals(tenantId));
+        }
+        // Deliberately says nothing about who the student is or which teacher they do have.
+        if (seats.isEmpty()) throw new ForbiddenException("الكارت ده لطالب مش مشترك عندك — مفيش حضور اتسجل");
+        return List.copyOf(seats.values());
+    }
+
+    private Teacher teacherOf(Long tenantId) {
+        return academies.findByTenantId(tenantId).map(a -> new Teacher(a.getId(), a.getName(),
+                Objects.toString(a.getSubject(), ""), Objects.toString(a.getPhotoUrl(), ""))).orElse(null);
     }
 
     /**
@@ -180,9 +233,13 @@ public class GateService {
         log.setAt(now);
         logs.save(log);
 
+        Teacher teacher = teacherOf(tenantId);
+        String message = teacher == null
+                ? ("IN".equals(direction) ? "تم تسجيل الدخول" : "تم تسجيل الخروج")
+                : ("IN".equals(direction) ? "اتسجل الحضور عند " : "اتسجل الانصراف من عند ") + teacher.name()
+                  + (teacher.subject().isBlank() ? "" : " — " + teacher.subject());
         return new ScanResult(s.getId(), s.getCode(), s.getFullName(), s.getGrade(), s.getPhone(),
-                direction, now, "IN".equals(direction) ? "تم تسجيل الدخول" : "تم تسجيل الخروج",
-                courseSummaries.forStudent(tenantId, s.getId()));
+                direction, now, message, courseSummaries.forStudent(tenantId, s.getId()), teacher, List.of());
     }
 
     /** Everything logged on a given day (defaults to today), newest first. */

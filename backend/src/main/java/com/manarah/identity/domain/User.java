@@ -55,6 +55,13 @@ public class User extends BaseEntity {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    /**
+     * Set on the row a student gets when they join another teacher: the account they sign in with. Such a row has
+     * a placeholder email and an unusable password; sessions for it live and die with the main account's.
+     */
+    @Column(name = "primary_user_id")
+    private Long primaryUserId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 }

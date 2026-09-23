@@ -183,11 +183,13 @@ public class CourseController {
 
     public record RedeemCodeRequest(String code) {}
 
-    /** A student who's already logged in unlocking another course from the same teacher. */
+    /** A logged-in student unlocking a course with a teacher's code — their current teacher or, after paying them, another one. */
     @PostMapping("/redeem-code")
     @PreAuthorize("hasRole('STUDENT')")
-    public void redeemCode(@AuthenticationPrincipal UserPrincipal actor, @RequestBody RedeemCodeRequest req) {
-        accessCodeService.redeemForCurrentStudent(actor, req.code());
+    public java.util.Map<String, Object> redeemCode(@AuthenticationPrincipal UserPrincipal actor, @RequestBody RedeemCodeRequest req) {
+        Long switchTo = accessCodeService.redeemForCurrentStudent(actor, req.code());
+        // A code from another teacher opened the course with that teacher — the app switches the student there.
+        return switchTo == null ? java.util.Map.of() : java.util.Map.of("switchTo", switchTo);
     }
 
     /** Sets (or clears, with 0/null) a course's promotional discount — used by the marketing

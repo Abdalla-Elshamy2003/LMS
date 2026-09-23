@@ -40,13 +40,18 @@ public class CourseAccessCodeService {
     private final LearningService learning;
     private final EnrollmentRepository enrollments;
     private final StudentRepository students;
+    private final com.manarah.identity.repo.UserRepository users;
+    private final com.manarah.academy.LinkedStudentAccounts linked;
 
     public CourseAccessCodeService(CourseAccessCodeRepository codes, LearningService learning,
-                                   EnrollmentRepository enrollments, StudentRepository students) {
+                                   EnrollmentRepository enrollments, StudentRepository students,
+                                   com.manarah.identity.repo.UserRepository users, com.manarah.academy.LinkedStudentAccounts linked) {
         this.codes = codes;
         this.learning = learning;
         this.enrollments = enrollments;
         this.students = students;
+        this.users = users;
+        this.linked = linked;
     }
 
     @Transactional
@@ -115,15 +120,24 @@ public class CourseAccessCodeService {
         enrollments.save(e);
     }
 
-    /** For a student already logged in (e.g. unlocking a second course from the same teacher). */
+    /**
+     * For a student already logged in. A code from their current teacher unlocks the course here. A code from
+     * another teacher means the student paid that teacher: they join that teacher with the same account and the
+     * course opens there — the returned user id is the seat to switch into (null when nothing moved).
+     */
     @Transactional
-    public void redeemForCurrentStudent(UserPrincipal actor, String rawCode) {
+    public Long redeemForCurrentStudent(UserPrincipal actor, String rawCode) {
         var code = findRedeemable(rawCode);
-        if (!code.getTenantId().equals(actor.getTenantId()))
-            throw new ForbiddenException("هذا الكود خاص بمساحة مستر أخرى");
-        Student s = students.findByTenantIdAndUserId(actor.getTenantId(), actor.getId())
-                .orElseThrow(() -> new BadRequestException("هذا الحساب غير مرتبط بطالب"));
-        redeem(code, s.getId());
+        if (code.getTenantId().equals(actor.getTenantId())) {
+            Student s = students.findByTenantIdAndUserId(actor.getTenantId(), actor.getId())
+                    .orElseThrow(() -> new BadRequestException("هذا الحساب غير مرتبط بطالب"));
+            redeem(code, s.getId());
+            return null;
+        }
+        var me = users.findById(actor.getId()).orElseThrow(() -> new ForbiddenException("هذا الكود خاص بمساحة مستر أخرى"));
+        Student seat = linked.rowForCode(me, code.getTenantId());
+        redeem(code, seat.getId());
+        return seat.getUserId();
     }
 
     private CodeView toView(CourseAccessCode c) {

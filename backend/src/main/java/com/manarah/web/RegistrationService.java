@@ -30,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -64,14 +65,20 @@ public class RegistrationService {
     private final CourseCheckoutService checkout;
     private final com.manarah.academy.AcademyAccess academyAccess;
     private final ApplicationEventPublisher events;
+    private final com.manarah.academy.LinkedStudentAccounts linked;
+    private final com.manarah.security.auth.LoginAttemptLimiter loginAttempts;
 
     public RegistrationService(TenantRepository tenants, BranchRepository branches, CourseRepository courses,
                                StudentRepository students, GuardianRepository guardians,
                                StudentGuardianRepository links, EnrollmentRepository enrollments,
                                UserRepository users, PasswordEncoder passwordEncoder, JwtService jwtService,
                                CourseCheckoutService checkout, com.manarah.academy.AcademyAccess academyAccess,
-                               com.manarah.payment.CourseAccessCodeService accessCodes, ApplicationEventPublisher events) {
+                               com.manarah.payment.CourseAccessCodeService accessCodes, ApplicationEventPublisher events,
+                               com.manarah.academy.LinkedStudentAccounts linked,
+                               com.manarah.security.auth.LoginAttemptLimiter loginAttempts) {
         this.events = events;
+        this.linked = linked;
+        this.loginAttempts = loginAttempts;
         this.accessCodes = accessCodes;
         this.academyAccess = academyAccess;
         this.tenants = tenants;
@@ -135,7 +142,7 @@ public class RegistrationService {
             enrollments.save(e);
         }
 
-        String token = jwtService.generateAccessToken(acc.user);
+        String token = linked.tokenFor(acc.user);
         return new RegistrationResult(token, "Bearer", jwtService.getAccessTokenTtlMinutes(),
                 acc.student.getCode(), "تم إنشاء حسابك بنجاح! أهلاً بك في منارة.");
     }
@@ -168,7 +175,7 @@ public class RegistrationService {
         var order = checkout.openOrder(tenantId, acc.user.getId(), acc.student.getId(),
                 acc.student.getFullName(), cmd.email().trim(), cmd.phone(), course.getId());
 
-        String token = jwtService.generateAccessToken(acc.user);
+        String token = linked.tokenFor(acc.user);
         return new CheckoutResult(token, "Bearer", jwtService.getAccessTokenTtlMinutes(), acc.student.getCode(),
                 order.reference(), order.amount(), order.status(), order.checkoutUrl(), order.liveGateway(),
                 course.getTitle(), checkoutMessage(order));
@@ -185,7 +192,7 @@ public class RegistrationService {
                 cmd.grade(), cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone());
         accessCodes.redeem(code, acc.student.getId());
 
-        String token = jwtService.generateAccessToken(acc.user);
+        String token = linked.tokenFor(acc.user);
         return new RegistrationResult(token, "Bearer", jwtService.getAccessTokenTtlMinutes(),
                 acc.student.getCode(), "تم تفعيل اشتراكك في \"" + course.getTitle() + "\" بنجاح!");
     }
@@ -227,6 +234,25 @@ public class RegistrationService {
         String trimmedEmail = email.trim();
         if (users.existsByTenantIdAndEmailIgnoreCase(tenantId, trimmedEmail)) {
             throw new ConflictException("هذا البريد الإلكتروني مسجَّل بالفعل، جرّب تسجيل الدخول بدلاً من ذلك");
+        }
+        // The address already signs in with another teacher. With that account's password this is the same
+        // student joining one more teacher: link them instead of creating a second account they could never
+        // sign in to. The password check counts against the same limit as sign-in, so this is no easier to guess.
+        List<User> elsewhere = users.findAllByEmailIgnoreCase(trimmedEmail).stream()
+                .filter(u -> u.getPrimaryUserId() == null).toList();
+        if (!elsewhere.isEmpty()) {
+            loginAttempts.assertAllowed(trimmedEmail);
+            User owner = elsewhere.stream()
+                    .filter(u -> "ACTIVE".equals(u.getStatus()) && u.getRole() == Role.STUDENT)
+                    .filter(u -> passwordEncoder.matches(password, u.getPasswordHash()))
+                    .findFirst().orElse(null);
+            if (owner == null) {
+                loginAttempts.failed(trimmedEmail);
+                throw new ConflictException("الإيميل ده عنده حساب على منارة. سجّل دخولك بيه وانضم للمستر من صفحته، أو اكتب هنا نفس كلمة المرور بتاعته.");
+            }
+            loginAttempts.succeeded(trimmedEmail);
+            Student joined = linked.linkAtRegistration(owner, tenantId, fullName, phone, grade, educationType);
+            return new Account(users.findById(joined.getUserId()).orElseThrow(), joined);
         }
 
         Long branchId = branches.findByTenantIdOrderByName(tenantId).stream()

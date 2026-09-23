@@ -86,6 +86,10 @@ public class UserService {
     public void changePassword(UserPrincipal actor, PasswordRequest req) {
         PasswordPolicy.requireStrong(req.newPassword());
         User u = users.findByTenantIdAndId(actor.getTenantId(), actor.getId()).orElseThrow(() -> NotFoundException.of("المستخدم", actor.getId()));
+        // A student inside another teacher's space still signs in with their own account — that is the password
+        // being changed, and changing it ends their sessions with every teacher.
+        if (u.getPrimaryUserId() != null)
+            u = users.findById(u.getPrimaryUserId()).orElseThrow(() -> NotFoundException.of("المستخدم", actor.getId()));
         if (req.currentPassword() == null || !passwordEncoder.matches(req.currentPassword(), u.getPasswordHash()))
             throw new BadRequestException("كلمة المرور الحالية غير صحيحة");
         u.setPasswordHash(passwordEncoder.encode(req.newPassword()));

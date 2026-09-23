@@ -28,11 +28,12 @@ public class AcademyController {
     @GetMapping("/public/home")
     public Object home() {
         var published = academies.findByPublishedTrueOrderByNameAsc();
-        long courseCount = 0, studentCount = 0;
-        for (var a : published) {
+        long courseCount = 0;
+        for (var a : published)
             courseCount += courses.findByTenantIdAndTeacherId(a.getTenantId(), a.getTeacherId()).stream().filter(c -> "ACTIVE".equals(c.getStatus())).count();
-            studentCount += students.countByTenantId(a.getTenantId());
-        }
+        // A student with several teachers is one student, not one per teacher.
+        var tenantIds = published.stream().map(TeacherAcademy::getTenantId).toList();
+        long studentCount = tenantIds.isEmpty() ? 0 : students.countPeople(tenantIds) + students.countByTenantIdInAndUserIdIsNull(tenantIds);
         return Map.of("stats", Map.of("teachers", published.size(), "courses", courseCount, "students", studentCount),
                 "teachers", directory(), "bundles", bundles.publicCards());
     }

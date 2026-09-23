@@ -34,8 +34,9 @@ public class GateController {
 
     /** Where a scanned pass lands — staff only; the direction is worked out server-side. */
     @PostMapping("/scan/{token}")
-    public GateService.ScanResult scan(@AuthenticationPrincipal UserPrincipal actor, @PathVariable String token) {
-        return service.scan(actor, token);
+    public GateService.ScanResult scan(@AuthenticationPrincipal UserPrincipal actor, @PathVariable String token,
+                                       @RequestParam(required = false) Long academyId) {
+        return service.scan(actor, token, academyId);
     }
 
     /**
@@ -46,10 +47,11 @@ public class GateController {
     @PostMapping("/scan")
     public GateService.ScanResult scanCard(@AuthenticationPrincipal UserPrincipal actor,
                                            @RequestBody ScanBody body) {
-        return service.scan(actor, body.code());
+        return service.scan(actor, body.code(), body.academyId());
     }
 
-    public record ScanBody(String code) {}
+    /** {@code academyId} is only sent back when a scan asked which teacher to record the attendance with. */
+    public record ScanBody(String code, Long academyId) {}
 
     public record CardBody(String cardUid) {}
 

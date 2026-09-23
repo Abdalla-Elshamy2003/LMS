@@ -28,11 +28,13 @@ public class AcademyService {
     private final EnrollmentRepository enrollments;
     private final PasswordEncoder passwords;
     private final com.manarah.audit.AuditService audit;
+    private final LinkedStudentAccounts linked;
     public AcademyService(TeacherAcademyRepository academies, TenantRepository tenants, BranchRepository branches,
-            UserRepository users, StudentRepository students, CourseRepository courses, EnrollmentRepository enrollments, PasswordEncoder passwords, com.manarah.audit.AuditService audit) {
+            UserRepository users, StudentRepository students, CourseRepository courses, EnrollmentRepository enrollments, PasswordEncoder passwords,
+            com.manarah.audit.AuditService audit, LinkedStudentAccounts linked) {
         this.academies = academies; this.tenants = tenants; this.branches = branches; this.users = users;
         this.students = students; this.courses = courses; this.enrollments = enrollments; this.passwords = passwords;
-        this.audit = audit;
+        this.audit = audit; this.linked = linked;
     }
     /** Status for a student removed from an academy — see {@link #removeStudent}. */
     private static final String ARCHIVED = "ARCHIVED";
@@ -189,8 +191,11 @@ public class AcademyService {
         var a = manage(actor, id);
         return students.findByTenantId(a.getTenantId()).stream()
             .filter(s -> s.getUserId() != null && !ARCHIVED.equals(s.getStatus())).map(s -> {
-            var u = users.findById(s.getUserId()).orElseThrow();
+            // A student who joined from another teacher signs in with their own account: show that login, not
+            // the placeholder on this space's row.
+            var u = linked.owner(users.findById(s.getUserId()).orElseThrow());
             return Map.<String,Object>of("id", s.getId(), "fullName", s.getFullName(), "username", Objects.toString(u.getUsername(), u.getEmail()),
+                "linked", !u.getId().equals(s.getUserId()),
                 "courseIds", enrollments.findByTenantIdAndStudentId(a.getTenantId(), s.getId()).stream()
                 .filter(e -> Set.of("ACTIVE", "COMPLETED").contains(e.getStatus())).map(Enrollment::getCourseId).toList());
         }).toList();
@@ -232,6 +237,9 @@ public class AcademyService {
         }
         if (req.password() != null && !req.password().isBlank()) {
             var u = users.findByTenantIdAndId(a.getTenantId(), s.getUserId()).orElseThrow();
+            // That password belongs to the student's own account, which other teachers rely on too.
+            if (u.getPrimaryUserId() != null)
+                throw new BadRequestException("الطالب ده داخل بحسابه اللي مشترك بيه مع مدرس تاني — كلمة المرور بيغيّرها هو من حسابه");
             credentials(u, u.getUsername(), req.password()); users.save(u);
         }
         replaceAccess(a, studentId, ids);
@@ -260,6 +268,9 @@ public class AcademyService {
         audit.record(actor, "ACADEMY_STUDENT_ARCHIVED", "Student", studentId, null, "academy=" + id);
         if (s.getUserId() == null) return;
         users.findByTenantIdAndId(a.getTenantId(), s.getUserId()).ifPresent(u -> {
+            // The account this student signs in with also opens their other teachers: while they still have one,
+            // leaving this teacher removes the seat here (done above) but not the login.
+            if (u.getPrimaryUserId() == null && linked.hasOtherTeachers(u, a.getTenantId())) return;
             u.setStatus(ARCHIVED);
             if (u.getUsername() != null && !u.getUsername().startsWith(FREED_PREFIX))
                 u.setUsername(FREED_PREFIX + u.getId() + "-" + u.getUsername());
@@ -330,7 +341,7 @@ public class AcademyService {
         String email = required(raw, 120).toLowerCase(Locale.ROOT);
         if (!EMAIL.matcher(email).matches()) throw new BadRequestException("البريد الإلكتروني غير صالح");
         // Login looks the address up across every academy, so it has to be unique platform-wide, not per tenant.
-        if (users.findByEmailIgnoreCase(email).isPresent()) throw new ConflictException("البريد الإلكتروني مستخدم بالفعل");
+        if (users.existsByEmailIgnoreCase(email)) throw new ConflictException("البريد الإلكتروني مستخدم بالفعل");
         return email;
     }
 

@@ -23,7 +23,6 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -87,8 +86,13 @@ public class PasswordResetService {
         String id = req.identifier() == null ? "" : req.identifier().trim();
         if (id.isEmpty()) throw new BadRequestException("اكتب البريد الإلكتروني أو اسم المستخدم");
 
-        Optional<User> found = id.contains("@") ? users.findByEmailIgnoreCase(id) : users.findByUsernameIgnoreCase(id);
-        User user = found.filter(u -> "ACTIVE".equals(u.getStatus())).orElse(null);
+        // Email is unique per teacher space only; of the accounts sharing an address, reset the one last used.
+        // Linked rows (a student's seat with another teacher) have no password of their own and are never picked.
+        List<User> found = id.contains("@") ? users.findAllByEmailIgnoreCase(id)
+                : users.findByUsernameIgnoreCase(id).map(List::of).orElse(List.of());
+        User user = found.stream().filter(u -> u.getPrimaryUserId() == null && "ACTIVE".equals(u.getStatus()))
+                .max(java.util.Comparator.comparing(User::getLastLoginAt, java.util.Comparator.nullsFirst(java.util.Comparator.naturalOrder())))
+                .orElse(null);
         if (user == null) return new GenericResult(GENERIC);
 
         // Any link issued earlier dies the moment a new one is asked for, so a forwarded old

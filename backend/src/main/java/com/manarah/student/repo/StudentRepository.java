@@ -59,4 +59,19 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
 
     @Query("SELECT COALESCE(AVG(s.overallPercent), 0) FROM Student s WHERE s.tenantId = :tenantId")
     double averageOverall(@Param("tenantId") Long tenantId);
+
+    /** One person's student rows inside the given teacher spaces (a student joined to several teachers has one per space). */
+    List<Student> findByTenantIdInAndUserIdIn(java.util.Collection<Long> tenantIds, java.util.Collection<Long> userIds);
+
+    /**
+     * Students across the given tenants, counting a person who joined several teachers once — the public counters
+     * must not inflate. Rows without a login count individually.
+     */
+    @Query("""
+            SELECT COUNT(DISTINCT COALESCE(u.primaryUserId, u.id)) FROM Student s, com.manarah.identity.domain.User u
+            WHERE u.id = s.userId AND s.tenantId IN :tenantIds
+            """)
+    long countPeople(@Param("tenantIds") java.util.Collection<Long> tenantIds);
+
+    long countByTenantIdInAndUserIdIsNull(java.util.Collection<Long> tenantIds);
 }

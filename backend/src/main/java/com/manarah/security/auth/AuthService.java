@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.Optional;
+import java.util.List;
 
 @Service
 public class AuthService {
@@ -19,14 +19,16 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final LoginAttemptLimiter loginAttempts;
+    private final com.manarah.academy.LinkedStudentAccounts linkedAccounts;
     private final String dummyPasswordHash;
 
     public AuthService(UserRepository users, PasswordEncoder passwordEncoder, JwtService jwtService,
-                       LoginAttemptLimiter loginAttempts) {
+                       LoginAttemptLimiter loginAttempts, com.manarah.academy.LinkedStudentAccounts linkedAccounts) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.loginAttempts = loginAttempts;
+        this.linkedAccounts = linkedAccounts;
         this.dummyPasswordHash = passwordEncoder.encode("timing-only-password-value");
     }
 
@@ -34,19 +36,37 @@ public class AuthService {
     public AuthDtos.TokenResponse login(AuthDtos.LoginRequest req) {
         String identifier = req.email().trim();
         loginAttempts.assertAllowed(identifier);
-        Optional<User> found = identifier.contains("@")
-                ? users.findByEmailIgnoreCase(identifier) : users.findByUsernameIgnoreCase(identifier);
-        User user = found.orElse(null);
-        boolean passwordMatches = passwordEncoder.matches(req.password(), user == null ? dummyPasswordHash : user.getPasswordHash());
-        if (user == null || !"ACTIVE".equals(user.getStatus()) || !passwordMatches) {
+        User user = authenticate(identifier, req.password());
+        if (user == null) {
             loginAttempts.failed(identifier);
             throw new UnauthorizedException("بيانات الدخول غير صحيحة");
         }
         loginAttempts.succeeded(identifier);
         user.setLastLoginAt(Instant.now());
-        String token = jwtService.generateAccessToken(user);
+        // A student lands in their own teacher space — or, if that teacher removed them, in one they still have.
+        User landing = linkedAccounts.landing(user);
+        String token = linkedAccounts.tokenFor(landing);
         return new AuthDtos.TokenResponse(token, "Bearer",
-                jwtService.getAccessTokenTtlMinutes(), toProfile(user));
+                jwtService.getAccessTokenTtlMinutes(), toProfile(landing));
+    }
+
+    /**
+     * The active account these credentials open, or null. Email is unique per teacher space only, so one address
+     * may belong to several accounts: take the one whose password matches. Linked rows (a student's seat with a
+     * second teacher) have placeholder emails and no usable password, so they never match here.
+     */
+    User authenticate(String identifier, String password) {
+        List<User> candidates = identifier.contains("@")
+                ? users.findAllByEmailIgnoreCase(identifier)
+                : users.findByUsernameIgnoreCase(identifier).map(List::of).orElse(List.of());
+        if (candidates.isEmpty()) {
+            passwordEncoder.matches(password, dummyPasswordHash); // same work whether or not the account exists
+            return null;
+        }
+        return candidates.stream()
+                .filter(u -> u.getPrimaryUserId() == null && "ACTIVE".equals(u.getStatus()))
+                .filter(u -> passwordEncoder.matches(password, u.getPasswordHash()))
+                .findFirst().orElse(null);
     }
 
     public AuthDtos.UserProfile me(UserPrincipal principal) {

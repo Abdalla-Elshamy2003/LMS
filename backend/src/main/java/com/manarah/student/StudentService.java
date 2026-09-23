@@ -189,10 +189,12 @@ public class StudentService {
                 s.getHomeworkRate(), s.getOverallPercent(), s.getBranchId(), s.getPhone(), loginEmail(s));
     }
 
-    /** The email the student signs in with. Accounts a teacher creates by username get a placeholder address, which is not shown. */
+    /** The email the student signs in with — for a student who joined from another teacher, their own account's.
+     *  Accounts a teacher creates by username get a placeholder address, which is not shown. */
     private String loginEmail(Student s) {
         if (s.getUserId() == null) return null;
-        return users.findById(s.getUserId()).map(u -> u.getEmail())
+        return users.findById(s.getUserId()).map(u -> u.getPrimaryUserId() == null ? u : users.findById(u.getPrimaryUserId()).orElse(u))
+                .map(u -> u.getEmail())
                 .filter(e -> e != null && !e.endsWith("@accounts.local")).orElse(null);
     }
 

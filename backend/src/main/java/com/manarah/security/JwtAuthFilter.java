@@ -48,7 +48,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 var currentUser = users.findById(tokenPrincipal.getId())
                         .filter(u -> "ACTIVE".equals(u.getStatus()))
                         .orElseThrow();
-                if (!jwtService.isCurrentFor(token, currentUser)) throw new IllegalArgumentException("Stale token");
+                // A student's row in another teacher's space has no credentials of its own: its sessions are only
+                // good while the account they sign in with is active and its password unchanged.
+                var versionOwner = currentUser.getPrimaryUserId() == null ? currentUser
+                        : users.findById(currentUser.getPrimaryUserId()).filter(u -> "ACTIVE".equals(u.getStatus())).orElseThrow();
+                if (!jwtService.isCurrentFor(token, currentUser, versionOwner)) throw new IllegalArgumentException("Stale token");
                 // Role, tenant and branch are authoritative database state, not stale JWT claims.
                 UserPrincipal principal = UserPrincipal.from(currentUser);
                 String scope = request.getHeader("X-Academy-Id");

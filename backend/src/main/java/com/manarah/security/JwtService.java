@@ -43,6 +43,14 @@ public class JwtService {
     }
 
     public String generateAccessToken(User user) {
+        return generateAccessToken(user, user);
+    }
+
+    /**
+     * A token for {@code user} whose validity follows {@code versionOwner}'s password: for a student's row in a
+     * second teacher's space that is the main account, so changing that one password ends every session.
+     */
+    public String generateAccessToken(User user, User versionOwner) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .subject(String.valueOf(user.getId()))
@@ -51,7 +59,7 @@ public class JwtService {
                 .claim("role", user.getRole().name())
                 .claim("name", user.getFullName())
                 .claim("email", user.getEmail())
-                .claim("uv", userVersion(user))
+                .claim("uv", userVersion(versionOwner))
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(props.getAccessTokenTtlMinutes(), ChronoUnit.MINUTES)))
                 .signWith(key)
@@ -72,9 +80,14 @@ public class JwtService {
 
     /** Invalidates every outstanding token immediately after a password change. */
     public boolean isCurrentFor(String token, User user) {
+        return isCurrentFor(token, user, user);
+    }
+
+    /** As above, with the password version taken from {@code versionOwner} (see {@link #generateAccessToken(User, User)}). */
+    public boolean isCurrentFor(String token, User user, User versionOwner) {
         Claims claims = claims(token);
         return String.valueOf(user.getId()).equals(claims.getSubject())
-                && userVersion(user).equals(claims.get("uv", String.class));
+                && userVersion(versionOwner).equals(claims.get("uv", String.class));
     }
 
     private Claims claims(String token) {

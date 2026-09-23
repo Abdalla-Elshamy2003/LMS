@@ -14,6 +14,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmailIgnoreCase(String email);
 
+    /** Email is unique per tenant only, so the same address can exist in several teacher spaces. */
+    List<User> findAllByEmailIgnoreCase(String email);
+
+    boolean existsByEmailIgnoreCase(String email);
+
+    /** The rows a student got in other teacher spaces, linked to the account they sign in with. */
+    List<User> findByPrimaryUserId(Long primaryUserId);
+
     Optional<User> findByTenantIdAndId(Long tenantId, Long id);
 
     List<User> findByTenantIdAndRole(Long tenantId, Role role);
