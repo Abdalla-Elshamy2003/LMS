@@ -170,14 +170,20 @@ public class UserService {
         if (req.title() != null) u.setTitle(req.title());
     }
 
+    /** A student's seat with another teacher carries a placeholder address; the real one is on the account they sign in with. */
+    private String displayEmail(User u) {
+        if (u.getPrimaryUserId() == null) return u.getEmail();
+        return users.findById(u.getPrimaryUserId()).map(User::getEmail).orElse(u.getEmail());
+    }
+
     private UserSummary toSummary(User u) {
-        return new UserSummary(u.getId(), u.getFullName(), u.getEmail(), u.getPhone(), u.getRole().name(),
+        return new UserSummary(u.getId(), u.getFullName(), displayEmail(u), u.getPhone(), u.getRole().name(),
                 u.getRole().getArabicName(), u.getStatus(), u.getBranchId(), u.getSubjects(), u.getBio(),
                 u.getPhotoUrl(), u.getSchedule(), u.getTitle());
     }
 
     private SelfProfile toSelf(User u) {
-        return new SelfProfile(u.getId(), u.getFullName(), u.getEmail(), u.getPhone(), u.getRole().name(),
+        return new SelfProfile(u.getId(), u.getFullName(), displayEmail(u), u.getPhone(), u.getRole().name(),
                 u.getRole().getArabicName(), u.getPhotoUrl(), u.getTitle(), u.getSubjects(), u.getBio(), u.getSchedule());
     }
 }

@@ -122,6 +122,8 @@ function GatePass() {
                   <span className={`font-bold ${h.direction === 'IN' ? 'text-emerald-700' : 'text-amber-700'}`}>
                     {h.direction === 'IN' ? 'دخول' : 'خروج'}
                   </span>
+                  {/* With several teachers, each entry says whose class it was. */}
+                  {h.teacher && <span className="min-w-0 flex-1 truncate px-3 text-center font-bold text-ink-600">{h.teacher}</span>}
                   <span className="text-ink-500">{fmtDateTime(h.at)}</span>
                 </li>
               ))}</ul>}

@@ -22,11 +22,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final com.manarah.academy.TeacherAcademyRepository academies;
     private final com.manarah.identity.repo.UserRepository users;
+    private final com.manarah.student.repo.StudentRepository students;
 
-    public JwtAuthFilter(JwtService jwtService, com.manarah.academy.TeacherAcademyRepository academies, com.manarah.identity.repo.UserRepository users) {
+    public JwtAuthFilter(JwtService jwtService, com.manarah.academy.TeacherAcademyRepository academies, com.manarah.identity.repo.UserRepository users,
+                         com.manarah.student.repo.StudentRepository students) {
         this.jwtService = jwtService;
         this.academies = academies;
         this.users = users;
+        this.students = students;
     }
 
     @Override
@@ -53,6 +56,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 var versionOwner = currentUser.getPrimaryUserId() == null ? currentUser
                         : users.findById(currentUser.getPrimaryUserId()).filter(u -> "ACTIVE".equals(u.getStatus())).orElseThrow();
                 if (!jwtService.isCurrentFor(token, currentUser, versionOwner)) throw new IllegalArgumentException("Stale token");
+                // A teacher removing a student ends that seat at once. Normally the whole login is archived with it;
+                // when the student still has other teachers the login stays active, so the removed seat's own
+                // sessions are refused here instead (the student's other teachers are unaffected).
+                if (currentUser.getRole() == com.manarah.identity.domain.Role.STUDENT && currentUser.getPrimaryUserId() == null
+                        && students.findByTenantIdAndUserId(currentUser.getTenantId(), currentUser.getId())
+                            .map(s -> "ARCHIVED".equals(s.getStatus())).orElse(false)
+                        && !users.findByPrimaryUserId(currentUser.getId()).isEmpty())
+                    throw new IllegalArgumentException("Removed from this teacher");
                 // Role, tenant and branch are authoritative database state, not stale JWT claims.
                 UserPrincipal principal = UserPrincipal.from(currentUser);
                 String scope = request.getHeader("X-Academy-Id");

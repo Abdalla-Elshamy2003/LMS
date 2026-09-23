@@ -77,8 +77,9 @@ public class GateService {
                              List<StudentCourseSummaries.Line> courses, Teacher teacher, List<Teacher> choices) {}
     public record Teacher(Long academyId, String name, String subject, String photoUrl) {}
 
+    /** {@code teacher} is who the entry was recorded with — needed wherever a list spans several teachers. */
     public record LogRow(Long id, Long studentId, String code, String fullName, String grade,
-                         String direction, Instant at, String recordedBy) {}
+                         String direction, Instant at, String recordedBy, String teacher) {}
 
     /** The caller's own pass, minting the token the first time it's asked for. */
     @Transactional
@@ -90,7 +91,8 @@ public class GateService {
         // every teacher they joined recognises (see resolve).
         var owner = users.findById(actor.getId()).map(linked::owner).orElse(null);
         if (owner != null && !owner.getId().equals(actor.getId())) {
-            var home = students.findByTenantIdAndUserId(owner.getTenantId(), owner.getId());
+            var home = students.findByTenantIdAndUserId(owner.getTenantId(), owner.getId())
+                    .filter(h -> !"ARCHIVED".equals(h.getStatus()));
             if (home.isPresent()) return toPass(passTokens.ensure(home.get()));
         }
         return toPass(passTokens.ensure(s));
@@ -258,6 +260,14 @@ public class GateService {
         if (!actor.isStaff()) {
             Long own = students.findByTenantIdAndUserId(tenantId, actor.getId()).map(Student::getId).orElse(null);
             if (!studentId.equals(own)) throw new ForbiddenException("غير مسموح بعرض سجل طالب آخر");
+            // The student's own history covers every teacher they study with, each entry marked with its teacher.
+            var seats = linked.seatsOf(actor);
+            if (seats.size() > 1) {
+                List<StudentGateLog> all = new java.util.ArrayList<>();
+                for (Student seat : seats) all.addAll(logs.findByTenantIdAndStudentIdOrderByAtDesc(seat.getTenantId(), seat.getId()));
+                all.sort(java.util.Comparator.comparing(StudentGateLog::getAt).reversed());
+                return toRows(all);
+            }
         }
         return toRows(logs.findByTenantIdAndStudentIdOrderByAtDesc(tenantId, studentId));
     }
@@ -292,11 +302,16 @@ public class GateService {
                 .filter(Objects::nonNull).distinct().toList())) {
             recorderNames.put(u.getId(), u.getFullName());
         }
+        Map<Long, String> teacherNames = new HashMap<>();
+        for (Long tenantId : entries.stream().map(StudentGateLog::getTenantId).distinct().toList()) {
+            Teacher t = teacherOf(tenantId);
+            if (t != null) teacherNames.put(tenantId, t.name() + (t.subject().isBlank() ? "" : " — " + t.subject()));
+        }
         return entries.stream().map(l -> {
             Student s = studentsById.get(l.getStudentId());
             return new LogRow(l.getId(), l.getStudentId(), s == null ? "" : s.getCode(),
                     s == null ? "—" : s.getFullName(), s == null ? "" : s.getGrade(),
-                    l.getDirection(), l.getAt(), recorderNames.get(l.getRecordedByUserId()));
+                    l.getDirection(), l.getAt(), recorderNames.get(l.getRecordedByUserId()), teacherNames.get(l.getTenantId()));
         }).toList();
     }
 

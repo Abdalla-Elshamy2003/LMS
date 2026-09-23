@@ -138,12 +138,31 @@ class LinkedStudentAccountsTest {
         var chosen = call(post("/api/gate/scan/" + pass + "?academyId=" + chemistry.academyId()), admin, null, 200);
         assertThat(chosen.path("teacher").path("name").asText()).isEqualTo("مدرسة الكيمياء");
         assertThat(call(get("/api/gate/log"), chemistry.token(), null, 200)).hasSize(1);
+        // The student's own door history covers all their teachers, each entry marked with its teacher.
+        long ownArabicId = call(get("/api/students/me"), inArabic, null, 200).path("summary").path("id").asLong();
+        var history = call(get("/api/gate/students/" + ownArabicId + "/log"), inArabic, null, 200);
+        assertThat(history).hasSize(2);
+        assertThat(String.join(" | ", history.findValuesAsText("teacher"))).contains("مستر الفيزياء").contains("مدرسة الكيمياء");
+
+        // Class attendance by the session QR: looking at the Arabic teacher, the student scans the physics class
+        // QR — it is recorded with the physics teacher, on the student's seat there, and nowhere else.
+        long sessionId = call(post("/api/attendance/sessions"), physics.token(), Map.of("courseId", physicsFree, "title", "حصة الميكانيكا"), 200).path("id").asLong();
+        String classQr = call(post("/api/attendance/sessions/" + sessionId + "/qr"), physics.token(), null, 200).path("token").asText();
+        assertThat(call(post("/api/attendance/check-in"), inArabic, Map.of("token", classQr), 200).path("studentName").asText()).isEqualTo("طالب واحد");
+        assertThat(call(get("/api/attendance/sessions/" + sessionId + "/roster"), physics.token(), null, 200).findValuesAsText("status")).contains("PRESENT");
+        // A class of a teacher the student never joined is refused.
+        long mathCourse = course(stranger, "الجبر", 0);
+        long mathSession = call(post("/api/attendance/sessions"), stranger.token(), Map.of("courseId", mathCourse, "title", "حصة الجبر"), 200).path("id").asLong();
+        String mathQr = call(post("/api/attendance/sessions/" + mathSession + "/qr"), stranger.token(), null, 200).path("token").asText();
+        call(post("/api/attendance/check-in"), inArabic, Map.of("token", mathQr), 400);
 
         // The Arabic teacher removes the student: the login keeps working and lands with a teacher they still have.
         long arabicStudentId = 0;
         for (var s : call(get("/api/students"), arabic.token(), null, 200).path("content"))
             if (EMAIL.equals(s.path("email").asText())) arabicStudentId = s.path("id").asLong();
         call(delete("/api/academies/" + arabic.academyId() + "/students/" + arabicStudentId), arabic.token(), null, 200);
+        call(get("/api/auth/me"), backInArabic, null, 401);
+        call(get("/api/auth/me"), inPhysics, null, 200);
         String afterRemoval = login(EMAIL, PASSWORD);
         assertThat(call(get("/api/auth/me"), afterRemoval, null, 200).path("tenantId").asLong()).isNotEqualTo(arabic.tenantId());
         assertThat(call(get("/api/me/teachers"), afterRemoval, null, 200).findValuesAsText("slug")).doesNotContain(arabic.slug()).hasSize(3);

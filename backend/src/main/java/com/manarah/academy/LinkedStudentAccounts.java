@@ -123,6 +123,31 @@ public class LinkedStudentAccounts {
         return users.findByPrimaryUserId(owner.getId()).stream().filter(this::usable).findFirst().orElse(owner);
     }
 
+    /**
+     * The student's seat with the teacher in {@code tenantId} — for something that belongs to that teacher (their
+     * class session's QR, say) done while the student happens to be looking at another teacher.
+     */
+    public Optional<Student> seatIn(UserPrincipal actor, Long tenantId) {
+        User me = users.findById(actor.getId()).orElse(null);
+        if (me == null || me.getRole() != Role.STUDENT) return Optional.empty();
+        return rowsOf(me).stream().filter(u -> u.getTenantId().equals(tenantId) && usable(u)).findFirst()
+                .flatMap(u -> students.findByTenantIdAndUserId(tenantId, u.getId()));
+    }
+
+    /** Every seat the student still has (one per teacher), for views that span all of their teachers. */
+    public List<Student> seatsOf(UserPrincipal actor) {
+        User me = users.findById(actor.getId()).orElse(null);
+        if (me == null || me.getRole() != Role.STUDENT) return List.of();
+        return rowsOf(me).stream().filter(this::usable)
+                .map(u -> students.findByTenantIdAndUserId(u.getTenantId(), u.getId()).orElse(null))
+                .filter(Objects::nonNull).toList();
+    }
+
+    /** Whether this seat is still one the student can use (active, and the teacher hasn't removed them). */
+    public boolean isUsable(User row) {
+        return usable(row);
+    }
+
     /** Whether the student still has a teacher other than the one in {@code exceptTenantId}. */
     public boolean hasOtherTeachers(User owner, Long exceptTenantId) {
         return users.findByPrimaryUserId(owner.getId()).stream()

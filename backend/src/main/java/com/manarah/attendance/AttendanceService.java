@@ -37,10 +37,13 @@ public class AttendanceService {
     private final StudentRepository students;
     private final UserRepository users;
     private final ApplicationEventPublisher events;
+    private final com.manarah.academy.LinkedStudentAccounts linked;
 
     public AttendanceService(ClassSessionRepository sessions, AttendanceRecordRepository records,
                              CourseRepository courses, EnrollmentRepository enrollments,
-                             StudentRepository students, UserRepository users, ApplicationEventPublisher events) {
+                             StudentRepository students, UserRepository users, ApplicationEventPublisher events,
+                             com.manarah.academy.LinkedStudentAccounts linked) {
+        this.linked = linked;
         this.sessions = sessions;
         this.records = records;
         this.courses = courses;
@@ -147,7 +150,24 @@ public class AttendanceService {
      *  id for STUDENT callers, never trusted from the request body for them). */
     @Transactional
     public RosterRow checkInByQr(Long studentId, String token) {
-        Long tenantId = TenantContext.require();
+        return checkInByQr(TenantContext.require(), studentId, token);
+    }
+
+    /**
+     * A student checking themselves in by scanning the class QR. A student with several teachers may be looking at
+     * one teacher while sitting in another's class: the attendance is recorded with the teacher whose session it
+     * is, on the student's seat there — never with the teacher they happened to have open.
+     */
+    @Transactional
+    public RosterRow checkInSelf(UserPrincipal actor, Long ownStudentId, String token) {
+        ClassSession session = sessions.findByQrToken(token).orElseThrow(() -> new BadRequestException("رمز QR غير صالح"));
+        if (session.getTenantId().equals(actor.getTenantId())) return checkInByQr(session.getTenantId(), ownStudentId, token);
+        var seat = linked.seatIn(actor, session.getTenantId())
+                .orElseThrow(() -> new BadRequestException("الحصة دي لمدرس إنت مش مشترك معاه"));
+        return checkInByQr(session.getTenantId(), seat.getId(), token);
+    }
+
+    private RosterRow checkInByQr(Long tenantId, Long studentId, String token) {
         ClassSession s = sessions.findByQrToken(token)
                 .filter(sess -> sess.getTenantId().equals(tenantId))
                 .orElseThrow(() -> new BadRequestException("رمز QR غير صالح"));

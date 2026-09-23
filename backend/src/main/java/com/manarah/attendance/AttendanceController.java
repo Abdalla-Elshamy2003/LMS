@@ -67,7 +67,7 @@ public class AttendanceController {
     public RosterRow checkIn(@AuthenticationPrincipal UserPrincipal actor, @Valid @RequestBody QrCheckInRequest req) {
         Long studentId;
         if (actor.getRole() == Role.STUDENT) {
-            studentId = requireOwnStudentId(actor);
+            return service.checkInSelf(actor, requireOwnStudentId(actor), req.token());
         } else if (req.studentId() != null) {
             studentId = req.studentId();
         } else {

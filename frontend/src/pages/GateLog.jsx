@@ -62,7 +62,7 @@ export default function GateLog() {
         : <motion.div variants={fadeUp} className="card overflow-x-auto p-0">
             <table className="w-full text-right text-sm">
               <thead><tr className="border-b border-ink-100 text-xs text-ink-400">
-                <th className="p-4">الطالب</th><th>الكود</th><th>الصف</th><th>الحركة</th><th>الوقت</th><th>سجّلها</th>
+                <th className="p-4">الطالب</th><th>الكود</th><th>الصف</th><th>المدرس</th><th>الحركة</th><th>الوقت</th><th>سجّلها</th>
               </tr></thead>
               <tbody>
                 {filtered.map(r => (
@@ -70,6 +70,7 @@ export default function GateLog() {
                     <td className="p-4 font-bold text-ink-800">{r.fullName}</td>
                     <td className="text-xs text-ink-500">{r.code}</td>
                     <td className="text-xs text-ink-500">{r.grade || '—'}</td>
+                    <td className="text-xs font-bold text-ink-600">{r.teacher || '—'}</td>
                     <td>
                       <span className={`chip ${r.direction === 'IN' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                         {r.direction === 'IN' ? <LogIn size={13} /> : <LogOut size={13} />}
