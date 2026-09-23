@@ -18,12 +18,13 @@ public class AcademyController {
     private final TeacherAcademyRepository academies;
     private final CourseRepository courses;
     private final com.manarah.student.repo.StudentRepository students;
+    private final BundleService bundles;
     public AcademyController(AcademyService service, TeacherAcademyRepository academies, CourseRepository courses,
-                             com.manarah.student.repo.StudentRepository students) {
-        this.service = service; this.academies = academies; this.courses = courses; this.students = students;
+                             com.manarah.student.repo.StudentRepository students, BundleService bundles) {
+        this.service = service; this.academies = academies; this.courses = courses; this.students = students; this.bundles = bundles;
     }
 
-    /** Public home page payload: platform-wide numbers plus the teacher cards. */
+    /** Public home page payload: platform-wide numbers, the teacher cards and the teacher packages. */
     @GetMapping("/public/home")
     public Object home() {
         var published = academies.findByPublishedTrueOrderByNameAsc();
@@ -33,7 +34,7 @@ public class AcademyController {
             studentCount += students.countByTenantId(a.getTenantId());
         }
         return Map.of("stats", Map.of("teachers", published.size(), "courses", courseCount, "students", studentCount),
-                "teachers", directory());
+                "teachers", directory(), "bundles", bundles.publicCards());
     }
     @GetMapping("/academies") @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT')")
     public Object list(@AuthenticationPrincipal UserPrincipal actor) { return service.list(actor); }

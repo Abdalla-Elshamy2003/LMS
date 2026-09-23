@@ -37,10 +37,13 @@ public class StudentService {
     private final CourseRepository courses;
     private final RiskAssessmentRepository riskAssessments;
     private final AuditService audit;
+    private final com.manarah.identity.repo.UserRepository users;
 
     public StudentService(StudentRepository students, GuardianRepository guardians, StudentGuardianRepository links,
                           EnrollmentRepository enrollments, CourseRepository courses,
-                          RiskAssessmentRepository riskAssessments, AuditService audit) {
+                          RiskAssessmentRepository riskAssessments, AuditService audit,
+                          com.manarah.identity.repo.UserRepository users) {
+        this.users = users;
         this.students = students;
         this.guardians = guardians;
         this.links = links;
@@ -183,7 +186,14 @@ public class StudentService {
     private StudentSummary toSummary(Student s) {
         return new StudentSummary(s.getId(), s.getCode(), s.getFullName(), s.getGrade(), s.getGradeLevel(),
                 s.getStatus(), s.getAcademicStatus(), s.getAvgScore(), s.getAttendanceRate(),
-                s.getHomeworkRate(), s.getOverallPercent(), s.getBranchId(), s.getPhone());
+                s.getHomeworkRate(), s.getOverallPercent(), s.getBranchId(), s.getPhone(), loginEmail(s));
+    }
+
+    /** The email the student signs in with. Accounts a teacher creates by username get a placeholder address, which is not shown. */
+    private String loginEmail(Student s) {
+        if (s.getUserId() == null) return null;
+        return users.findById(s.getUserId()).map(u -> u.getEmail())
+                .filter(e -> e != null && !e.endsWith("@accounts.local")).orElse(null);
     }
 
     private RiskView toRiskView(RiskAssessment ra) {

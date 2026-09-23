@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence, useInView, useReducedMotion } from 'framer-motion'
 import {
   Sparkles, ShieldCheck, QrCode, Video, Brain, Users2, MessageCircle, Trophy, BarChart3, ClipboardList,
@@ -11,6 +11,7 @@ import MarketingNav from '../components/marketing/MarketingNav'
 import MarketingFooter from '../components/marketing/MarketingFooter'
 import TiltCard from '../components/TiltCard'
 import BooksScene from '../components/BooksScene'
+import { BundleCard, EmptyBundleCard } from '../components/bundles/BundleCard'
 
 const reveal = { initial: { opacity: 0, y: 26 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, margin: '-60px' }, transition: { duration: 0.55, ease: 'easeOut' } }
 
@@ -171,9 +172,20 @@ export default function Home() {
   const [subject, setSubject] = useState('')
   const [open, setOpen] = useState(0)
 
-  useEffect(() => { api.get('/public/home').then(r => setData(r.data)).catch(() => setData({ stats: {}, teachers: [] })) }, [])
+  const { hash } = useLocation()
+
+  useEffect(() => { api.get('/public/home').then(r => setData(r.data)).catch(() => setData({ stats: {}, teachers: [], bundles: [] })) }, [])
+
+  // Links like /#packages from other pages: the router doesn't scroll to a hash by itself, and the target
+  // section only has its full height once the data is in.
+  useEffect(() => {
+    if (!hash || !data) return
+    const t = setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+    return () => clearTimeout(t)
+  }, [hash, data])
 
   const teachers = data?.teachers || []
+  const bundles = data?.bundles || []
   const subjects = useMemo(() => [...new Set(teachers.map(t => t.subject).filter(Boolean))], [teachers])
   const shown = useMemo(() => teachers.filter(t => (!subject || t.subject === subject) && (!q.trim() || [t.name, t.tagline, t.subject, t.headline].join(' ').includes(q.trim()))), [teachers, q, subject])
   const stats = data?.stats || {}
@@ -247,6 +259,24 @@ export default function Home() {
           {!data ? Array.from({ length: 3 }).map((_, i) => <div key={i} className="card h-96 animate-pulse" />)
             : shown.length === 0 ? <p className="card col-span-full p-10 text-center text-ink-400">لا يوجد مدرسون مطابقون بعد.</p>
             : shown.map((t, i) => <TeacherCard key={t.slug} t={t} i={i} />)}
+        </div>
+      </section>
+
+      {/* ---------- Teacher packages ---------- */}
+      <section id="packages" className="mx-auto max-w-7xl scroll-mt-24 px-5 pt-24">
+        <motion.div {...reveal} className="text-center">
+          <span className="chip bg-brand-50 text-brand-700"><Layers size={14} /> باقات المدرسين</span>
+          <h2 className="mt-4 text-3xl font-black sm:text-4xl">مدرسين اشتركوا مع بعض.. في باقة واحدة</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-ink-500">افتح الباقة، اتعرّف على كل مدرس وشوف فيديوهاته، واختار اللي هتكمّل معاه — وكل مدرس ليه مساحته وكورساته.</p>
+        </motion.div>
+        <div className="mt-12 grid grid-flow-row-dense gap-6 lg:grid-cols-3">
+          {!data ? <div className="bx-card min-h-[30rem] animate-pulse lg:col-span-2 lg:row-span-2" />
+            : bundles.map((b, i) => (
+              <motion.div key={b.slug} {...reveal} transition={{ ...reveal.transition, delay: i * 0.1 }} className="lg:col-span-2 lg:row-span-2">
+                <BundleCard bundle={b} className="h-full" />
+              </motion.div>
+            ))}
+          {Array.from({ length: !data || bundles.length ? 2 : 3 }).map((_, i) => <EmptyBundleCard key={`empty-${i}`} i={i} />)}
         </div>
       </section>
 

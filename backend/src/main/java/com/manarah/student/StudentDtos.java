@@ -10,7 +10,7 @@ public class StudentDtos {
     public record StudentSummary(
             Long id, String code, String fullName, String grade, String gradeLevel,
             String status, String academicStatus, double avgScore, double attendanceRate,
-            double homeworkRate, double overallPercent, Long branchId, String phone) {
+            double homeworkRate, double overallPercent, Long branchId, String phone, String email) {
     }
 
     public record GuardianView(Long id, String fullName, String phone, String email, String relation, Long userId) {

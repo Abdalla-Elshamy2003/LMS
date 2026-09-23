@@ -67,6 +67,7 @@ export default function Students() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-bold text-ink-800">{s.fullName}</p>
                         <p className="text-xs text-ink-400">{s.code} · {s.grade || '—'}</p>
+                        {(s.email || s.phone) && <p dir="ltr" className="truncate text-right text-xs text-ink-500">{[s.email, s.phone].filter(Boolean).join(' · ')}</p>}
                       </div>
                       <span className={`chip border ${st.color}`}><span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />{st.label}</span>
                     </div>

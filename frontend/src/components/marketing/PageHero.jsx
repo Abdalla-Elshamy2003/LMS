@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
 
-/** Small hero banner shared by every inner marketing page (Features/Pricing/About/Contact/...) —
+/** Small hero banner shared by every inner marketing page (Features/About/Contact/...) —
  *  the same mesh/blob/dots treatment as the home page hero, scaled down for a page that isn't
  *  itself the landing page. */
 export default function PageHero({ badge, title, highlight, subtitle, children }) {

@@ -1,0 +1,115 @@
+/* ---------------------------------------------------------------------------
+   Teacher packages (باقات المدرسين): arched portraits shared by the home-page
+   card and the package page, plus the package page's own pieces. Decoration
+   only — the reduced-motion guard at the bottom switches all of it off.
+   --------------------------------------------------------------------------- */
+
+/* Arched portrait with a gradient rim in the teacher's accent (--a/--b come from bundleArt.tintStyle). */
+.bx-arch{position:relative;display:block;border-radius:999px 999px 1.2rem 1.2rem;padding:3px;
+  background:linear-gradient(160deg,var(--a),var(--b));box-shadow:0 26px 50px -24px var(--a),0 0 0 1px #ffffff14;
+  transition:transform .6s cubic-bezier(.22,.61,.36,1),box-shadow .6s}
+.bx-arch-photo{position:relative;display:block;overflow:hidden;border-radius:inherit;aspect-ratio:4/5;background:#0b2233}
+.bx-arch-photo img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 18%;transition:transform .9s cubic-bezier(.22,.61,.36,1)}
+.bx-arch-photo::after{content:"";position:absolute;inset:auto 0 0 0;height:38%;background:linear-gradient(to top,#08172699,transparent);pointer-events:none}
+.bx-arch-fallback{position:absolute;inset:0;display:grid;place-items:center;font:italic 900 1.6rem Georgia,serif;color:#ffffffcc;background:linear-gradient(160deg,var(--a),var(--b))}
+
+/* The idle float sits on its own wrapper so it never fights framer-motion's entrance transform. */
+@keyframes bx-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-11px)}}
+.bx-float{animation:bx-float 6.5s ease-in-out infinite;animation-delay:calc(var(--i,0) * -1.3s)}
+
+/* Portraits side by side, overlapping a little, the middle one tallest. Hovering the stage fans them out. */
+.bx-stage{display:flex;justify-content:center;align-items:flex-end}
+.bx-slot{position:relative;flex:0 0 auto;width:calc(var(--base) * var(--s,1));margin-inline:calc(var(--base) * -.07);
+  transition:margin .6s cubic-bezier(.22,.61,.36,1);z-index:var(--z,1)}
+.bx-stage:hover .bx-slot{margin-inline:calc(var(--base) * .03)}
+.bx-stage:hover .bx-arch{transform:translateY(-6px)}
+.bx-slot:hover .bx-arch{transform:translateY(-16px) scale(1.04)}
+.bx-slot:hover .bx-arch-photo img{transform:scale(1.08)}
+.bx-label{display:block;margin-top:.7rem;text-align:center;font-size:.74rem;font-weight:800;line-height:1.35;color:#e0f2fe}
+.bx-label>i{display:inline-block;width:.45rem;height:.45rem;border-radius:50%;margin-left:.35rem;vertical-align:middle;background:linear-gradient(135deg,var(--a),var(--b))}
+.bx-label>small{display:block;font-size:.66rem;font-weight:600;color:#bae6fdb3;margin-top:.1rem}
+
+/* ---- Home-page package card ---- */
+.bx-card{position:relative;isolation:isolate;overflow:hidden;border-radius:2rem;color:#fff;
+  background:radial-gradient(ellipse at 12% 0%,#155e75 0,transparent 55%),radial-gradient(ellipse at 100% 100%,#4c1d95 0,transparent 52%),linear-gradient(135deg,#0b1f33,#0f2d3f 55%,#111a3a);
+  box-shadow:0 40px 80px -40px #0c4a6e99;transition:box-shadow .5s,transform .5s}
+.bx-card:hover{box-shadow:0 50px 90px -40px #0369a1cc;transform:translateY(-4px)}
+.bx-card::after{content:"";position:absolute;top:-20%;bottom:-20%;left:-40%;width:28%;background:linear-gradient(90deg,transparent,#ffffff1c,transparent);
+  transform:skewX(-18deg);animation:bx-sweep 8s ease-in-out infinite;pointer-events:none}
+@keyframes bx-sweep{0%,60%{left:-40%}100%{left:130%}}
+.bx-grid{position:absolute;inset:0;z-index:-1;background-image:linear-gradient(#ffffff0c 1px,transparent 1px),linear-gradient(90deg,#ffffff0c 1px,transparent 1px);
+  background-size:34px 34px;-webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 35%,#000 30%,transparent 100%);mask-image:radial-gradient(ellipse 70% 60% at 50% 35%,#000 30%,transparent 100%)}
+.bx-orbit{position:absolute;z-index:-1;left:50%;top:42%;width:min(640px,115%);aspect-ratio:1;translate:-50% -50%;border:1px dashed #7dd3fc3d;border-radius:50%;animation:bx-spin 70s linear infinite}
+.bx-orbit.two{width:min(440px,82%);border-color:#f0abfc30;animation-duration:48s;animation-direction:reverse}
+@keyframes bx-spin{to{rotate:360deg}}
+.bx-glow{position:absolute;z-index:-1;width:340px;aspect-ratio:1;border-radius:50%;filter:blur(64px);opacity:.42;animation:bx-glow 13s ease-in-out infinite}
+@keyframes bx-glow{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(28px,-22px) scale(1.15)}}
+.bx-card .bx-cta{transition:gap .3s,background .3s,color .3s}
+.bx-card:hover .bx-cta{gap:.9rem;background:#fff;color:#075985}
+
+/* Empty "coming soon" slot next to the real packages. */
+.bx-empty{position:relative;overflow:hidden;border-radius:2rem;border:2px dashed #bae6fd;background:repeating-linear-gradient(135deg,#f8fbff 0 14px,#f1f8fe 14px 28px);transition:border-color .4s,transform .4s}
+.bx-empty:hover{border-color:#38bdf8;transform:translateY(-3px)}
+.bx-ghost{border-radius:999px 999px .8rem .8rem;border:2px dashed #7dd3fc;background:#ffffffc0;aspect-ratio:4/5;transition:border-color .4s,transform .5s}
+.bx-empty:hover .bx-ghost{border-color:#0ea5e9}
+.bx-empty:hover .bx-ghost:nth-child(2){transform:translateY(-8px)}
+
+/* ---- Package page ---- */
+.bx-hero{position:relative;isolation:isolate;overflow:hidden;color:#fff;
+  background:radial-gradient(ellipse at 15% 0%,#155e75 0,transparent 50%),radial-gradient(ellipse at 90% 90%,#4c1d95 0,transparent 45%),linear-gradient(160deg,#08182a,#0d2a3d 50%,#0f1734)}
+.bx-hero .bx-grid{-webkit-mask-image:radial-gradient(ellipse 80% 70% at 50% 40%,#000 30%,transparent 100%);mask-image:radial-gradient(ellipse 80% 70% at 50% 40%,#000 30%,transparent 100%)}
+.bx-hero .bx-orbit{top:62%;width:min(980px,150%)}
+.bx-hero .bx-orbit.two{width:min(700px,110%)}
+.bx-hero .bx-label{font-size:.95rem}
+.bx-hero .bx-label>small{font-size:.75rem}
+.bx-float-glyph{position:absolute;z-index:-1;font:italic 700 1.5rem Georgia,serif;color:#bae6fd;opacity:.22;animation:bx-drift 14s ease-in-out infinite;white-space:nowrap}
+@keyframes bx-drift{0%,100%{transform:translate(0,0) rotate(-6deg)}50%{transform:translate(12px,-26px) rotate(6deg)}}
+@keyframes bx-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+.bx-scroll-hint{animation:bx-bounce 2.2s ease-in-out infinite}
+
+/* Sticky rail of teachers; the one whose section is on screen lights up. */
+.bx-rail{scrollbar-width:none}
+.bx-rail::-webkit-scrollbar{display:none}
+.bx-rail-item{position:relative;transition:background .3s,color .3s,box-shadow .3s}
+.bx-rail-item img{transition:transform .4s}
+.bx-rail-item[aria-current="true"]{background:linear-gradient(135deg,var(--a),var(--b));color:#fff;box-shadow:0 10px 24px -12px var(--a)}
+.bx-rail-item[aria-current="true"] img{transform:scale(1.08)}
+
+/* One section per teacher: big arch on one side, story on the other, videos underneath. */
+.bx-member-glyph{position:absolute;z-index:0;font:italic 900 clamp(5rem,14vw,11rem) Georgia,serif;line-height:1;background:linear-gradient(160deg,var(--a),var(--b));
+  -webkit-background-clip:text;background-clip:text;color:transparent;opacity:.13;pointer-events:none;white-space:nowrap}
+.bx-member .bx-arch{box-shadow:0 40px 70px -34px var(--a),0 0 0 1px #0f172a0d}
+.bx-member .bx-arch:hover .bx-arch-photo img{transform:scale(1.06)}
+.bx-accent-text{background:linear-gradient(135deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent}
+.bx-accent-bg{background:linear-gradient(135deg,var(--a),var(--b))}
+.bx-number{font:italic 800 1rem Georgia,serif;letter-spacing:.05em}
+
+/* Video cards: poster, play button, and a gentle lift. The whole card opens the teacher's space. */
+.bx-video{position:relative;display:block;overflow:hidden;border-radius:1.25rem;background:#fff;border:1px solid #e2e8f0;
+  transition:transform .45s cubic-bezier(.22,.61,.36,1),box-shadow .45s,border-color .45s}
+.bx-video:hover{transform:translateY(-8px);box-shadow:0 26px 50px -26px var(--a);border-color:transparent}
+.bx-video-cover{position:relative;aspect-ratio:16/10;overflow:hidden;background:linear-gradient(150deg,var(--a),var(--b))}
+.bx-video-cover>img,.bx-video-cover>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .9s cubic-bezier(.22,.61,.36,1)}
+.bx-video:hover .bx-video-cover>img{transform:scale(1.07)}
+.bx-video-cover::after{content:"";position:absolute;inset:auto 0 0 0;height:55%;background:linear-gradient(to top,#0b1f33b3,transparent);pointer-events:none}
+.bx-video-glyph{position:absolute;inset:0;display:grid;place-items:center;font:italic 900 2.6rem Georgia,serif;color:#ffffffd9}
+.bx-play{position:absolute;z-index:2;inset:0;margin:auto;width:3.4rem;height:3.4rem;border-radius:50%;display:grid;place-items:center;color:#fff;
+  background:#ffffff33;border:1.5px solid #ffffffa6;backdrop-filter:blur(6px);transition:transform .35s,background .35s}
+.bx-video:hover .bx-play{transform:scale(1.14);background:#ffffff4d}
+.bx-play::before{content:"";position:absolute;inset:-7px;border-radius:50%;border:1.5px solid #ffffff59;animation:bx-ping 2.4s ease-out infinite}
+@keyframes bx-ping{0%{transform:scale(.85);opacity:1}100%{transform:scale(1.35);opacity:0}}
+
+.bx-modal-video{position:relative;aspect-ratio:16/9;background:#0b1f33;border-radius:1rem;overflow:hidden}
+.bx-modal-video iframe,.bx-modal-video video{position:absolute;inset:0;width:100%;height:100%;border:0}
+
+@media(max-width:640px){
+  .bx-label{font-size:.62rem}
+  .bx-label>small{display:none}
+  .bx-hero .bx-label{font-size:.7rem}
+  .bx-stage:hover .bx-slot{margin-inline:calc(var(--base) * -.07)}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .bx-float,.bx-orbit,.bx-glow,.bx-card::after,.bx-float-glyph,.bx-scroll-hint,.bx-play::before{animation:none!important}
+  .bx-arch,.bx-slot,.bx-arch-photo img,.bx-video,.bx-card,.bx-empty,.bx-ghost{transition:none!important}
+}

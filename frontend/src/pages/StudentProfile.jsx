@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  ArrowRight, Phone, School, IdCard, UserX, Clock, ClipboardCheck, FileCheck, FileX,
+  ArrowRight, Phone, Mail, School, IdCard, UserX, Clock, ClipboardCheck, FileCheck, FileX,
   BookOpen, Wallet, AlertTriangle, Users, ShieldAlert, Download, Sparkles, ThumbsUp, TrendingDown, Lightbulb, Plus,
 } from 'lucide-react'
 import api from '../lib/api'
@@ -137,6 +137,7 @@ export default function StudentProfile() {
                 <span className="inline-flex items-center gap-1.5"><IdCard size={15} /> {s.code}</span>
                 <span className="inline-flex items-center gap-1.5"><School size={15} /> {d.school || s.grade || '—'}</span>
                 {s.phone && <span className="inline-flex items-center gap-1.5"><Phone size={15} /> {s.phone}</span>}
+                {s.email && <span dir="ltr" className="inline-flex items-center gap-1.5"><Mail size={15} /> {s.email}</span>}
               </div>
             </div>
           </div>

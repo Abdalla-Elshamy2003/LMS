@@ -21,7 +21,7 @@ export default function MarketingFooter() {
           <p className="font-bold text-ink-800">المنصة</p>
           <div className="mt-3 space-y-2 text-sm text-ink-500">
             <Link to="/features" className="block hover:text-brand-600">المميزات</Link>
-            <Link to="/pricing" className="block hover:text-brand-600">الأسعار</Link>
+            <Link to="/#packages" className="block hover:text-brand-600">باقات المدرسين</Link>
             <Link to="/success-stories" className="block hover:text-brand-600">قصص نجاح</Link>
           </div>
         </div>

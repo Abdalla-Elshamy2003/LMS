@@ -1,6 +1,6 @@
 import {
   Award, BarChart3, Bell, BookOpen, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, CreditCard, DoorOpen,
-  FileQuestion, GraduationCap, HeartHandshake, Inbox, LayoutDashboard, LogOut, Megaphone, MessagesSquare,
+  FileQuestion, GraduationCap, HeartHandshake, Inbox, Layers, LayoutDashboard, LogOut, Megaphone, MessagesSquare,
   ScanLine, ShieldCheck, SlidersHorizontal, Trophy, UserCog, UserRound, Users, Wallet,
 } from 'lucide-react'
 import { ADMIN_ROLES } from '../../lib/roles'
@@ -16,6 +16,7 @@ const ITEMS = {
   dashboard: { to: '/app', end: true, label: 'الرئيسية', icon: LayoutDashboard, roles: ALL },
   assistantDesk: { to: '/app/assistant', label: 'مكتب اليوم والمهام', icon: ClipboardCheck, roles: ['TEACHER', 'ASSISTANT'] },
   academy: { to: '/app/academy', label: 'صفحة المستر وحسابات الطلاب', icon: UserRound, roles: [...ADMIN_ROLES, 'TEACHER', 'ASSISTANT'] },
+  bundles: { to: '/app/bundles', label: 'باقات المدرسين', icon: Layers, roles: ADMIN_ROLES },
   assistants: { to: '/app/assistants', label: 'المساعدون (إنشاء حساب)', icon: UserCog, roles: ['TEACHER'] },
   family: { to: '/app/family', label: 'متابعة الأبناء', icon: HeartHandshake, roles: ['PARENT'] },
   familyFinance: { to: '/app/family/finance', label: 'مصروفات الأبناء', icon: Wallet, roles: ['PARENT'] },
@@ -51,7 +52,7 @@ const ACCOUNT = { id: 'account', title: 'الحساب', items: ['profile', 'logo
 const LAYOUTS = {
   admin: [
     { id: 'main', title: 'الرئيسية', items: ['dashboard', 'reports'] },
-    { id: 'academic', title: 'الإدارة الأكاديمية', items: ['academy', 'students', 'staff', 'courses', 'learning', 'schedule'] },
+    { id: 'academic', title: 'الإدارة الأكاديمية', items: ['academy', 'bundles', 'students', 'staff', 'courses', 'learning', 'schedule'] },
     { id: 'assessment', title: 'المحتوى والتقييم', items: ['exams', 'homework', 'certificates', 'leaderboard'] },
     { id: 'operations', title: 'العمليات', items: ['attendance', 'gateLog', 'cardScanner', 'cards'] },
     { id: 'communication', title: 'التواصل والتسويق', items: ['notifications', 'support', 'community', 'campaigns', 'leads'] },

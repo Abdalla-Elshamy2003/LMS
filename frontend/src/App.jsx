@@ -14,7 +14,7 @@ import ResetPassword from './pages/ResetPassword'
 const Landing = lazy(() => import('./pages/TeacherLanding'))
 const Home = lazy(() => import('./pages/Home'))
 const Features = lazy(() => import('./pages/Features'))
-const Pricing = lazy(() => import('./pages/Pricing'))
+const BundleLanding = lazy(() => import('./pages/BundleLanding'))
 const About = lazy(() => import('./pages/About'))
 const Contact = lazy(() => import('./pages/Contact'))
 const SuccessStories = lazy(() => import('./pages/SuccessStories'))
@@ -57,6 +57,7 @@ const CardScanner = lazy(() => import('./pages/CardScanner'))
 const CardPrint = lazy(() => import('./pages/CardPrint'))
 const Reports = lazy(() => import('./pages/Reports'))
 const AssistantDesk = lazy(() => import('./pages/AssistantDesk'))
+const Bundles = lazy(() => import('./pages/Bundles'))
 const Assistants = lazy(() => import('./pages/Assistants'))
 
 function Protected({ children }) {
@@ -79,7 +80,9 @@ export default function App() {
       <Route path="/" element={standalone(<Home />)} />
       <Route path="/t/:slug" element={standalone(<Landing />)} />
       <Route path="/features" element={standalone(<Features />)} />
-      <Route path="/pricing" element={standalone(<Pricing />)} />
+      <Route path="/packages/:slug" element={standalone(<BundleLanding />)} />
+      {/* The pricing page was retired; old links land on the home page. */}
+      <Route path="/pricing" element={<Navigate to="/" replace />} />
       <Route path="/about" element={standalone(<About />)} />
       <Route path="/contact" element={standalone(<Contact />)} />
       <Route path="/success-stories" element={standalone(<SuccessStories />)} />
@@ -126,6 +129,7 @@ export default function App() {
         <Route path="community" element={<Community />} />
         <Route path="campaigns" element={<Campaigns />} />
         <Route path="academy" element={<AcademySettings />} />
+        <Route path="bundles" element={<Bundles />} />
         <Route path="assistant" element={<AssistantDesk />} />
         <Route path="assistants" element={<Assistants />} />
         <Route path="rules" element={<Rules />} />

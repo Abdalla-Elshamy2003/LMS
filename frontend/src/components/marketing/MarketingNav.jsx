@@ -5,7 +5,7 @@ import { GraduationCap, Menu, X, ArrowLeft } from 'lucide-react'
 
 export const NAV_LINKS = [
   { to: '/features', label: 'المميزات' },
-  { to: '/pricing', label: 'الأسعار' },
+  { to: '/#packages', label: 'باقات المدرسين' },
   { to: '/success-stories', label: 'قصص نجاح' },
   { to: '/blog', label: 'المدونة' },
   { to: '/about', label: 'من نحن' },
@@ -39,7 +39,7 @@ export default function MarketingNav({ solid = false }) {
         </Link>
         <nav className="mr-auto hidden items-center gap-6 text-sm font-semibold text-ink-600 lg:flex">
           {NAV_LINKS.map((l) => {
-            const active = location.pathname === l.to
+            const active = location.pathname + location.hash === l.to
             return (
               <Link key={l.to} to={l.to} className={`relative transition hover:text-brand-600 group ${active ? 'text-brand-600' : ''}`}>
                 {l.label}
