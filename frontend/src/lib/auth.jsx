@@ -33,6 +33,23 @@ export function AuthProvider({ children }) {
     return res.data
   }
 
+  // A student with several teachers has a seat in each teacher's space. Moving between them swaps the session
+  // (the server also re-issues the cookie videos are fetched with) and reloads, so nothing from the previous
+  // teacher lingers in memory.
+  const adoptSession = (accessToken, target = '/app') => {
+    localStorage.setItem('manarah_token', accessToken)
+    sessionStorage.removeItem('manarah_academy')
+    location.href = target
+  }
+  const switchTeacher = async (userId, target) => {
+    const { data } = await api.post('/me/teachers/switch', { userId })
+    adoptSession(data.accessToken, target)
+  }
+  const joinTeacher = async (slug, courseId, target) => {
+    const { data } = await api.post('/me/teachers/join', { slug, courseId })
+    adoptSession(data.accessToken, target)
+  }
+
   const logout = async () => {
     try { await api.post('/auth/logout') } catch { /* local state is still cleared */ }
     sessionStorage.removeItem('manarah_academy')
@@ -43,7 +60,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithToken, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithToken, logout, switchTeacher, joinTeacher }}>
       {children}
     </AuthContext.Provider>
   )

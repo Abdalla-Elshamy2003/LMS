@@ -14,7 +14,10 @@ import { apiErrorMessage } from '../lib/apiError'
  *  visitor create their account and unlock the course by entering that code. */
 export default function Checkout() {
   const { courseId } = useParams()
-  const { user, loginWithToken } = useAuth()
+  const { user, loginWithToken, switchTeacher } = useAuth()
+  // A signed-in student buying from a teacher — theirs or a new one — only needs the code: the same account
+  // joins that teacher if it has to.
+  const asStudent = user?.role === 'STUDENT'
   const [course, setCourse] = useState(null)
   const [notFound, setNotFound] = useState(false)
   const [form, setForm] = useState({ fullName: '', email: '', password: '', confirmPassword: '', phone: '', grade: '', code: '' })
@@ -28,7 +31,7 @@ export default function Checkout() {
   }, [courseId])
 
   if (notFound) return <Navigate to="/features" replace />
-  if (user && !done) return <Navigate to="/app" replace />
+  if (user && !asStudent && !done) return <Navigate to="/app" replace />
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
   const copy = (text, key) => { navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1500) }) }
 
@@ -51,6 +54,20 @@ export default function Checkout() {
     } catch (err) {
       setError(apiErrorMessage(err, 'تعذّر إتمام العملية، حاول مرة أخرى'))
     } finally {
+      setSaving(false)
+    }
+  }
+
+  const redeemWithAccount = async (e) => {
+    e.preventDefault()
+    if (!form.code.trim()) return setError('اكتب كود الاشتراك اللي استلمته من المستر بعد التحويل')
+    setSaving(true); setError('')
+    try {
+      const { data } = await api.post('/courses/redeem-code', { code: form.code.trim() })
+      if (data?.switchTo) return await switchTeacher(data.switchTo, '/app/courses')
+      location.href = '/app/courses'
+    } catch (err) {
+      setError(apiErrorMessage(err, 'تعذّر تفعيل الكود، راجعه وجرّب تاني'))
       setSaving(false)
     }
   }
@@ -129,6 +146,22 @@ export default function Checkout() {
                   <p className="mt-2 text-ink-500">كورس {course.title} فتح — تقدر تبدأ المذاكرة دلوقتي.</p>
                   <Link to="/app" className="btn-primary mt-6 w-full justify-center py-3">الذهاب إلى منصتي <ArrowLeft size={16} /></Link>
                 </div>
+              ) : asStudent ? (
+                <form onSubmit={redeemWithAccount} className="card space-y-4 p-7">
+                  <h3 className="text-lg font-extrabold text-ink-800">فعّل الكورس بحسابك</h3>
+                  <p className="text-sm leading-7 text-ink-500">
+                    إنت داخل بحساب <b className="text-ink-700">{user.fullName}</b>. بعد ما تحوّل للمستر ويبعتلك الكود، اكتبه هنا.
+                    لو المستر ده جديد عليك، هتنضم له بنفس حسابك — ويظهر عندك في «مدرسيني».
+                  </p>
+                  <div>
+                    <label className="label">كود الاشتراك</label>
+                    <div className="relative"><KeyRound size={18} className="absolute right-3.5 top-3 text-brand-500" /><input dir="ltr" className="input pr-11 text-center font-mono tracking-widest" value={form.code} onChange={set('code')} placeholder="XXXX-XXXX" autoFocus /></div>
+                  </div>
+                  {error && <p className="rounded-2xl bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-600">{error}</p>}
+                  <button type="submit" disabled={saving} className="btn-primary w-full py-3 text-base">
+                    {saving ? <Spinner className="h-5 w-5 border-white/40 border-t-white" /> : <>تفعيل الكورس <ArrowLeft size={18} /></>}
+                  </button>
+                </form>
               ) : (
                 <form onSubmit={submit} className="card space-y-4 p-7">
                   <h3 className="text-lg font-extrabold text-ink-800">أنشئ حسابك وفعّل الكود</h3>
@@ -167,7 +200,7 @@ export default function Checkout() {
                   </button>
                 </form>
               )}
-              {!done && <p className="mt-4 text-center text-sm text-ink-400">لديك حساب بالفعل؟ <Link to="/login" className="font-bold text-brand-600 hover:underline">سجّل الدخول</Link>، وفعّل الكود من صفحة الكورسات.</p>}
+              {!done && !asStudent && <p className="mt-4 text-center text-sm text-ink-400">لديك حساب بالفعل؟ <Link to="/login" className="font-bold text-brand-600 hover:underline">سجّل الدخول</Link>، وفعّل الكود من صفحة الكورسات.</p>}
             </motion.div>
           </div>
         )}

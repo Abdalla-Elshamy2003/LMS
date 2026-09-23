@@ -915,6 +915,11 @@ export default function AcademySettings() {
                             <td className="py-4 font-bold">{s.fullName}</td>
                             <td dir="ltr" className="text-right text-xs">
                               {s.username}
+                              {s.linked && (
+                                <span dir="rtl" className="chip mr-2 bg-sky-50 text-sky-700" title="الطالب بيدخل بحسابه اللي مشترك بيه مع مدرس تاني، وكلمة المرور بيغيّرها هو">
+                                  حساب مشترك مع مدرسين تانيين
+                                </span>
+                              )}
                             </td>
                             <td>{s.courseIds.length}</td>
                             <td>

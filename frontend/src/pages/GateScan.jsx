@@ -6,6 +6,7 @@ import api from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { fmtDayTime } from '../lib/format'
 import { apiErrorMessage } from '../lib/apiError'
+import { TeacherBadge, TeacherChoices } from '../features/gate/ScanTeacher'
 
 /**
  * Where a scanned student pass lands. A staff phone's native camera opens this URL directly, so
@@ -19,12 +20,17 @@ export default function GateScan() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(true)
 
-  useEffect(() => {
-    if (loading || !user) return
-    api.post(`/gate/scan/${token}`)
+  // academyId is only sent after the server asked which of the scanner's teachers to record the attendance with.
+  const scan = (academyId) => {
+    setBusy(true); setError('')
+    api.post(`/gate/scan/${token}`, null, { params: academyId ? { academyId } : {} })
       .then(r => setResult(r.data))
       .catch(e => setError(apiErrorMessage(e, 'تعذّر تسجيل الحركة')))
       .finally(() => setBusy(false))
+  }
+  useEffect(() => {
+    if (loading || !user) return
+    scan()
   }, [loading, user, token])
 
   // Older QR codes point here. Someone who is not signed in is a member of the public scanning a card,
@@ -51,7 +57,9 @@ export default function GateScan() {
             </>
           )}
 
-          {!busy && result && (
+          {!busy && result?.choices?.length > 0 && <TeacherChoices result={result} onPick={scan} busy={busy} />}
+
+          {!busy && result && !result.choices?.length && (
             <>
               <span className={`mx-auto grid h-16 w-16 place-items-center rounded-full ${entering ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                 {entering ? <LogIn size={30} /> : <LogOut size={30} />}
@@ -60,6 +68,7 @@ export default function GateScan() {
                 <CheckCircle2 size={20} className="text-emerald-500" /> {result.message}
               </h1>
               <p className="mt-1 text-xs text-ink-400">{fmtDayTime(result.at)}</p>
+              <TeacherBadge teacher={result.teacher} className="mt-5" />
 
               <div className="mt-5 space-y-2 rounded-2xl bg-ink-50 p-4 text-right">
                 <Row label="الطالب" value={result.fullName} />

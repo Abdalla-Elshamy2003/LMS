@@ -160,6 +160,7 @@ export default function Courses() {
 }
 
 function RedeemCodeModal({ course, onClose, onRedeemed }) {
+  const { switchTeacher } = useAuth()
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -167,7 +168,12 @@ function RedeemCodeModal({ course, onClose, onRedeemed }) {
     e.preventDefault()
     if (!code.trim()) { setError('اكتب الكود'); return }
     setBusy(true); setError('')
-    try { await api.post('/courses/redeem-code', { code: code.trim() }); onRedeemed() }
+    try {
+      const { data } = await api.post('/courses/redeem-code', { code: code.trim() })
+      // A code from another teacher opened the course with them — go there (the same account joined them).
+      if (data?.switchTo) return await switchTeacher(data.switchTo, '/app/courses')
+      onRedeemed()
+    }
     catch (err) { setError(apiErrorMessage(err, 'تعذّر تفعيل الكود')) } finally { setBusy(false) }
   }
   return (

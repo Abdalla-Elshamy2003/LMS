@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import { ArrowUpLeft, ArrowLeft, Play, Check, Sparkles, BookOpen, PenTool, Target, ChevronDown, GraduationCap, Phone, Menu, X } from 'lucide-react'
 import api from '../lib/api'
+import { useAuth } from '../lib/auth'
+import { apiErrorMessage } from '../lib/apiError'
 import { fmtMoney } from '../lib/format'
 import MathBackdrop from '../components/MathBackdrop'
 import { embedUrl } from '../lib/videoEmbed'
@@ -25,6 +27,12 @@ const lessons = [
 export default function TeacherLanding() {
   const { slug } = useParams()
   const [data, setData] = useState(null), [error, setError] = useState(''), [menu, setMenu] = useState(false), [lesson, setLesson] = useState(null)
+  // A signed-in student joins this teacher with the account they already have (or, if they already study with
+  // them, just goes in) — no second registration, no second password.
+  const { user, joinTeacher, switchTeacher } = useAuth()
+  const asStudent = user?.role === 'STUDENT'
+  const [mine, setMine] = useState(null), [joining, setJoining] = useState(false), [joinError, setJoinError] = useState('')
+  useEffect(() => { if (asStudent) api.get('/me/teachers').then(r => setMine(r.data)).catch(() => setMine([])) }, [asStudent])
   const reduced = useReducedMotion()
   const dialog = useRef(null)
   useEffect(() => { let active = true; setData(null); setError(''); api.get(`/public/academies/${slug || 'default'}`).then(r => active && setData(r.data)).catch(() => active && setError('صفحة المدرس غير متاحة حالياً. حاول مرة أخرى لاحقاً.')); return () => { active = false } }, [slug])
@@ -53,6 +61,13 @@ export default function TeacherLanding() {
   }))
   const cards = [...data.courses, ...videoCards, ...(demo ? samples : [])]
   const login = `/login?academy=${encodeURIComponent(p.slug)}`
+  const seat = mine?.find(m => m.slug === p.slug)
+  const enter = async (courseId) => {
+    if (joining) return
+    setJoining(true); setJoinError('')
+    try { seat ? await switchTeacher(seat.userId, '/app/courses') : await joinTeacher(p.slug, courseId, '/app/courses') }
+    catch (e) { setJoinError(apiErrorMessage(e, 'تعذّر الانضمام للمستر، حاول تاني')); setJoining(false) }
+  }
   const reveal = { initial: reduced ? false : { opacity: 0, y: 22 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: 0.12 }, transition: { duration: .55 } }
   const cta = p.phone ? `tel:${p.phone.replace(/[^+0-9]/g, '')}` : login
   return <div className="teacher-site" dir="rtl">
@@ -60,7 +75,9 @@ export default function TeacherLanding() {
     <header className="tl-header"><div className="tl-container tl-nav">
       <Link to={slug ? `/t/${slug}` : '/'} className="tl-brand"><img src="/images/logo.png" alt="" className="tl-logo" /><span><strong>{p.name}</strong><small>{p.tagline}</small></span></Link>
       <nav className={menu ? 'tl-links open' : 'tl-links'} aria-label="القائمة الرئيسية"><a href="#home" onClick={() => setMenu(false)}>الرئيسية</a><a href="#about" onClick={() => setMenu(false)}>عن المستر</a><a href="#courses" onClick={() => setMenu(false)}>الكورسات</a>{demo && <a href="#lessons" onClick={() => setMenu(false)}>جرّب الشرح</a>}<a href="#faq" onClick={() => setMenu(false)}>الأسئلة الشائعة</a></nav>
-      <Link to={login} className="tl-button small">دخول الطالب <ArrowUpLeft size={16}/></Link><button className="tl-menu" aria-label="فتح القائمة" aria-expanded={menu} onClick={() => setMenu(!menu)}>{menu ? <X/> : <Menu/>}</button>
+      {asStudent
+        ? <button type="button" onClick={() => enter()} disabled={joining || !mine} className="tl-button small">{seat ? 'ادخل على كورساتك' : 'انضم للمستر ده بحسابك'} <ArrowUpLeft size={16}/></button>
+        : <Link to={login} className="tl-button small">دخول الطالب <ArrowUpLeft size={16}/></Link>}<button className="tl-menu" aria-label="فتح القائمة" aria-expanded={menu} onClick={() => setMenu(!menu)}>{menu ? <X/> : <Menu/>}</button>
     </div></header>
     <main>
       <section id="home" className="tl-hero"><MathBackdrop count={18} /><div className="tl-container tl-hero-grid">
@@ -85,7 +102,8 @@ export default function TeacherLanding() {
         {cards.length === 0
           ? <div className="tl-empty">الكورسات الجديدة في الطريق. تواصل مع المستر لمعرفة تفاصيل الاشتراك.</div>
           : <Slider items={cards} subject={p.subject} cta={cta} login={login} reveal={reveal} onPreview={(c, i) => setLesson(c.video || lessons[i % 3])}
-              enroll={(c) => Number(c.finalPrice ?? c.price) > 0 ? `/checkout/${c.id}` : `/register?academy=${encodeURIComponent(p.slug)}&course=${c.id}`} />}
+              enroll={(c) => Number(c.finalPrice ?? c.price) > 0 ? `/checkout/${c.id}` : `/register?academy=${encodeURIComponent(p.slug)}&course=${c.id}`}
+              onEnrollFree={asStudent ? (c) => enter(c.id) : undefined} />}
         {demo && <p className="tl-demo-note">الكروت المعلّمة «نموذج تجريبي» أمثلة للعرض وأسعارها توضيحية. الاشتراك وإتاحة الكورسات الفعلية عن طريق المستر.</p>}
       </section>
 
@@ -98,6 +116,7 @@ export default function TeacherLanding() {
       <section className="tl-container tl-final-cta"><div><span>مسألتك الجاية.. إنت قدّها.</span><h2>جاهز تبدأ وتفهمها صح؟</h2><p>خطوة بسيطة دلوقتي، تفرق في رحلتك كلها.</p></div><a href={cta} className="tl-button light">{p.phone ? 'تواصل مع المستر' : 'ادخل على حسابك'} <ArrowUpLeft size={20}/></a><span className="tl-cta-math" aria-hidden="true">∑</span></section>
     </main>
     <footer className="tl-container tl-footer"><Link to={slug ? `/t/${slug}` : '/'} className="tl-brand"><img src="/images/logo.png" alt="" className="tl-logo" /><span><strong>{p.name}</strong><small>{p.tagline}</small></span></Link><p>مساحتك للفهم، والتطبيق، والثقة.</p><span>© {new Date().getFullYear()} · مستر {p.name}</span></footer>
+    {joinError && <div role="alert" className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-2xl bg-rose-600 px-5 py-3 text-center text-sm font-bold text-white shadow-lg" onClick={() => setJoinError('')}>{joinError}</div>}
     {lesson && <div className="tl-modal" onClick={() => setLesson(null)}><div ref={dialog} className="tl-modal-card" role="dialog" aria-modal="true" aria-labelledby="lesson-title" onClick={e => e.stopPropagation()}><button autoFocus aria-label="إغلاق المثال" className="tl-modal-close" onClick={() => setLesson(null)}><X/></button><span className="tl-kicker">{lesson.url ? `درس بالفيديو${lesson.category ? ` · ${lesson.category}` : ''}` : `مثال تعليمي للمعاينة · ${lesson.tag}`}</span><h2 id="lesson-title">{lesson.title}</h2>
       {lesson.url
         ? <div className="tl-modal-video">{embedUrl(lesson.url)
@@ -117,7 +136,7 @@ const covers = ['/images/course-1.jpg', '/images/course-2.jpg', '/images/course-
  * disable at each end; the track stays plain overflow-scroll underneath, so touch swipe and
  * keyboard scrolling keep working even if the arrows are hidden on small screens.
  */
-function Slider({ items, subject, cta, login, reveal, onPreview, enroll }) {
+function Slider({ items, subject, cta, login, reveal, onPreview, enroll, onEnrollFree }) {
   const track = useRef(null)
   const [edge, setEdge] = useState({ start: true, end: false })
 
@@ -184,6 +203,8 @@ function Slider({ items, subject, cta, login, reveal, onPreview, enroll }) {
                       : <div className="tl-price"><strong>{fmtMoney(c.finalPrice)}</strong>{c.discountPercent > 0 && <del>{fmtMoney(c.price)}</del>}</div>}
                     {(sample || c.isVideo)
                       ? <button aria-label={`معاينة ${c.title}`} onClick={() => onPreview(c, i)}>معاينة <ArrowUpLeft size={18} /></button>
+                      : onEnrollFree && Number(c.finalPrice ?? c.price) <= 0
+                        ? <button type="button" onClick={() => onEnrollFree(c)}>اشترك مجاناً <ArrowUpLeft size={17} /></button>
                       : enroll
                         ? <Link to={enroll(c)}>{Number(c.finalPrice ?? c.price) > 0 ? 'اشترك الآن' : 'اشترك مجاناً'} <ArrowUpLeft size={17} /></Link>
                         : <a href={cta}>التواصل للاشتراك <ArrowUpLeft size={17} /></a>}

@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, CreditCard, ScanLine, XCircle } fr
 import api from '../lib/api'
 import { EmptyState } from '../components/ui'
 import { apiErrorMessage } from '../lib/apiError'
+import { TeacherBadge, TeacherChoices } from '../features/gate/ScanTeacher'
 
 /**
  * Door station for physical PVC cards.
@@ -38,18 +39,28 @@ export default function CardScanner() {
     }
   }, [])
 
+  const [pending, setPending] = useState(null)
+
   const submit = async (e) => {
     e.preventDefault()
     const el = inputRef.current
     const code = (el?.value || '').trim()
     if (!code || busy) return
     if (el) el.value = ''
+    send(code)
+  }
+
+  // academyId is only sent after the server asked which of the scanner's teachers to record the attendance with.
+  const send = async (code, academyId) => {
     setBusy(true); setError('')
     try {
-      const { data } = await api.post('/gate/scan', { code })
+      const { data } = await api.post('/gate/scan', { code, academyId })
+      if (data.choices?.length) { setPending({ code, result: data }); setLast(null); return }
+      setPending(null)
       setLast(data)
       setHistory((h) => [data, ...h].slice(0, 12))
     } catch (err) {
+      setPending(null)
       setLast(null)
       setError(apiErrorMessage(err, 'تعذّر قراءة الكارت، جرّب مرة أخرى'))
     } finally {
@@ -100,6 +111,12 @@ export default function CardScanner() {
         </div>
       )}
 
+      {pending && !error && (
+        <div className="card border-r-4 border-amber-500 p-6">
+          <TeacherChoices result={pending.result} busy={busy} onPick={(academyId) => send(pending.code, academyId)} />
+        </div>
+      )}
+
       {last && !error && (
         <div className={`card flex flex-wrap items-center gap-5 border-r-4 p-6 ${isIn ? 'border-emerald-500' : 'border-amber-500'}`}>
           {isIn ? <ArrowLeft size={44} className="shrink-0 text-emerald-500" /> : <ArrowRight size={44} className="shrink-0 text-amber-500" />}
@@ -108,6 +125,7 @@ export default function CardScanner() {
             <p className="mt-1 text-lg font-bold text-ink-800">{last.fullName}</p>
             <p className="text-sm text-ink-400">{last.code}{last.grade ? ` · ${last.grade}` : ''}</p>
           </div>
+          <TeacherBadge teacher={last.teacher} className="w-full sm:w-auto" />
           <span className="text-3xl font-black tabular-nums text-ink-800">{timeOf(last.at)}</span>
         </div>
       )}
@@ -121,7 +139,7 @@ export default function CardScanner() {
             <table className="w-full text-right text-sm">
               <thead>
                 <tr className="border-b border-ink-100 text-xs text-ink-400">
-                  <th className="py-3">الطالب</th><th>الكود</th><th>الحركة</th><th>الوقت</th>
+                  <th className="py-3">الطالب</th><th>الكود</th><th>المدرس</th><th>الحركة</th><th>الوقت</th>
                 </tr>
               </thead>
               <tbody>
@@ -129,6 +147,7 @@ export default function CardScanner() {
                   <tr key={`${r.studentId}-${r.at}-${i}`} className="border-b border-ink-50">
                     <td className="py-3 font-bold">{r.fullName}</td>
                     <td className="text-xs text-ink-400">{r.code}</td>
+                    <td className="text-xs font-bold text-ink-600">{r.teacher?.name || '—'}</td>
                     <td>
                       <span className={`chip ${r.direction === 'IN' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                         {r.direction === 'IN' ? <CheckCircle2 size={13} /> : <ArrowRight size={13} />}

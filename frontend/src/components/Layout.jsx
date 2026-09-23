@@ -5,6 +5,7 @@ import { Bell, Menu } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { Avatar, PageLoader } from './ui'
 import GlobalSearch from './GlobalSearch'
+import MyTeachersBar from '../features/teachers/MyTeachersBar'
 import api from '../lib/api'
 import Sidebar from '../features/navigation/Sidebar'
 import { buildNavigation, currentItem } from '../features/navigation/navConfig'
@@ -105,6 +106,7 @@ export default function Layout() {
               </div>
             </NavLink>
           </div>
+          {user?.role === 'STUDENT' && <MyTeachersBar />}
         </header>
 
         <main className="px-4 py-6 sm:px-6 lg:px-8">
