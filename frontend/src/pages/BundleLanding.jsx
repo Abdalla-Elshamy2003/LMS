@@ -66,6 +66,10 @@ export default function BundleLanding() {
   )
 
   const members = data.members || []
+  // Only what is really there: linked teachers' published videos and courses, plus intro videos.
+  const videoCount = members.reduce((n, m) => n + (m.introVideoUrl ? 1 : 0) + (m.teacher?.videos?.length || 0), 0)
+  const courseCount = members.reduce((n, m) => n + (m.teacher?.courses?.length || 0), 0)
+  const totals = [[members.length, 'مدرسين', Users], [videoCount, 'فيديو', PlayCircle], [courseCount, 'كورس', BookOpen]].filter(([n]) => n > 0)
 
   return (
     <div dir="rtl" className="min-h-screen overflow-x-clip bg-[#f6fbff] text-ink-800">
@@ -77,7 +81,8 @@ export default function BundleLanding() {
         <span className="bx-orbit" aria-hidden="true" />
         <span className="bx-orbit two" aria-hidden="true" />
         <span className="bx-glow -top-24 right-[10%] bg-cyan-400" aria-hidden="true" />
-        <span className="bx-glow bottom-0 left-[5%] bg-fuchsia-500" style={{ animationDelay: '-6s' }} aria-hidden="true" />
+        <span className="bx-glow bottom-0 left-[5%] bg-sky-500" style={{ animationDelay: '-6s' }} aria-hidden="true" />
+        <span className="bx-glow bottom-[18%] right-[4%] !w-56 bg-amber-400 !opacity-20" style={{ animationDelay: '-3s' }} aria-hidden="true" />
         {members.slice(0, GLYPH_SPOTS.length).map((m, i) => (
           <span key={i} dir="ltr" className={`bx-float-glyph hidden sm:block ${GLYPH_SPOTS[i]}`} style={{ animationDelay: `${-i * 2.3}s` }} aria-hidden="true">{glyphFor(m.subject)}</span>
         ))}
@@ -89,17 +94,29 @@ export default function BundleLanding() {
           <motion.span initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
             className="chip mt-5 border border-white/15 bg-white/10 text-cyan-100 backdrop-blur"><Layers size={14} /> باقة مدرسين · {members.length.toLocaleString('ar-EG')} مدرسين</motion.span>
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="mx-auto mt-5 max-w-4xl bg-gradient-to-l from-white via-cyan-100 to-fuchsia-200 bg-clip-text pb-2 text-4xl font-black leading-[1.25] text-transparent sm:text-6xl">{data.name}</motion.h1>
+            className="mx-auto mt-5 max-w-4xl bg-gradient-to-l from-white via-sky-100 to-cyan-200 bg-clip-text pb-2 text-4xl font-black leading-[1.25] text-transparent sm:text-6xl">{data.name}</motion.h1>
           {data.tagline && <motion.p initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="mt-3 text-lg font-bold text-cyan-100/90">{data.tagline}</motion.p>}
-          {data.description && <motion.p initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }} className="mx-auto mt-4 max-w-2xl text-sm leading-8 text-cyan-50/70">{data.description}</motion.p>}
+          {data.description && <motion.p initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }} className="mx-auto mt-4 max-w-2xl text-sm leading-8 text-sky-50/85">{data.description}</motion.p>}
 
           <motion.div style={{ y: stageY, opacity: stageFade }} className="mt-14">
             <BundleStage members={members} base="clamp(60px, 17vw, 196px)" showNames onPick={go} />
           </motion.div>
 
-          <button type="button" onClick={() => go(0)} className="mt-12 inline-flex flex-col items-center gap-1 text-xs font-bold text-cyan-100/80 hover:text-white">
-            انزل واتعرّف على كل مدرس <ChevronDown className="bx-scroll-hint" size={20} />
-          </button>
+          <motion.div initial={reduced ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }}
+            className="mx-auto mt-14 flex max-w-3xl flex-wrap items-center justify-center gap-2 sm:gap-4">
+            {totals.map(([n, label, Icon]) => (
+              <span key={label} className="inline-flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[.06] px-3.5 py-2 backdrop-blur sm:px-4 sm:py-2.5">
+                <span className="hidden h-8 w-8 place-items-center rounded-xl bg-sky-400/15 text-sky-200 sm:grid"><Icon size={16} /></span>
+                <span className="text-right leading-tight"><b className="block text-lg font-black text-white">{n.toLocaleString('ar-EG')}</b><small className="text-[11px] text-sky-100/70">{label}</small></span>
+              </span>
+            ))}
+          </motion.div>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <button type="button" onClick={() => go(0)} className="inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3 text-sm font-black text-brand-800 shadow-soft transition hover:-translate-y-0.5 hover:bg-sky-50">
+              اتعرّف على المدرسين <ChevronDown className="bx-scroll-hint" size={18} />
+            </button>
+            <Link to="/#packages" className="inline-flex items-center gap-2 rounded-2xl border border-white/20 px-6 py-3 text-sm font-bold text-sky-50 transition hover:bg-white/10">كل الباقات <ArrowUpLeft size={16} /></Link>
+          </div>
         </div>
       </section>
 
@@ -186,11 +203,13 @@ function MemberSection({ m, i, onPlay, sectionRef }) {
   return (
     <section ref={sectionRef} data-index={i} id={`teacher-${i + 1}`} style={tintStyle(i)}
       className={`bx-member relative scroll-mt-32 overflow-hidden py-20 sm:py-24 ${flip ? 'bg-white' : ''}`}>
+      <span className="bx-accent-bg absolute inset-x-0 top-0 h-[3px] opacity-60" aria-hidden="true" />
       <div className={`mx-auto grid max-w-7xl items-center gap-12 px-5 lg:grid-cols-[0.85fr_1.15fr] ${flip ? 'lg:[&>*:first-child]:order-2' : ''}`}>
         {/* Portrait */}
         <motion.div initial={from(flip ? -1 : 1)} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ duration: 0.7, ease: 'easeOut' }}
           className="relative mx-auto w-full max-w-[21rem]">
-          <span dir="ltr" className={`bx-member-glyph -top-10 ${flip ? '-left-16' : '-right-16'}`} aria-hidden="true">{glyphFor(m.subject)}</span>
+          <span className="bx-accent-bg absolute inset-x-6 bottom-6 top-16 rounded-full opacity-25 blur-3xl" aria-hidden="true" />
+          <span dir="ltr" className="bx-member-glyph left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2" aria-hidden="true">{glyphFor(m.subject)}</span>
           <div className="bx-float relative" style={{ '--i': i }}>
             <span className="bx-arch">
               <span className="bx-arch-photo">

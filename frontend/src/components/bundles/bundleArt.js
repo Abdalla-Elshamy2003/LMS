@@ -1,11 +1,14 @@
-/** Accent pair for each teacher in a package, by position — the same teacher keeps the same colour on every screen. */
+/**
+ * Accent pair for each teacher in a package, by position — the same teacher keeps the same colour on every screen.
+ * All drawn from the platform's own family (sky/brand blue, cyan, teal) plus the warm amber the teacher pages use.
+ */
 const TINTS = [
-  ['#f59e0b', '#e11d48'],
-  ['#0ea5e9', '#6366f1'],
-  ['#8b5cf6', '#ec4899'],
-  ['#10b981', '#0ea5e9'],
-  ['#14b8a6', '#84cc16'],
-  ['#f97316', '#facc15'],
+  ['#fbbf24', '#ea7a2f'],
+  ['#38bdf8', '#0369a1'],
+  ['#22d3ee', '#1d4ed8'],
+  ['#34d399', '#0f766e'],
+  ['#2dd4bf', '#0e7490'],
+  ['#7dd3fc', '#075985'],
 ]
 export const tintFor = (i) => TINTS[i % TINTS.length]
 

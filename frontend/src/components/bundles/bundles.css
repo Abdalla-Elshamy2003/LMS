@@ -31,16 +31,16 @@
 
 /* ---- Home-page package card ---- */
 .bx-card{position:relative;isolation:isolate;overflow:hidden;border-radius:2rem;color:#fff;
-  background:radial-gradient(ellipse at 12% 0%,#155e75 0,transparent 55%),radial-gradient(ellipse at 100% 100%,#4c1d95 0,transparent 52%),linear-gradient(135deg,#0b1f33,#0f2d3f 55%,#111a3a);
+  background:radial-gradient(ellipse at 12% 0%,#0e7490 0,transparent 55%),radial-gradient(ellipse at 100% 100%,#0369a1 0,transparent 55%),linear-gradient(135deg,#06131f,#0b2638 55%,#0a2d45);
   box-shadow:0 40px 80px -40px #0c4a6e99;transition:box-shadow .5s,transform .5s}
-.bx-card:hover{box-shadow:0 50px 90px -40px #0369a1cc;transform:translateY(-4px)}
+.bx-card:hover{box-shadow:0 50px 90px -40px #0284c7cc;transform:translateY(-4px)}
 .bx-card::after{content:"";position:absolute;top:-20%;bottom:-20%;left:-40%;width:28%;background:linear-gradient(90deg,transparent,#ffffff1c,transparent);
   transform:skewX(-18deg);animation:bx-sweep 8s ease-in-out infinite;pointer-events:none}
 @keyframes bx-sweep{0%,60%{left:-40%}100%{left:130%}}
 .bx-grid{position:absolute;inset:0;z-index:-1;background-image:linear-gradient(#ffffff0c 1px,transparent 1px),linear-gradient(90deg,#ffffff0c 1px,transparent 1px);
   background-size:34px 34px;-webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 35%,#000 30%,transparent 100%);mask-image:radial-gradient(ellipse 70% 60% at 50% 35%,#000 30%,transparent 100%)}
 .bx-orbit{position:absolute;z-index:-1;left:50%;top:42%;width:min(640px,115%);aspect-ratio:1;translate:-50% -50%;border:1px dashed #7dd3fc3d;border-radius:50%;animation:bx-spin 70s linear infinite}
-.bx-orbit.two{width:min(440px,82%);border-color:#f0abfc30;animation-duration:48s;animation-direction:reverse}
+.bx-orbit.two{width:min(440px,82%);border-color:#fcd34d2e;animation-duration:48s;animation-direction:reverse}
 @keyframes bx-spin{to{rotate:360deg}}
 .bx-glow{position:absolute;z-index:-1;width:340px;aspect-ratio:1;border-radius:50%;filter:blur(64px);opacity:.42;animation:bx-glow 13s ease-in-out infinite}
 @keyframes bx-glow{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(28px,-22px) scale(1.15)}}
@@ -56,7 +56,7 @@
 
 /* ---- Package page ---- */
 .bx-hero{position:relative;isolation:isolate;overflow:hidden;color:#fff;
-  background:radial-gradient(ellipse at 15% 0%,#155e75 0,transparent 50%),radial-gradient(ellipse at 90% 90%,#4c1d95 0,transparent 45%),linear-gradient(160deg,#08182a,#0d2a3d 50%,#0f1734)}
+  background:radial-gradient(ellipse at 15% 0%,#0e7490 0,transparent 50%),radial-gradient(ellipse at 88% 100%,#0369a1 0,transparent 50%),linear-gradient(165deg,#05111c,#0a2335 50%,#0b2e47)}
 .bx-hero .bx-grid{-webkit-mask-image:radial-gradient(ellipse 80% 70% at 50% 40%,#000 30%,transparent 100%);mask-image:radial-gradient(ellipse 80% 70% at 50% 40%,#000 30%,transparent 100%)}
 .bx-hero .bx-orbit{top:62%;width:min(980px,150%)}
 .bx-hero .bx-orbit.two{width:min(700px,110%)}
@@ -102,11 +102,11 @@
 .bx-modal-video{position:relative;aspect-ratio:16/9;background:#0b1f33;border-radius:1rem;overflow:hidden}
 .bx-modal-video iframe,.bx-modal-video video{position:absolute;inset:0;width:100%;height:100%;border:0}
 
+/* Phones: side by side without overlap, so every subject label gets its own column and none run together. */
 @media(max-width:640px){
-  .bx-label{font-size:.62rem}
-  .bx-label>small{display:none}
-  .bx-hero .bx-label{font-size:.7rem}
-  .bx-stage:hover .bx-slot{margin-inline:calc(var(--base) * -.07)}
+  .bx-slot,.bx-stage:hover .bx-slot{margin-inline:2px}
+  .bx-label,.bx-hero .bx-label{font-size:.6rem;margin-top:.5rem;word-break:keep-all}
+  .bx-label>i,.bx-label>small{display:none}
 }
 
 @media(prefers-reduced-motion:reduce){

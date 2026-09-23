@@ -54,7 +54,7 @@ export function BundleCard({ bundle, className = '' }) {
       <span className="bx-orbit" aria-hidden="true" />
       <span className="bx-orbit two" aria-hidden="true" />
       <span className="bx-glow -top-24 -right-16 bg-cyan-400" aria-hidden="true" />
-      <span className="bx-glow -bottom-28 -left-20 bg-fuchsia-500" style={{ animationDelay: '-5s' }} aria-hidden="true" />
+      <span className="bx-glow -bottom-28 -left-20 bg-sky-500" style={{ animationDelay: '-5s' }} aria-hidden="true" />
 
       <div className="flex items-start justify-between gap-3">
         <span className="chip border border-white/15 bg-white/10 text-cyan-100 backdrop-blur"><Layers size={14} /> باقة مدرسين</span>
