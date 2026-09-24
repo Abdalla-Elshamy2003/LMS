@@ -15,6 +15,7 @@ const Landing = lazy(() => import('./pages/TeacherLanding'))
 const Home = lazy(() => import('./pages/Home'))
 const Features = lazy(() => import('./pages/Features'))
 const BundleLanding = lazy(() => import('./pages/BundleLanding'))
+const PackageCheckout = lazy(() => import('./pages/PackageCheckout'))
 const About = lazy(() => import('./pages/About'))
 const Contact = lazy(() => import('./pages/Contact'))
 const SuccessStories = lazy(() => import('./pages/SuccessStories'))
@@ -58,6 +59,8 @@ const CardPrint = lazy(() => import('./pages/CardPrint'))
 const Reports = lazy(() => import('./pages/Reports'))
 const AssistantDesk = lazy(() => import('./pages/AssistantDesk'))
 const Bundles = lazy(() => import('./pages/Bundles'))
+const ControlCenter = lazy(() => import('./pages/ControlCenter'))
+const MyPackage = lazy(() => import('./pages/MyPackage'))
 const Assistants = lazy(() => import('./pages/Assistants'))
 
 function Protected({ children }) {
@@ -81,6 +84,7 @@ export default function App() {
       <Route path="/t/:slug" element={standalone(<Landing />)} />
       <Route path="/features" element={standalone(<Features />)} />
       <Route path="/packages/:slug" element={standalone(<BundleLanding />)} />
+      <Route path="/packages/:slug/checkout" element={standalone(<PackageCheckout />)} />
       {/* The pricing page was retired; old links land on the home page. */}
       <Route path="/pricing" element={<Navigate to="/" replace />} />
       <Route path="/about" element={standalone(<About />)} />
@@ -130,6 +134,8 @@ export default function App() {
         <Route path="campaigns" element={<Campaigns />} />
         <Route path="academy" element={<AcademySettings />} />
         <Route path="bundles" element={<Bundles />} />
+        <Route path="control" element={<ControlCenter />} />
+        <Route path="my-package" element={<MyPackage />} />
         <Route path="assistant" element={<AssistantDesk />} />
         <Route path="assistants" element={<Assistants />} />
         <Route path="rules" element={<Rules />} />

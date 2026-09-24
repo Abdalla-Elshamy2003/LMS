@@ -31,6 +31,8 @@ import { apiErrorMessage } from '../lib/apiError'
 
 function mediaUrl(material) {
   if (material?.fileKey) return fileUrl(material.fileKey);
+  // Videos the platform itself serves (e.g. the demo package's lessons) are same-origin paths.
+  if (/^\/videos\/[\w.-]+\.mp4$/.test(material?.url || "")) return material.url;
   try {
     const u = new URL(material?.url);
     return ["https:", "http:"].includes(u.protocol) ? u.href : "";

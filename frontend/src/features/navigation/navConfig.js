@@ -17,6 +17,8 @@ const ITEMS = {
   assistantDesk: { to: '/app/assistant', label: 'مكتب اليوم والمهام', icon: ClipboardCheck, roles: ['TEACHER', 'ASSISTANT'] },
   academy: { to: '/app/academy', label: 'صفحة المستر وحسابات الطلاب', icon: UserRound, roles: [...ADMIN_ROLES, 'TEACHER', 'ASSISTANT'] },
   bundles: { to: '/app/bundles', label: 'باقات المدرسين', icon: Layers, roles: ADMIN_ROLES },
+  control: { to: '/app/control', label: 'لوحة التحكم الكاملة', icon: ShieldCheck, roles: ADMIN_ROLES },
+  myPackage: { to: '/app/my-package', label: 'باقتي', icon: Layers, roles: ['STUDENT'] },
   assistants: { to: '/app/assistants', label: 'المساعدون (إنشاء حساب)', icon: UserCog, roles: ['TEACHER'] },
   family: { to: '/app/family', label: 'متابعة الأبناء', icon: HeartHandshake, roles: ['PARENT'] },
   familyFinance: { to: '/app/family/finance', label: 'مصروفات الأبناء', icon: Wallet, roles: ['PARENT'] },
@@ -51,7 +53,7 @@ const ACCOUNT = { id: 'account', title: 'الحساب', items: ['profile', 'logo
 /** What each kind of user sees, grouped by task. Only items the role may see are rendered; empty sections vanish. */
 const LAYOUTS = {
   admin: [
-    { id: 'main', title: 'الرئيسية', items: ['dashboard', 'reports'] },
+    { id: 'main', title: 'الرئيسية', items: ['control', 'dashboard', 'reports'] },
     { id: 'academic', title: 'الإدارة الأكاديمية', items: ['academy', 'bundles', 'students', 'staff', 'courses', 'learning', 'schedule'] },
     { id: 'assessment', title: 'المحتوى والتقييم', items: ['exams', 'homework', 'certificates', 'leaderboard'] },
     { id: 'operations', title: 'العمليات', items: ['attendance', 'gateLog', 'cardScanner', 'cards'] },
@@ -70,7 +72,7 @@ const LAYOUTS = {
   ],
   student: [
     { id: 'overview', title: 'نظرة عامة', items: ['dashboard', 'reports'] },
-    { id: 'learning', title: 'التعلّم', items: ['learning', 'courses', 'schedule'] },
+    { id: 'learning', title: 'التعلّم', items: ['myPackage', 'learning', 'courses', 'schedule'] },
     { id: 'assessment', title: 'التقييم', items: ['exams', 'homework', 'certificates'] },
     { id: 'activity', title: 'النشاط', items: ['attendance', 'leaderboard'] },
     { id: 'communication', title: 'التواصل', items: ['notifications', 'support', 'community'] },

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import { ArrowUpLeft, Layers, Plus, Sparkles, Users } from 'lucide-react'
 import { glyphFor, tintStyle } from './bundleArt'
+import { fmtMoney } from '../../lib/format'
 import './bundles.css'
 
 /** How much smaller each portrait is than the middle one, so the row rises to a peak in the centre. */
@@ -69,6 +70,12 @@ export function BundleCard({ bundle, className = '' }) {
         <div className="min-w-0">
           <h3 className="text-2xl font-black leading-tight sm:text-3xl">{bundle.name}</h3>
           {bundle.tagline && <p className="mt-2 text-sm text-cyan-100/80">{bundle.tagline}</p>}
+          {Number(bundle.price) > 0 && (
+            <p className="mt-3 flex flex-wrap items-baseline gap-2">
+              <span className="rounded-xl bg-gradient-to-l from-amber-400 to-orange-500 px-3 py-1 text-base font-black text-white">الباقة كلها بـ {fmtMoney(bundle.price)}</span>
+              {Number(bundle.coursesValue) > Number(bundle.price) && <del className="text-sm text-cyan-100/60">{fmtMoney(bundle.coursesValue)}</del>}
+            </p>
+          )}
         </div>
         <span className="bx-cta inline-flex items-center gap-2 rounded-2xl bg-white/15 px-5 py-3 text-sm font-black text-white backdrop-blur">
           افتح الباقة <ArrowUpLeft size={17} />

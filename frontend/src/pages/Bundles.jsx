@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { ArrowDown, ArrowUp, ExternalLink, Layers, Plus, Save, Trash2, UserPlus } from 'lucide-react'
+import { ArrowDown, ArrowUp, Copy, ExternalLink, KeyRound, Layers, Plus, Save, Trash2, UserPlus, Users, Wallet, XCircle } from 'lucide-react'
 import api from '../lib/api'
 import { apiErrorMessage } from '../lib/apiError'
 import { EmptyState, PageLoader, Spinner } from '../components/ui'
 import ImageUpload from '../components/ImageUpload'
 
 const blankMember = () => ({ academyId: null, displayName: '', subject: '', photoUrl: '', introVideoUrl: '' })
-const blankBundle = () => ({ id: null, slug: '', name: '', tagline: '', description: '', published: true, sortOrder: 0, members: [blankMember()] })
+const blankBundle = () => ({ id: null, slug: '', name: '', tagline: '', description: '', published: true, sortOrder: 0, members: [blankMember()],
+  price: '', instapayNumber: '', vodafoneCashNumber: '', paymentNote: '' })
 
 /**
  * Head office: teacher packages (باقات المدرسين). Each package lists its teachers in order; a teacher is linked
@@ -42,7 +43,7 @@ export default function Bundles() {
 
   const save = async () => {
     setBusy(true); setMsg({ error: '', ok: '' })
-    const body = { ...form, sortOrder: Number(form.sortOrder) || 0 }
+    const body = { ...form, sortOrder: Number(form.sortOrder) || 0, price: form.price === '' || form.price == null ? null : Number(form.price) }
     try {
       const { data } = form.id ? await api.put(`/bundles/${form.id}`, body) : await api.post('/bundles', body)
       await load(data.slug)
@@ -91,6 +92,17 @@ export default function Bundles() {
               <div className="flex items-center gap-2" dir="ltr"><span className="text-xs text-ink-400">/packages/</span><input className="input" value={form.slug} onChange={set('slug')} placeholder="excellence" /></div></div>
             <div><label className="label">سطر تعريفي</label><input className="input" value={form.tagline} onChange={set('tagline')} placeholder="٥ مدرسين · ٥ مواد · صفحة واحدة" /></div>
             <div><label className="label">وصف الباقة</label><textarea className="input min-h-28" value={form.description} onChange={set('description')} /></div>
+            <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
+              <p className="flex items-center gap-2 text-sm font-black text-amber-800"><Wallet size={16} /> سعر الباقة وطريقة الدفع</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div><label className="label">سعر الباقة كلها (ج.م)</label><input type="number" min="0" className="input" value={form.price ?? ''} onChange={set('price')} placeholder="مثال: 2999" /></div>
+                <div className="self-end text-xs leading-6 text-ink-500">{form.coursesValue > 0 && <>قيمة كورسات المدرسين منفصلة: <b>{Number(form.coursesValue).toLocaleString('ar-EG')} ج.م</b></>}</div>
+                <div><label className="label">رقم إنستاباي للإدارة</label><input dir="ltr" className="input" value={form.instapayNumber || ''} onChange={set('instapayNumber')} /></div>
+                <div><label className="label">رقم فودافون كاش للإدارة</label><input dir="ltr" className="input" value={form.vodafoneCashNumber || ''} onChange={set('vodafoneCashNumber')} /></div>
+              </div>
+              <div className="mt-3"><label className="label">ملاحظة الدفع</label><input className="input" value={form.paymentNote || ''} onChange={set('paymentNote')} placeholder="مثال: ابعت صورة الإيصال على واتساب الإدارة" /></div>
+              <p className="mt-2 text-xs text-ink-500">من غير سعر الباقة مش بتتباع — بتفضل صفحة عرض بس.</p>
+            </div>
             <div className="flex flex-wrap items-center gap-5">
               <label className="flex items-center gap-2 text-sm font-bold text-ink-700"><input type="checkbox" checked={form.published} onChange={set('published')} /> ظاهرة للزوار</label>
               <label className="flex items-center gap-2 text-sm text-ink-600">الترتيب <input type="number" className="input w-20" value={form.sortOrder} onChange={set('sortOrder')} /></label>
@@ -135,6 +147,81 @@ export default function Bundles() {
           </div>
         </div>
       )}
+
+      {form?.id && <PackageSales bundle={form} onChange={() => load(form.slug)} />}
     </div>
   )
 }
+
+/**
+ * Selling a package by hand: head office confirms a transfer, then either gives the student a one-time package code
+ * or subscribes them directly by the email/username they sign in with. Cancelling closes only what the package opened.
+ */
+function PackageSales({ bundle, onChange }) {
+  const [codes, setCodes] = useState([])
+  const [subs, setSubs] = useState([])
+  const [count, setCount] = useState(5)
+  const [login, setLogin] = useState('')
+  const [msg, setMsg] = useState({ ok: '', error: '' })
+  const [copied, setCopied] = useState('')
+  const load = () => Promise.all([api.get(`/bundles/${bundle.id}/codes`), api.get(`/bundles/${bundle.id}/subscribers`)])
+    .then(([c, s]) => { setCodes(c.data); setSubs(s.data) }).catch(() => {})
+  useEffect(() => { load() }, [bundle.id])
+  const act = async (fn, ok, fallback) => {
+    setMsg({ ok: '', error: '' })
+    try { await fn(); await load(); onChange?.(); setMsg({ ok, error: '' }) } catch (e) { setMsg({ ok: '', error: apiErrorMessage(e, fallback) }) }
+  }
+  const copy = (code) => navigator.clipboard?.writeText(code).then(() => { setCopied(code); setTimeout(() => setCopied(''), 1400) })
+  const unused = codes.filter(c => c.status === 'UNUSED')
+  const statusLabel = { UNUSED: 'متاح', USED: 'اتستخدم', REVOKED: 'ملغي' }
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-2">
+      <div className="card p-6">
+        <h3 className="flex items-center gap-2 font-black"><KeyRound size={18} className="text-brand-600" /> أكواد الباقة <span className="text-xs font-bold text-ink-400">· {unused.length.toLocaleString('ar-EG')} متاح</span></h3>
+        <p className="mt-1 text-xs text-ink-500">كل كود بيفتح الباقة كلها لطالب واحد مرة واحدة. ابعته للطالب بعد ما تتأكد من التحويل.</p>
+        <div className="mt-4 flex items-center gap-2">
+          <input type="number" min="1" max="100" className="input w-24" value={count} onChange={e => setCount(e.target.value)} />
+          <button type="button" className="btn-primary" disabled={!bundle.price}
+            onClick={() => act(() => api.post(`/bundles/${bundle.id}/codes`, { count: Number(count) || 1 }), 'اتعملت الأكواد', 'تعذّر إنشاء الأكواد')}>
+            <Plus size={16} /> أكواد جديدة
+          </button>
+          {!bundle.price && <span className="text-xs text-amber-700">حط سعر الباقة الأول</span>}
+        </div>
+        <div className="mt-4 max-h-80 space-y-1.5 overflow-y-auto">
+          {codes.length === 0 ? <p className="text-sm text-ink-400">لسه مفيش أكواد.</p> : codes.map(c => (
+            <div key={c.id} className="flex items-center justify-between gap-2 rounded-xl bg-ink-50 px-3 py-2 text-sm">
+              <button type="button" dir="ltr" onClick={() => copy(c.code)} className="flex items-center gap-2 font-mono font-bold text-ink-700" title="نسخ">{c.code} <Copy size={13} />{copied === c.code && <span className="text-[11px] text-emerald-600">اتنسخ</span>}</button>
+              <span className="flex items-center gap-2 text-xs">
+                <span className={`chip ${c.status === 'UNUSED' ? 'bg-emerald-50 text-emerald-700' : c.status === 'USED' ? 'bg-sky-50 text-sky-700' : 'bg-ink-100 text-ink-500'}`}>{statusLabel[c.status]}{c.usedBy ? ` · ${c.usedBy}` : ''}</span>
+                {c.status === 'UNUSED' && <button type="button" className="text-rose-500" title="إلغاء الكود" onClick={() => act(() => api.delete(`/bundles/codes/${c.id}`), 'اتلغى الكود', 'تعذّر إلغاء الكود')}><XCircle size={16} /></button>}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="card p-6">
+        <h3 className="flex items-center gap-2 font-black"><Users size={18} className="text-brand-600" /> المشتركين في الباقة <span className="text-xs font-bold text-ink-400">· {subs.filter(s => s.status === 'ACTIVE').length.toLocaleString('ar-EG')} نشط</span></h3>
+        <p className="mt-1 text-xs text-ink-500">أو اشترك للطالب مباشرة بالإيميل أو اسم المستخدم اللي بيدخل بيه.</p>
+        <form className="mt-4 flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); act(() => api.post(`/bundles/${bundle.id}/subscribers`, { login }), 'اتفعّلت الباقة للطالب', 'تعذّر تفعيل الباقة').then(() => setLogin('')) }}>
+          <input dir="ltr" className="input" value={login} onChange={e => setLogin(e.target.value)} placeholder="student@example.com" />
+          <button type="submit" className="btn-primary shrink-0" disabled={!login.trim()}><UserPlus size={16} /> تفعيل</button>
+        </form>
+        <div className="mt-4 max-h-80 space-y-1.5 overflow-y-auto">
+          {subs.length === 0 ? <p className="text-sm text-ink-400">لسه مفيش مشتركين.</p> : subs.map(s => (
+            <div key={s.id} className="flex items-center justify-between gap-2 rounded-xl bg-ink-50 px-3 py-2 text-sm">
+              <span className="min-w-0"><b className="block truncate text-ink-700">{s.fullName}</b><small dir="ltr" className="block truncate text-right text-xs text-ink-400">{s.login}</small></span>
+              <span className="flex shrink-0 items-center gap-2 text-xs">
+                <span className={`chip ${s.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-ink-100 text-ink-500'}`}>{s.status === 'ACTIVE' ? (s.source === 'CODE' ? 'بكود' : 'من الإدارة') : 'ملغي'}</span>
+                {s.status === 'ACTIVE' && <button type="button" className="text-rose-500" title="إلغاء الاشتراك" onClick={() => window.confirm(`إلغاء باقة ${s.fullName}؟ الكورسات اللي فتحتها الباقة هتتقفل.`) && act(() => api.delete(`/bundles/subscriptions/${s.id}`), 'اتلغى الاشتراك', 'تعذّر إلغاء الاشتراك')}><XCircle size={16} /></button>}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+      {msg.error && <div role="alert" className="rounded-2xl bg-rose-50 p-3 text-sm font-semibold text-rose-700 xl:col-span-2">{msg.error}</div>}
+      {msg.ok && <div role="status" className="rounded-2xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-700 xl:col-span-2">{msg.ok}</div>}
+    </div>
+  )
+}
+
