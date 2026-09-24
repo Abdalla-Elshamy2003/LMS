@@ -25,7 +25,7 @@
 .bx-stage:hover .bx-arch{transform:translateY(-6px)}
 .bx-slot:hover .bx-arch{transform:translateY(-16px) scale(1.04)}
 .bx-slot:hover .bx-arch-photo img{transform:scale(1.08)}
-.bx-label{display:block;margin-top:.7rem;text-align:center;font-size:.74rem;font-weight:800;line-height:1.35;color:#e0f2fe}
+.bx-label{display:block;margin-top:.7rem;padding-inline:calc(var(--base) * .08);text-align:center;font-size:.74rem;font-weight:800;line-height:1.35;color:#e0f2fe}
 .bx-label>i{display:inline-block;width:.45rem;height:.45rem;border-radius:50%;margin-left:.35rem;vertical-align:middle;background:linear-gradient(135deg,var(--a),var(--b))}
 .bx-label>small{display:block;font-size:.66rem;font-weight:600;color:#bae6fdb3;margin-top:.1rem}
 
@@ -105,7 +105,7 @@
 /* Phones: side by side without overlap, so every subject label gets its own column and none run together. */
 @media(max-width:640px){
   .bx-slot,.bx-stage:hover .bx-slot{margin-inline:2px}
-  .bx-label,.bx-hero .bx-label{font-size:.6rem;margin-top:.5rem;word-break:keep-all}
+  .bx-label,.bx-hero .bx-label{font-size:.6rem;margin-top:.5rem;padding-inline:0;word-break:keep-all}
   .bx-label>i,.bx-label>small{display:none}
 }
 

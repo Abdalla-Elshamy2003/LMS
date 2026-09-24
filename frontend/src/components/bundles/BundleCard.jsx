@@ -36,7 +36,7 @@ export function BundleStage({ members, base = 'clamp(58px, 15vw, 148px)', showNa
                   </span>
                 </span>
               </span>
-              <span className="bx-label"><i />{m.subject}{showNames && m.name && <small>{m.name}</small>}</span>
+              <span className="bx-label"><i />{m.subject}{showNames && m.name && !m.name.includes(m.subject) && <small>{m.name}</small>}</span>
             </Tag>
           </motion.div>
         )
