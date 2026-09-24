@@ -127,7 +127,7 @@ public class DemoPackageSeeder {
 
             Lesson lesson = new Lesson();
             lesson.setTenantId(a.getTenantId()); lesson.setModuleId(module.getId()); lesson.setPosition(1);
-            lesson.setTitle("مقدمة: " + c.path("title").asText()); lesson.setDurationMin(c.path("minutes").asInt(12));
+            lesson.setTitle("مقدمة: " + c.path("title").asText()); lesson.setDurationMin(1); // the demo video is a few seconds long — never claim a full lesson
             StringBuilder text = new StringBuilder(c.path("description").asText()).append("\n\nهنتكلم في الدرس ده عن:");
             for (JsonNode p : c.path("points")) text.append("\n• ").append(p.asText());
             lesson.setContentText(text.toString());

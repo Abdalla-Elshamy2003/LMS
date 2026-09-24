@@ -36,7 +36,9 @@ export default function Login() {
     setBusy(true); setError('')
     try {
       const account = await login(username.trim(), password)
-      if (profile && ['SUPER_ADMIN', 'BRANCH_ADMIN', 'ACADEMIC_MANAGER'].includes(account.role)
+      // An admin signing in from a teacher's own login link (?academy=...) works inside that teacher's space;
+      // the plain /login is head office.
+      if (profile && params.get('academy') && ['SUPER_ADMIN', 'BRANCH_ADMIN', 'ACADEMIC_MANAGER'].includes(account.role)
         && profile.managerTenantId === account.tenantId)
         sessionStorage.setItem('manarah_academy', JSON.stringify({ id: profile.id, name: profile.name, slug: profile.slug }))
       nav(destination)

@@ -152,7 +152,7 @@ function Teachers({ say, fail }) {
                 <tr key={t.academyId} className="border-b border-ink-50">
                   <td className="p-4"><div className="flex items-center gap-3">
                     <span className="h-10 w-10 overflow-hidden rounded-xl bg-ink-100">{t.photoUrl && <img src={t.photoUrl} alt="" className="h-full w-full object-cover object-top" />}</span>
-                    <span><b className="block text-ink-800">{t.name}</b><small className="text-xs text-ink-400">{t.subject} · /t/{t.slug}</small></span>
+                    <span><b className="block text-ink-800">{t.name}</b><small className="text-xs text-ink-400">{t.subject} · <span dir="ltr">/t/{t.slug}</span></small></span>
                   </div></td>
                   <td dir="ltr" className="text-right text-xs text-ink-500">{t.username}</td>
                   <td className="font-bold">{t.students.toLocaleString('ar-EG')}</td>
