@@ -158,7 +158,7 @@ public class AcademyService {
                 String title = required(v.title(), 150), url = required(v.url(), 2000);
                 if (!url.matches("^https://[^\\s]+$") && !url.matches("^/videos/[a-zA-Z0-9._-]+\\.mp4$")) throw new BadRequestException("استخدم رابط HTTPS مباشر لفيديو MP4");
                 String poster = v.poster() == null ? "" : v.poster().trim();
-                if (!poster.isEmpty() && !poster.matches("^https://[^\\s]+$") && !poster.matches("^/videos/[a-zA-Z0-9._-]+\\.png$") && !poster.matches("^/api/public/images/[0-9]+$")) throw new BadRequestException("رابط غلاف الفيديو غير صحيح");
+                if (!poster.isEmpty() && !poster.matches("^https://[^\\s]+$") && !poster.matches("^/videos/[a-zA-Z0-9._-]+\\.(png|jpg)$") && !poster.matches("^/api/public/images/[0-9]+$")) throw new BadRequestException("رابط غلاف الفيديو غير صحيح");
                 String description = v.description() == null ? "" : v.description().trim();
                 if (description.length() > 500) throw new BadRequestException("وصف الفيديو طويل جداً");
                 return new Video(title, description, url, poster, required(v.category(), 80));

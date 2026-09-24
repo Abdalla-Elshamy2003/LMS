@@ -26,15 +26,25 @@ public class BundleService {
     private final TeacherAcademyRepository academies;
     private final CourseRepository courses;
     private final com.manarah.audit.AuditService audit;
+    private final BundleSubscriptionRepository subscriptions;
+    private final BundleAccessCodeRepository codes;
 
     public BundleService(TeacherBundleRepository bundles, TeacherBundleMemberRepository members, TeacherAcademyRepository academies,
-                         CourseRepository courses, com.manarah.audit.AuditService audit) {
+                         CourseRepository courses, com.manarah.audit.AuditService audit,
+                         BundleSubscriptionRepository subscriptions, BundleAccessCodeRepository codes) {
         this.bundles = bundles; this.members = members; this.academies = academies; this.courses = courses; this.audit = audit;
+        this.subscriptions = subscriptions; this.codes = codes;
     }
 
     public record MemberRequest(Long academyId, String displayName, String subject, String photoUrl, String introVideoUrl) {}
     public record BundleRequest(String slug, String name, String tagline, String description, Boolean published,
-                                Integer sortOrder, List<MemberRequest> members) {}
+                                Integer sortOrder, List<MemberRequest> members, java.math.BigDecimal price,
+                                String instapayNumber, String vodafoneCashNumber, String paymentNote) {
+        public BundleRequest(String slug, String name, String tagline, String description, Boolean published,
+                             Integer sortOrder, List<MemberRequest> members) {
+            this(slug, name, tagline, description, published, sortOrder, members, null, null, null, null);
+        }
+    }
 
     // ---- Public ------------------------------------------------------------------------------------------------
 
@@ -43,6 +53,7 @@ public class BundleService {
         return bundles.findByPublishedTrueOrderBySortOrderAscIdAsc().stream().map(b -> {
             Map<String, Object> card = new LinkedHashMap<>();
             card.put("slug", b.getSlug()); card.put("name", b.getName()); card.put("tagline", b.getTagline());
+            card.put("price", b.getPrice()); card.put("coursesValue", coursesValue(b));
             card.put("members", members.findByBundleIdOrderByPositionAsc(b.getId()).stream().map(m -> {
                 var a = publishedAcademy(m);
                 return Map.<String, Object>of("name", name(m, a), "subject", m.getSubject(), "photoUrl", photo(m, a));
@@ -57,6 +68,10 @@ public class BundleService {
                 .orElseThrow(() -> new NotFoundException("الباقة غير متاحة"));
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("slug", b.getSlug()); out.put("name", b.getName()); out.put("tagline", b.getTagline()); out.put("description", b.getDescription());
+        out.put("price", b.getPrice()); out.put("coursesValue", coursesValue(b));
+        // Where to pay only once there is something to pay for.
+        if (b.getPrice() != null) out.put("payment", Map.of("instapayNumber", Objects.toString(b.getInstapayNumber(), ""),
+                "vodafoneCashNumber", Objects.toString(b.getVodafoneCashNumber(), ""), "paymentNote", Objects.toString(b.getPaymentNote(), "")));
         out.put("members", members.findByBundleIdOrderByPositionAsc(b.getId()).stream().map(m -> {
             var a = publishedAcademy(m);
             Map<String, Object> v = new LinkedHashMap<>();
@@ -70,12 +85,25 @@ public class BundleService {
             t.put("headline", Objects.toString(a.getHeadline(), "")); t.put("description", Objects.toString(a.getDescription(), ""));
             t.put("videos", a.getVideos());
             t.put("courses", taught.stream().map(c -> Map.<String, Object>of("id", c.getId(), "title", c.getTitle(),
-                    "grade", Objects.toString(c.getGradeLevel(), ""), "coverUrl", Objects.toString(c.getCoverUrl(), ""),
-                    "finalPrice", c.getFinalPrice())).toList());
+                    "grade", Objects.toString(c.getGradeLevel(), ""), "year", Objects.toString(c.getGrade(), ""),
+                    "description", Objects.toString(c.getDescription(), ""), "coverUrl", Objects.toString(c.getCoverUrl(), ""),
+                    "price", c.getPrice(), "finalPrice", c.getFinalPrice())).toList());
             v.put("teacher", t);
             return v;
         }).toList());
         return out;
+    }
+
+    /** The published member teachers' active courses, at their own prices — what the package saves the student. */
+    public java.math.BigDecimal coursesValue(TeacherBundle b) {
+        java.math.BigDecimal sum = java.math.BigDecimal.ZERO;
+        for (var m : members.findByBundleIdOrderByPositionAsc(b.getId())) {
+            var a = publishedAcademy(m);
+            if (a == null) continue;
+            for (var c : courses.findByTenantIdAndTeacherId(a.getTenantId(), a.getTeacherId()))
+                if ("ACTIVE".equals(c.getStatus()) && c.getFinalPrice() != null) sum = sum.add(c.getFinalPrice());
+        }
+        return sum;
     }
 
     private TeacherAcademy publishedAcademy(TeacherBundleMember m) {
@@ -124,7 +152,7 @@ public class BundleService {
         audit.record(actor, "BUNDLE_DELETED", "TeacherBundle", id, null, b.getSlug());
     }
 
-    private TeacherBundle manage(UserPrincipal actor, Long id) {
+    public TeacherBundle manage(UserPrincipal actor, Long id) {
         requireHeadOffice(actor);
         var b = bundles.findById(id).orElseThrow(() -> NotFoundException.of("الباقة", id));
         if (b.getManagerTenantId() != null && !b.getManagerTenantId().equals(actor.getTenantId()))
@@ -133,7 +161,7 @@ public class BundleService {
     }
 
     /** Packages group teacher spaces, so only the office that manages those spaces handles them — never a teacher. */
-    private void requireHeadOffice(UserPrincipal actor) {
+    public void requireHeadOffice(UserPrincipal actor) {
         if (!actor.isAdmin() || academies.findByTenantId(actor.getTenantId()).isPresent())
             throw new ForbiddenException("باقات المدرسين تُدار من الإدارة الرئيسية فقط");
     }
@@ -149,6 +177,12 @@ public class BundleService {
         b.setDescription(optional(req.description(), 1500));
         if (req.published() != null) b.setPublished(req.published());
         if (req.sortOrder() != null) b.setSortOrder(req.sortOrder());
+        if (req.price() != null && (req.price().signum() < 0 || req.price().compareTo(new java.math.BigDecimal("1000000")) > 0))
+            throw new BadRequestException("سعر الباقة غير صحيح");
+        b.setPrice(req.price() == null || req.price().signum() == 0 ? null : req.price());
+        b.setInstapayNumber(optional(req.instapayNumber(), 40));
+        b.setVodafoneCashNumber(optional(req.vodafoneCashNumber(), 40));
+        b.setPaymentNote(optional(req.paymentNote(), 500));
         var list = req.members() == null ? List.<MemberRequest>of() : req.members();
         if (list.isEmpty()) throw new BadRequestException("أضف مدرساً واحداً على الأقل للباقة");
         if (list.size() > MAX_MEMBERS) throw new BadRequestException("الباقة تضم " + MAX_MEMBERS + " مدرساً بحد أقصى");
@@ -184,6 +218,10 @@ public class BundleService {
         Map<String, Object> v = new LinkedHashMap<>();
         v.put("id", b.getId()); v.put("slug", b.getSlug()); v.put("name", b.getName()); v.put("tagline", b.getTagline());
         v.put("description", b.getDescription()); v.put("published", b.isPublished()); v.put("sortOrder", b.getSortOrder());
+        v.put("price", b.getPrice()); v.put("coursesValue", coursesValue(b));
+        v.put("instapayNumber", b.getInstapayNumber()); v.put("vodafoneCashNumber", b.getVodafoneCashNumber()); v.put("paymentNote", b.getPaymentNote());
+        v.put("subscribers", subscriptions.countByBundleIdAndStatus(b.getId(), "ACTIVE"));
+        v.put("unusedCodes", codes.countByBundleIdAndStatus(b.getId(), "UNUSED"));
         v.put("members", members.findByBundleIdOrderByPositionAsc(b.getId()).stream().map(m -> {
             Map<String, Object> mv = new LinkedHashMap<>();
             mv.put("academyId", m.getAcademyId()); mv.put("displayName", m.getDisplayName()); mv.put("subject", m.getSubject());

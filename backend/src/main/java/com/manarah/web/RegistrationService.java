@@ -67,6 +67,7 @@ public class RegistrationService {
     private final ApplicationEventPublisher events;
     private final com.manarah.academy.LinkedStudentAccounts linked;
     private final com.manarah.security.auth.LoginAttemptLimiter loginAttempts;
+    private final com.manarah.academy.BundleSubscriptionService packages;
 
     public RegistrationService(TenantRepository tenants, BranchRepository branches, CourseRepository courses,
                                StudentRepository students, GuardianRepository guardians,
@@ -75,7 +76,9 @@ public class RegistrationService {
                                CourseCheckoutService checkout, com.manarah.academy.AcademyAccess academyAccess,
                                com.manarah.payment.CourseAccessCodeService accessCodes, ApplicationEventPublisher events,
                                com.manarah.academy.LinkedStudentAccounts linked,
-                               com.manarah.security.auth.LoginAttemptLimiter loginAttempts) {
+                               com.manarah.security.auth.LoginAttemptLimiter loginAttempts,
+                               com.manarah.academy.BundleSubscriptionService packages) {
+        this.packages = packages;
         this.events = events;
         this.linked = linked;
         this.loginAttempts = loginAttempts;
@@ -184,6 +187,7 @@ public class RegistrationService {
     /** Creates the account inside the code's own tenant/course and redeems it in one transaction. */
     @Transactional
     public RegistrationResult redeem(RedeemCommand cmd) {
+        if (com.manarah.academy.BundleSubscriptionService.isPackageCode(cmd.code())) return redeemPackage(cmd);
         var code = accessCodes.findRedeemable(cmd.code());
         Course course = courses.findByTenantIdAndId(code.getTenantId(), code.getCourseId())
                 .orElseThrow(() -> new BadRequestException("الكورس المرتبط بهذا الكود لم يعد متاحاً"));
@@ -195,6 +199,21 @@ public class RegistrationService {
         String token = linked.tokenFor(acc.user);
         return new RegistrationResult(token, "Bearer", jwtService.getAccessTokenTtlMinutes(),
                 acc.student.getCode(), "تم تفعيل اشتراكك في \"" + course.getTitle() + "\" بنجاح!");
+    }
+
+    /**
+     * A visitor signing up with a package code: the account is created with the package's first teacher (or linked,
+     * if the email already has one — see createAccount), then the package joins them to every teacher in it.
+     */
+    private RegistrationResult redeemPackage(RedeemCommand cmd) {
+        var code = packages.redeemable(cmd.code());
+        Long tenantId = packages.homeTenantFor(code);
+        Account acc = createAccount(tenantId, cmd.fullName(), cmd.email(), cmd.password(), cmd.phone(),
+                cmd.grade(), cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone());
+        packages.use(code, linked.owner(acc.user));
+        String token = linked.tokenFor(acc.user);
+        return new RegistrationResult(token, "Bearer", jwtService.getAccessTokenTtlMinutes(),
+                acc.student.getCode(), "تم تفعيل الباقة! كل مدرسين الباقة وكورساتهم بقوا عندك في «باقتي».");
     }
 
     private static String checkoutMessage(com.manarah.payment.CourseCheckoutService.OrderView order) {

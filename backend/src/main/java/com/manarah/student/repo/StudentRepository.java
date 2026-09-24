@@ -74,4 +74,10 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     long countPeople(@Param("tenantIds") java.util.Collection<Long> tenantIds);
 
     long countByTenantIdInAndUserIdIsNull(java.util.Collection<Long> tenantIds);
+
+    List<Student> findByTenantIdIn(java.util.Collection<Long> tenantIds);
+
+    List<Student> findTop8ByTenantIdInOrderByCreatedAtDesc(java.util.Collection<Long> tenantIds);
+
+    long countByTenantIdAndStatusNot(Long tenantId, String status);
 }

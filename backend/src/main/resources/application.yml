@@ -75,6 +75,12 @@ manarah:
     login:
       max-failures: ${MANARAH_LOGIN_MAX_FAILURES:8}
       window-minutes: ${MANARAH_LOGIN_WINDOW_MINUTES:15}
+  bootstrap:
+    # Creates a head-office admin once, if the username doesn't exist yet (never changes an existing account).
+    # The password is given as a BCrypt hash only. Remove both after the first sign-in.
+    admin:
+      username: ${MANARAH_BOOTSTRAP_ADMIN_USERNAME:}
+      password-hash: ${MANARAH_BOOTSTRAP_ADMIN_PASSWORD_HASH:}
   demo:
     # Demo data contains public sample accounts; it is opt-in and must stay disabled in production.
     seed-enabled: ${MANARAH_DEMO_SEED_ENABLED:false}

@@ -20,9 +20,12 @@ public class CourseController {
     private final LessonCheckpointService checkpointService;
     private final LessonSummaryService summaryService;
     private final com.manarah.payment.CourseAccessCodeService accessCodeService;
+    private final com.manarah.academy.BundleSubscriptionService packages;
 
     public CourseController(CourseService service, LearningService learning, LessonCheckpointService checkpointService,
-                            LessonSummaryService summaryService, com.manarah.payment.CourseAccessCodeService accessCodeService) {
+                            LessonSummaryService summaryService, com.manarah.payment.CourseAccessCodeService accessCodeService,
+                            com.manarah.academy.BundleSubscriptionService packages) {
+        this.packages = packages;
         this.service = service;
         this.learning = learning;
         this.checkpointService = checkpointService;
@@ -187,6 +190,9 @@ public class CourseController {
     @PostMapping("/redeem-code")
     @PreAuthorize("hasRole('STUDENT')")
     public java.util.Map<String, Object> redeemCode(@AuthenticationPrincipal UserPrincipal actor, @RequestBody RedeemCodeRequest req) {
+        // Any code box takes a package code too: it opens every teacher in the package ("باقتي").
+        if (com.manarah.academy.BundleSubscriptionService.isPackageCode(req.code()))
+            return java.util.Map.of("bundleId", packages.redeem(actor, req.code()));
         Long switchTo = accessCodeService.redeemForCurrentStudent(actor, req.code());
         // A code from another teacher opened the course with that teacher — the app switches the student there.
         return switchTo == null ? java.util.Map.of() : java.util.Map.of("switchTo", switchTo);

@@ -16,4 +16,10 @@ public class TeacherBundle {
     @Column(columnDefinition = "TEXT") private String description = "";
     private boolean published = true;
     private int sortOrder;
+    /** One price for every teacher in the package; null until head office sets it (the package then can't be bought). */
+    private java.math.BigDecimal price;
+    /** Where students send the package price — head office's own numbers, never a teacher's. */
+    private String instapayNumber = "";
+    private String vodafoneCashNumber = "";
+    @Column(columnDefinition = "TEXT") private String paymentNote = "";
 }
