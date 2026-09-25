@@ -9,6 +9,7 @@ import { qrDataUrl } from '../lib/qr'
 import { studentVerifyUrl } from '../features/student-verification/studentVerificationApi'
 import { fmtDateTime } from '../lib/format'
 import { apiErrorMessage } from '../lib/apiError'
+import MySubscriptions from '../features/subscriptions/MySubscriptions'
 
 const roleLinks = {
   STUDENT: [['/app/learning', 'مساحة التعلّم', BookOpen], ['/app/schedule', 'جدولي', CalendarDays], ['/app/notifications', 'إشعاراتي', Bell], ['/app/support', 'الدعم', LifeBuoy]],
@@ -36,6 +37,7 @@ export default function AccountProfile() {
     </motion.section>
     <motion.div variants={fadeUp} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{links.map(([to, label, Icon]) => <Link key={to} to={to} className="card group flex items-center gap-3 p-4 transition hover:-translate-y-1 hover:border-brand-200 hover:shadow-glow"><span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-brand-700 transition group-hover:bg-brand-600 group-hover:text-white"><Icon size={19} /></span><b className="text-sm text-ink-700">{label}</b></Link>)}</motion.div>
     <motion.section variants={fadeUp} className="card flex flex-wrap items-center justify-between gap-4 p-5"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-violet-50 text-violet-700"><LockKeyhole size={19} /></span><div><p className="font-extrabold text-ink-800">الأمان وكلمة المرور</p><p className="text-xs text-ink-400">حدّث كلمة المرور بانتظام لحماية حسابك</p></div></div><button onClick={() => setPasswordOpen(true)} className="btn-soft">تغيير كلمة المرور</button></motion.section>
+    {user.role === 'STUDENT' && <MySubscriptions />}
     {user.role === 'STUDENT' && <GatePass />}
     {editing && <EditProfile profile={profile} onClose={() => setEditing(false)} onSaved={p => { setProfile(p); setEditing(false) }} />}
     {passwordOpen && <PasswordModal onClose={() => setPasswordOpen(false)} />}

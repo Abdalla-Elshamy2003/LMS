@@ -8,6 +8,8 @@ import { apiErrorMessage } from '../lib/apiError'
 import { fmtMoney } from '../lib/format'
 import MathBackdrop from '../components/MathBackdrop'
 import { embedUrl } from '../lib/videoEmbed'
+import { sameYear } from '../lib/schoolYears'
+import { monthsLabel, perMonths } from '../lib/subscriptions'
 import './teacher-landing.css'
 
 const samples = [
@@ -105,9 +107,22 @@ export default function TeacherLanding() {
       </div></div>
 
       <section id="courses" className="tl-section tl-container"><motion.div {...reveal} className="tl-section-head"><div><span className="tl-kicker">كل مرحلة.. وليها خطتها</span><h2>اختار خطوتك الجاية<span>.</span></h2></div><p>شرح منظّم، وأفكار مترابطة، وتدريب يخليك<br/> تدخل على كل مسألة بثقة.</p></motion.div>
+        {(data.plans || []).length > 0 && <div className="tl-plans">{data.plans.map((pl) => {
+          const first = data.courses.find((c) => sameYear(c.year, pl.year))
+          const to = `/register?academy=${encodeURIComponent(p.slug)}${first ? `&course=${first.id}` : `&year=${encodeURIComponent(pl.year)}`}`
+          return <div key={pl.id} className="tl-plan">
+            <span>{pl.year}{pl.subject ? ` · ${pl.subject}` : ''}</span>
+            <strong>{fmtMoney(pl.finalPrice)} <small>{perMonths(pl.months)}</small></strong>
+            {pl.discountPercent > 0 && <del>{fmtMoney(pl.price)}</del>}
+            <p>كل كورسات السنة لمدة {monthsLabel(pl.months)} — واللي هينزل بعدين كمان.</p>
+            {asStudent
+              ? <button type="button" onClick={() => enter(first?.id)}>اشترك <ArrowUpLeft size={16} /></button>
+              : <Link to={to}>اشترك <ArrowUpLeft size={16} /></Link>}
+          </div>
+        })}</div>}
         {cards.length === 0
           ? <div className="tl-empty">الكورسات الجديدة في الطريق. تواصل مع المستر لمعرفة تفاصيل الاشتراك.</div>
-          : <Slider items={cards} subject={p.subject} cta={cta} login={login} reveal={reveal} onPreview={(c, i) => setLesson(c.video || lessons[i % 3])}
+          : <Slider items={cards} plans={data.plans || []} subject={p.subject} cta={cta} login={login} reveal={reveal} onPreview={(c, i) => setLesson(c.video || lessons[i % 3])}
               enroll={(c) => `/register?academy=${encodeURIComponent(p.slug)}&course=${c.id}`}
               onPick={asStudent ? (c) => enter(c.id) : undefined} />}
         {demo && <p className="tl-demo-note">الكروت المعلّمة «نموذج تجريبي» أمثلة للعرض وأسعارها توضيحية. الاشتراك وإتاحة الكورسات الفعلية عن طريق المستر.</p>}
@@ -142,7 +157,7 @@ const covers = ['/images/course-1.jpg', '/images/course-2.jpg', '/images/course-
  * disable at each end; the track stays plain overflow-scroll underneath, so touch swipe and
  * keyboard scrolling keep working even if the arrows are hidden on small screens.
  */
-function Slider({ items, subject, cta, login, reveal, onPreview, enroll, onPick }) {
+function Slider({ items, plans, subject, cta, login, reveal, onPreview, enroll, onPick }) {
   const track = useRef(null)
   const [edge, setEdge] = useState({ start: true, end: false })
 
@@ -180,6 +195,8 @@ function Slider({ items, subject, cta, login, reveal, onPreview, enroll, onPick 
           const cover = c.coverUrl || covers[i % covers.length]
           const paid = Number(c.finalPrice ?? c.price) > 0
           const real = !sample && !c.isVideo
+          // A paid course comes with its year's subscription: show what the year costs, and for how long.
+          const plan = real && paid ? plans.find((pl) => sameYear(pl.year, c.year)) : null
           // Tapping the artwork does what the card's button does: preview a video, or take the course.
           const coverTo = c.isVideo || sample || !(onPick || enroll) ? login : enroll ? enroll(c) : login
           const coverClick = c.isVideo ? (e) => { e.preventDefault(); onPreview(c, i) }
@@ -210,7 +227,9 @@ function Slider({ items, subject, cta, login, reveal, onPreview, enroll, onPick 
                   <div className="tl-course-footer">
                     {c.isVideo
                       ? <span className="tl-price"><strong>مشاهدة</strong></span>
-                      : <div className="tl-price"><strong>{fmtMoney(c.finalPrice)}</strong>{c.discountPercent > 0 && <del>{fmtMoney(c.price)}</del>}</div>}
+                      : plan
+                        ? <div className="tl-price"><strong>{fmtMoney(plan.finalPrice)}</strong><small>/ {monthsLabel(plan.months)} للسنة كلها</small></div>
+                        : <div className="tl-price"><strong>{fmtMoney(c.finalPrice)}</strong>{c.discountPercent > 0 && <del>{fmtMoney(c.price)}</del>}</div>}
                     {(sample || c.isVideo)
                       ? <button aria-label={`معاينة ${c.title}`} onClick={() => onPreview(c, i)}>معاينة <ArrowUpLeft size={18} /></button>
                       : onPick

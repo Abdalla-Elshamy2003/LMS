@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { BookOpen, CheckCircle2, Clock3, Copy, GraduationCap, KeyRound, Lock, PlayCircle, Smartphone, Sparkles, Wallet } from 'lucide-react'
+import { BookOpen, CalendarClock, CheckCircle2, Clock3, Copy, GraduationCap, KeyRound, Lock, PlayCircle, RefreshCw, Smartphone, Sparkles, Wallet } from 'lucide-react'
 import api from '../../lib/api'
 import { useAuth } from '../../lib/auth'
 import { fmtMoney, SCHOOL_YEARS } from '../../lib/format'
 import { distinctYears, forYear } from '../../lib/schoolYears'
+import { fmtDay, monthsLabel, planLabel, planPrice } from '../../lib/subscriptions'
 import { courseHref } from '../../lib/courseNavigation'
 import { apiErrorMessage } from '../../lib/apiError'
 import { Modal, PageLoader, Spinner, EmptyState, stagger, fadeUp } from '../../components/ui'
@@ -13,10 +14,11 @@ import { Modal, PageLoader, Spinner, EmptyState, stagger, fadeUp } from '../../c
 const priceOf = (c) => Number(c.finalPrice ?? c.price ?? 0)
 
 /**
- * The student's courses with their current teacher (GET /me/catalog): what they study, what waits for payment, and
- * everything the teacher offers for their school year — a course the teacher publishes later appears here by itself.
- * Each course is subscribed to on its own: free ones open on the spot, paid ones wait here with the teacher's payment
- * numbers until the teacher's code is entered (or the teacher activates it).
+ * The student's courses with their current teacher (GET /me/catalog): their subscription to a year and subject (when
+ * it started, when it ends), what they study, what waits for payment, and everything the teacher offers for their
+ * school year — a course the teacher publishes later appears here by itself, and opens by itself while subscribed.
+ * Free courses open on the spot; paid ones come with the year's subscription, which waits here with the teacher's
+ * payment numbers until the teacher's code is entered (or the teacher activates it).
  */
 export default function StudentCatalog({ compact = false }) {
   const { user, switchTeacher } = useAuth()
@@ -31,7 +33,7 @@ export default function StudentCatalog({ compact = false }) {
   const [pickYear, setPickYear] = useState(false)
   const opened = useRef(false)
 
-  const load = () => api.get('/me/catalog').then((r) => setData(r.data)).catch((e) => setError(apiErrorMessage(e, 'تعذّر تحميل كورساتك')))
+  const load = () => api.get('/me/catalog').then((r) => { setData(r.data); return r.data }).catch((e) => setError(apiErrorMessage(e, 'تعذّر تحميل كورساتك')))
   useEffect(() => { load() }, [])
 
   // Arriving from a course picked on the teacher's page: bring that course into view, and if it waits for payment,
@@ -40,7 +42,7 @@ export default function StudentCatalog({ compact = false }) {
     if (!data || !focus || opened.current) return
     opened.current = true
     const c = data.courses.find((x) => x.id === focus)
-    if (c?.state === 'PENDING') setPayFor(c)
+    if (c?.state === 'PENDING') setPayFor({ course: c, plan: data.plans?.find((p) => p.id === c.planId) })
     setTimeout(() => document.getElementById(`course-${focus}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 250)
   }, [data, focus])
 
@@ -51,17 +53,37 @@ export default function StudentCatalog({ compact = false }) {
   const waiting = data.courses.filter((c) => c.state === 'PENDING')
   const offered = data.courses.filter((c) => c.state === 'NONE')
   const closed = data.courses.filter((c) => c.state === 'CLOSED')
+  const expired = data.courses.filter((c) => c.state === 'EXPIRED')
   const shownOffered = compact ? offered.slice(0, 6) : offered
+  const planOf = (c) => (c.planId ? data.plans?.find((p) => p.id === c.planId) : null)
 
+  // A free course opens now; a paid one asks for its year's subscription and shows how to pay.
   const request = async (c) => {
     setBusyId(c.id)
     try {
       const { data: r } = await api.post(`/me/catalog/${c.id}/request`)
-      await load()
+      const fresh = await load()
       if (r.state === 'ACTIVE') nav(courseHref(c, user.role))
-      else if (r.state === 'PENDING') setPayFor({ ...c, state: 'PENDING' })
+      else if (r.state === 'PENDING') {
+        const course = fresh?.courses.find((x) => x.id === c.id) || c
+        setPayFor({ course, plan: fresh?.plans?.find((p) => p.id === course.planId) })
+      }
     } catch (e) {
-      setError(apiErrorMessage(e, 'تعذّر الاشتراك في الكورس'))
+      setError(apiErrorMessage(e, 'تعذّر الاشتراك'))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  // Subscribe to (or renew) a year's plan straight from its card.
+  const subscribe = async (plan) => {
+    setBusyId(`plan-${plan.id}`)
+    try {
+      await api.post(`/me/plans/${plan.id}/request`)
+      const fresh = await load()
+      setPayFor({ plan: fresh?.plans?.find((p) => p.id === plan.id) || plan })
+    } catch (e) {
+      setError(apiErrorMessage(e, 'تعذّر إرسال الطلب'))
     } finally {
       setBusyId(null)
     }
@@ -100,6 +122,13 @@ export default function StudentCatalog({ compact = false }) {
         )}
       </motion.div>
 
+      {(data.plans || []).length > 0 && (
+        <motion.div variants={fadeUp} className="grid gap-3 md:grid-cols-2">
+          {data.plans.map((p) => <PlanCard key={p.id} p={p} busy={busyId === `plan-${p.id}`}
+            onSubscribe={() => subscribe(p)} onPay={() => setPayFor({ plan: p })} onCode={() => setCodeFor({ title: planLabel(p) })} />)}
+        </motion.div>
+      )}
+
       {data.courses.length === 0 && (
         <motion.div variants={fadeUp} className="card">
           <EmptyState icon={BookOpen} title="مفيش كورسات لسنتك دلوقتي" hint="أول ما المدرس ينزّل كورس لسنتك هيظهرلك هنا على طول، وهيوصلك إشعار." />
@@ -109,8 +138,8 @@ export default function StudentCatalog({ compact = false }) {
       {waiting.length > 0 && (
         <Section title="مستني الدفع" hint="حوّل للمدرس، وبعدها اكتب الكود اللي هيبعتهولك — أو المدرس يفعّله من عنده." tone="amber">
           {waiting.map((c) => (
-            <CourseCard key={c.id} c={c} focused={focus === c.id} badge={<Chip tone="amber"><Clock3 size={12} /> مستني الدفع</Chip>}>
-              <button type="button" onClick={() => setPayFor(c)} className="btn-primary w-full justify-center"><Wallet size={16} /> إزاي أدفع؟</button>
+            <CourseCard key={c.id} c={c} plan={planOf(c)} focused={focus === c.id} badge={<Chip tone="amber"><Clock3 size={12} /> مستني الدفع</Chip>}>
+              <button type="button" onClick={() => setPayFor({ course: c, plan: planOf(c) })} className="btn-primary w-full justify-center"><Wallet size={16} /> إزاي أدفع؟</button>
               <button type="button" onClick={() => setCodeFor(c)} className="btn-ghost w-full justify-center text-xs"><KeyRound size={14} /> معايا الكود</button>
             </CourseCard>
           ))}
@@ -120,7 +149,7 @@ export default function StudentCatalog({ compact = false }) {
       {studying.length > 0 && (
         <Section title="كورساتك" hint={`${studying.length} كورس مفتوح`}>
           {studying.map((c) => (
-            <CourseCard key={c.id} c={c} focused={focus === c.id}
+            <CourseCard key={c.id} c={c} owned focused={focus === c.id}
               badge={<Chip tone="emerald"><CheckCircle2 size={12} /> {c.state === 'COMPLETED' ? 'خلّصته' : 'مفتوح'}</Chip>}>
               <Link to={courseHref(c, user.role)} className="btn-primary w-full justify-center"><PlayCircle size={16} /> ادخل على الكورس</Link>
             </CourseCard>
@@ -128,15 +157,27 @@ export default function StudentCatalog({ compact = false }) {
         </Section>
       )}
 
+      {expired.length > 0 && (
+        <Section title="اشتراكك خلص" hint="جدّد الاشتراك والكورسات دي تتفتح تاني بكل اللي فيها.">
+          {expired.map((c) => (
+            <CourseCard key={c.id} c={c} plan={planOf(c)} badge={<Chip><Lock size={12} /> مقفول</Chip>}>
+              <button type="button" disabled={busyId === c.id} onClick={() => request(c)} className="btn-primary w-full justify-center">
+                {busyId === c.id ? <Spinner className="h-4 w-4 border-white/40 border-t-white" /> : <><RefreshCw size={15} /> جدّد الاشتراك</>}
+              </button>
+            </CourseCard>
+          ))}
+        </Section>
+      )}
+
       {shownOffered.length > 0 && (
-        <Section title={data.grade ? `متاح ${forYear(data.grade)}` : 'كورسات المدرس'} hint="كل كورس بتشترك فيه لوحده. الجديد بيظهر هنا أول ما المدرس ينزّله.">
+        <Section title={data.grade ? `متاح ${forYear(data.grade)}` : 'كورسات المدرس'} hint="اشتراك واحد بيفتح كل كورسات السنة، واللي المدرس ينزّله بعدين بيتفتح لوحده.">
           {shownOffered.map((c) => {
             const free = c.free || priceOf(c) <= 0
             return (
-              <CourseCard key={c.id} c={c} focused={focus === c.id}
+              <CourseCard key={c.id} c={c} plan={planOf(c)} focused={focus === c.id}
                 badge={c.isNew ? <Chip tone="brand"><Sparkles size={12} /> جديد</Chip> : !c.year ? <Chip>لكل السنين</Chip> : null}>
                 <button type="button" disabled={busyId === c.id} onClick={() => request(c)} className="btn-primary w-full justify-center">
-                  {busyId === c.id ? <Spinner className="h-4 w-4 border-white/40 border-t-white" /> : free ? 'ابدأ مجاناً' : `اشترك · ${fmtMoney(priceOf(c))}`}
+                  {busyId === c.id ? <Spinner className="h-4 w-4 border-white/40 border-t-white" /> : free ? 'ابدأ مجاناً' : `اشترك في ${c.year || data.grade || 'السنة'}`}
                 </button>
                 {!free && <button type="button" onClick={() => setCodeFor(c)} className="btn-ghost w-full justify-center text-xs"><KeyRound size={14} /> معايا كود اشتراك</button>}
               </CourseCard>
@@ -156,14 +197,56 @@ export default function StudentCatalog({ compact = false }) {
         </Section>
       )}
 
-      {payFor && <PayModal course={payFor} payment={data.payment} teacher={data.teacher} onClose={() => {
+      {payFor && <PayModal course={payFor.course} plan={payFor.plan} payment={data.payment} teacher={data.teacher} onClose={() => {
         setPayFor(null)
         if (focus) { params.delete('focus'); setParams(params, { replace: true }) }
-      }} onHaveCode={() => { setCodeFor(payFor); setPayFor(null) }} />}
+      }} onHaveCode={() => { setCodeFor(payFor.course || { title: planLabel(payFor.plan) }); setPayFor(null) }} />}
       {codeFor && <CodeModal course={codeFor} onClose={() => setCodeFor(null)} onDone={redeemed} />}
       {pickYear && <YearModal current={data.grade} years={data.years} onClose={() => setPickYear(false)}
         onSaved={async () => { setPickYear(false); await load() }} />}
     </motion.div>
+  )
+}
+
+/** One year-and-subject subscription: its dates while it runs, or how to subscribe, pay or renew. */
+function PlanCard({ p, busy, onSubscribe, onPay, onCode }) {
+  const running = p.status === 'ACTIVE'
+  const waiting = p.status === 'PENDING' || p.renewalPending
+  const tone = running ? 'border-emerald-200 bg-emerald-50/50' : waiting ? 'border-amber-200 bg-amber-50/50' : 'border-brand-100 bg-white'
+  return (
+    <div className={`card border p-4 ${tone}`}>
+      <div className="flex items-start gap-3">
+        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${running ? 'bg-emerald-100 text-emerald-700' : 'bg-brand-50 text-brand-700'}`}><CalendarClock size={19} /></span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold text-ink-500">اشتراك {planLabel(p)}</p>
+          {running ? (
+            <>
+              <p className="mt-1 text-sm font-extrabold text-ink-800">من {fmtDay(p.startsAt)} لحد {fmtDay(p.endsAt)}</p>
+              <p className={`mt-1 text-xs font-bold ${p.daysLeft <= 7 ? 'text-amber-700' : 'text-emerald-700'}`}>باقي {p.daysLeft.toLocaleString('ar-EG')} يوم</p>
+            </>
+          ) : p.status === 'ENDED' || p.status === 'CANCELLED' ? (
+            <p className="mt-1 text-sm font-extrabold text-ink-800">{p.status === 'CANCELLED' ? 'اتوقف' : 'خلص'} يوم {fmtDay(p.endsAt)}</p>
+          ) : p.status === 'PENDING' ? (
+            <p className="mt-1 text-sm font-extrabold text-amber-800">مستني الدفع</p>
+          ) : (
+            <p className="mt-1 text-sm font-extrabold text-ink-800">كل كورسات السنة لمدة {monthsLabel(p.months)}</p>
+          )}
+          <p className="mt-1 text-xs text-ink-500">{planPrice(p)}</p>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {waiting ? (
+          <>
+            <button type="button" onClick={onPay} className="btn-primary flex-1 justify-center"><Wallet size={15} /> {p.renewalPending ? 'ادفع التجديد' : 'إزاي أدفع؟'}</button>
+            <button type="button" onClick={onCode} className="btn-ghost"><KeyRound size={14} /> معايا الكود</button>
+          </>
+        ) : p.active !== false && (
+          <button type="button" disabled={busy} onClick={onSubscribe} className={`${running ? 'btn-ghost' : 'btn-primary flex-1'} justify-center`}>
+            {busy ? <Spinner className="h-4 w-4 border-current/40 border-t-current" /> : running ? <><RefreshCw size={14} /> جدّد بدري</> : p.status === 'NONE' ? 'اشترك' : <><RefreshCw size={14} /> جدّد الاشتراك</>}
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -187,7 +270,7 @@ function Chip({ tone = 'default', children }) {
   return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${TONES[tone]}`}>{children}</span>
 }
 
-function CourseCard({ c, badge, focused, children }) {
+function CourseCard({ c, plan, owned, badge, focused, children }) {
   const price = priceOf(c)
   return (
     <div id={`course-${c.id}`}
@@ -203,25 +286,30 @@ function CourseCard({ c, badge, focused, children }) {
         <p className="text-xs text-ink-400">{c.subject}</p>
         <p className="mt-1 font-extrabold leading-snug text-ink-800">{c.title}</p>
         {c.description && <p className="mt-1.5 line-clamp-2 text-xs leading-6 text-ink-500">{c.description}</p>}
-        <div className="mt-3 flex items-baseline gap-2">
-          <b className={price > 0 ? 'text-brand-700' : 'text-emerald-600'}>{price > 0 ? fmtMoney(price) : 'مجاني'}</b>
-          {c.discountPercent > 0 && <del className="text-xs text-ink-400">{fmtMoney(c.price)}</del>}
-        </div>
+        {owned ? null : plan && price > 0 ? (
+          <p className="mt-3 text-xs text-ink-500">ضمن اشتراك {planLabel(plan)}: <b className="text-brand-700">{planPrice(plan)}</b></p>
+        ) : (
+          <div className="mt-3 flex items-baseline gap-2">
+            <b className={price > 0 ? 'text-brand-700' : 'text-emerald-600'}>{price > 0 ? fmtMoney(price) : 'مجاني'}</b>
+            {c.discountPercent > 0 && <del className="text-xs text-ink-400">{fmtMoney(c.price)}</del>}
+          </div>
+        )}
         {children && <div className="mt-auto space-y-1.5 pt-4">{children}</div>}
       </div>
     </div>
   )
 }
 
-function PayModal({ course, payment, teacher, onClose, onHaveCode }) {
+function PayModal({ course, plan, payment, teacher, onClose, onHaveCode }) {
   const [copied, setCopied] = useState('')
   const copy = (text, key) => navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1500) })
   return (
-    <Modal open onClose={onClose} title="الكورس اتضاف لحسابك — فاضل الدفع">
+    <Modal open onClose={onClose} title={plan ? 'طلب الاشتراك اتبعت — فاضل الدفع' : 'الكورس اتضاف لحسابك — فاضل الدفع'}>
       <div className="space-y-4">
         <div className="rounded-2xl bg-brand-50 p-4">
-          <p className="font-extrabold text-ink-800">{course.title}</p>
-          <p className="mt-1 text-2xl font-black text-brand-700">{fmtMoney(priceOf(course))}</p>
+          <p className="font-extrabold text-ink-800">{plan ? `اشتراك ${planLabel(plan)}` : course.title}</p>
+          <p className="mt-1 text-2xl font-black text-brand-700">{plan ? (plan.finalPrice != null ? fmtMoney(plan.finalPrice) : 'السعر عند المدرس') : fmtMoney(priceOf(course))}</p>
+          {plan && <p className="mt-1 text-xs leading-6 text-ink-600">لمدة {monthsLabel(plan.months)} — بيفتحلك كل كورسات السنة{course ? `، ومنها «${course.title}»` : ''}، واللي المدرس هينزّله بعدين كمان.</p>}
         </div>
         {payment ? (
           <div className="space-y-2">
@@ -247,7 +335,7 @@ function PayModal({ course, payment, teacher, onClose, onHaveCode }) {
         )}
         <ol className="space-y-1.5 rounded-2xl border border-ink-100 p-4 text-xs leading-6 text-ink-600">
           <li>١. حوّل المبلغ وابعت صورة الإيصال للمدرس.</li>
-          <li>٢. المدرس هيبعتلك <b>كود اشتراك</b> — اكتبه هنا والكورس يتفتح على طول.</li>
+          <li>٢. المدرس هيبعتلك <b>كود اشتراك</b> — اكتبه هنا و{plan ? 'الاشتراك يبدأ' : 'الكورس يتفتح'} على طول.</li>
           <li>٣. أو المدرس يفعّله من عنده، ويوصلك إشعار.</li>
         </ol>
         <div className="flex gap-2">

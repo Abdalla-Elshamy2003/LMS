@@ -10,6 +10,7 @@ import { useAuth } from '../lib/auth'
 import { Spinner } from '../components/ui'
 import { SCHOOL_YEARS, GRADES, fmtMoney } from '../lib/format'
 import { yearKey, sameYear, distinctYears } from '../lib/schoolYears'
+import { monthsLabel, planLabel, planPrice } from '../lib/subscriptions'
 import { qrDataUrl } from '../lib/qr'
 import { studentVerifyUrl } from '../features/student-verification/studentVerificationApi'
 import { apiErrorMessage } from '../lib/apiError'
@@ -41,10 +42,11 @@ export default function Register() {
   const [slug, setSlug] = useState(fixedSlug)
   const [teacher, setTeacher] = useState(null)
   const [courses, setCourses] = useState([])
+  const [plans, setPlans] = useState([])
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     fullName: '', email: '', password: '', confirmPassword: '', phone: '',
-    grade: '', nationalId: '', educationType: 'عادي',
+    grade: params.get('year') || '', nationalId: '', educationType: 'عادي',
     guardianName: '', guardianPhone: '', courseId: params.get('course') || '',
   })
   const [saving, setSaving] = useState(false)
@@ -57,13 +59,13 @@ export default function Register() {
   }, [fixedSlug])
 
   useEffect(() => {
-    if (!slug) { setTeacher(null); setCourses([]); return }
+    if (!slug) { setTeacher(null); setCourses([]); setPlans([]); return }
     let live = true
     api.get(`/public/academies/${encodeURIComponent(slug)}`)
       .then((r) => {
         if (!live) return
         const list = r.data.courses || []
-        setTeacher(r.data.profile); setCourses(list); setError('')
+        setTeacher(r.data.profile); setCourses(list); setPlans(r.data.plans || []); setError('')
         // A course picked on the teacher's page brings its year with it; one that's gone is simply dropped.
         setForm((f) => {
           const pre = list.find((c) => String(c.id) === String(f.courseId))
@@ -88,6 +90,9 @@ export default function Register() {
   const yearOptions = distinctYears([form.grade, ...(teacherYears.length ? teacherYears : SCHOOL_YEARS)])
   const visibleCourses = courses.filter((c) => !form.grade || !c.year || sameYear(c.year, form.grade))
   const yearFromCourse = !!chosen?.year
+  // A paid course is sold with its year's subscription.
+  const plan = plans.find((p) => sameYear(p.year, chosen?.year || form.grade)) || null
+  const paidChoice = chosen && priceOf(chosen) > 0
 
   // Picking a course sets the year to the course's year; picking a year drops a course of another year.
   const setCourse = (e) => {
@@ -146,7 +151,7 @@ export default function Register() {
         tenantSlug: slug,
       })
       // Mark the signup done before the session exists, so this page shows the pass instead of redirecting.
-      setDone({ course: chosen || null, teacher })
+      setDone({ course: chosen || null, teacher, plan: paidChoice ? plan : null })
       await loginWithToken(data.accessToken)
       // Hand them their gate pass right away rather than dropping them straight on the dashboard —
       // this QR is what gets scanned at the door, so it's the one thing they need before arriving.
@@ -240,7 +245,7 @@ export default function Register() {
             {step === 1 ? 'خطوة 1 من 3 — بيانات الحساب' : step === 2 ? 'خطوة 2 من 3 — اتملت من الكورس اللي اخترته، راجعها بس' : 'خطوة 3 من 3 — كود الدخول بتاعك'}
           </p>
 
-          {step < 3 && teacher && <ChoiceSummary teacher={teacher} course={chosen} grade={form.grade} />}
+          {step < 3 && teacher && <ChoiceSummary teacher={teacher} course={chosen} grade={form.grade} plan={paidChoice ? plan : null} />}
 
           {step === 1 && (
             <form onSubmit={goStep2} className="mt-6 space-y-4">
@@ -333,7 +338,9 @@ export default function Register() {
                 {chosen && (
                   <p className={`mt-2 rounded-xl px-3 py-2 text-xs leading-6 ${priceOf(chosen) > 0 ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-700'}`}>
                     {priceOf(chosen) > 0
-                      ? `الكورس هيظهر في لوحتك «مستني الدفع» (${fmtMoney(priceOf(chosen))}) ومعاه طريقة الدفع، ويتفتح أول ما المدرس يأكّد.`
+                      ? plan
+                        ? `هتطلب اشتراك ${planLabel(plan)}: ${planPrice(plan)}. أول ما المدرس يأكّد الدفع يتفتحلك كل كورسات السنة لمدة ${monthsLabel(plan.months)}، واللي هينزل بعدين كمان.`
+                        : `هتطلب اشتراك السنة عند المدرس، ويتفتحلك كل كورساتها أول ما يأكّد الدفع.`
                       : 'الكورس مجاني وهيتفتحلك على طول بعد التسجيل.'}
                   </p>
                 )}
@@ -386,7 +393,7 @@ export default function Register() {
   )
 }
 
-function ChoiceSummary({ teacher, course, grade }) {
+function ChoiceSummary({ teacher, course, grade, plan }) {
   return (
     <div className="mt-5 flex items-center gap-3 rounded-2xl border border-brand-100 bg-white p-3">
       {teacher.photoUrl
@@ -397,8 +404,8 @@ function ChoiceSummary({ teacher, course, grade }) {
         <p className="mt-0.5 truncate text-xs text-ink-500">{course ? `${teacher.name} · ` : ''}{teacher.subject}</p>
         {grade && <p className="mt-0.5 text-xs font-bold text-brand-700">{grade}</p>}
       </div>
-      {course && <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${priceOf(course) > 0 ? 'bg-brand-50 text-brand-700' : 'bg-emerald-50 text-emerald-700'}`}>
-        {priceOf(course) > 0 ? fmtMoney(priceOf(course)) : 'مجاني'}
+      {course && <span className={`shrink-0 rounded-full px-2.5 py-1 text-center text-xs font-bold ${priceOf(course) > 0 ? 'bg-brand-50 text-brand-700' : 'bg-emerald-50 text-emerald-700'}`}>
+        {plan ? <>{fmtMoney(plan.finalPrice)}<span className="block text-[10px] font-semibold">/ {monthsLabel(plan.months)}</span></> : priceOf(course) > 0 ? fmtMoney(priceOf(course)) : 'مجاني'}
       </span>}
     </div>
   )
@@ -416,7 +423,7 @@ function ErrorBox({ error, conflict, loginHref }) {
 }
 
 function Welcome({ done, pass, qr, email, onGo }) {
-  const { course, teacher } = done
+  const { course, teacher, plan } = done
   const paid = course && priceOf(course) > 0
   const [copied, setCopied] = useState('')
   const copy = (text, key) => navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1500) })
@@ -425,12 +432,12 @@ function Welcome({ done, pass, qr, email, onGo }) {
     <div className="mt-7 space-y-5 text-center">
       <div className="rounded-2xl bg-emerald-50 p-4 text-sm font-bold leading-7 text-emerald-800">
         تم إنشاء حسابك بنجاح 🎉
-        {course && <span className="block font-semibold">{paid ? `«${course.title}» اتضاف لحسابك ومستني الدفع.` : `«${course.title}» اتفتحلك.`}</span>}
+        {course && <span className="block font-semibold">{paid ? `طلب اشتراك ${plan ? planLabel(plan) : 'السنة'} اتبعت ومستني الدفع.` : `«${course.title}» اتفتحلك.`}</span>}
       </div>
 
       {paid && (
         <div className="rounded-3xl border border-amber-200 bg-amber-50/60 p-4 text-right">
-          <p className="text-sm font-extrabold text-amber-900">فاضل الدفع: {fmtMoney(priceOf(course))}</p>
+          <p className="text-sm font-extrabold text-amber-900">فاضل الدفع: {plan ? planPrice(plan) : 'تواصل مع المدرس للسعر'}</p>
           {hasPayment ? (
             <div className="mt-3 space-y-2">
               {teacher.instapayNumber && (
@@ -449,7 +456,7 @@ function Welcome({ done, pass, qr, email, onGo }) {
           ) : (
             <p className="mt-2 text-xs leading-6 text-amber-800">تواصل مع المدرس عشان تعرف تدفع إزاي.</p>
           )}
-          <p className="mt-3 text-xs leading-6 text-amber-800">بعد التحويل المدرس هيبعتلك كود تكتبه في لوحتك، أو يفعّل الكورس من عنده — والكورس يتفتح على طول.</p>
+          <p className="mt-3 text-xs leading-6 text-amber-800">بعد التحويل المدرس هيبعتلك كود تكتبه في لوحتك، أو يفعّل اشتراكك من عنده — وكل كورسات السنة تتفتح على طول. تاريخ بداية ونهاية الاشتراك هتلاقيه في ملفك الشخصي.</p>
         </div>
       )}
 

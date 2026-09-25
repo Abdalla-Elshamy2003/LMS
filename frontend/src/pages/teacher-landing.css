@@ -165,3 +165,6 @@ a.tl-cover{display:block;cursor:pointer}
 @media(prefers-reduced-motion:reduce){.teacher-site *,.tl-auth *{scroll-behavior:auto!important;animation:none!important;transition:none!important}.tl-sat{opacity:1!important}.tl-math-bg{display:none!important}.tl-slide:nth-child(2n){padding-top:0}}
 /* The quiet way in for a student who already paid and holds the teacher's code. */
 .tl-code-link{display:inline-block;margin-top:10px;font-size:10px;font-weight:700;color:#6f7f87;text-decoration:underline;text-underline-offset:3px}.tl-code-link:hover{color:var(--blue)}
+
+/* The teacher's prices by school year: one subscription opens the whole year. */
+.tl-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin-bottom:28px}.tl-plan{background:#fff;border:1px solid #d9e6ea;border-radius:15px;padding:18px 20px;display:flex;flex-direction:column;gap:6px}.tl-plan>span{font-size:11px;font-weight:800;color:#598074}.tl-plan>strong{font-size:22px;font-weight:900;color:var(--navy)}.tl-plan>strong small{font-size:11px;font-weight:700;color:#7a868a}.tl-plan>del{font-size:11px;color:#899295}.tl-plan>p{font-size:11px;line-height:1.9;color:#73818a}.tl-plan>a,.tl-plan>button{align-self:flex-start;display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12px;font-weight:800;color:var(--blue)}.tl-price small{font-size:10px;color:#7a868a}
