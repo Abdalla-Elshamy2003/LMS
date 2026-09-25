@@ -431,7 +431,7 @@ function WelcomeCard({ user }) {
     <div className="card overflow-hidden">
       <div className="relative bg-gradient-to-br from-brand-600 to-brand-800 p-8 text-white">
         <h2 className="text-2xl font-black">أهلاً {user.fullName} 👋</h2>
-        <p className="mt-2 text-brand-100">مرحباً بك في منصة منارة. يمكنك متابعة كل ما يخصّك من هنا.</p>
+        <p className="mt-2 text-brand-100">مرحباً بك في منصة مدارك. يمكنك متابعة كل ما يخصّك من هنا.</p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link to="/app/courses" className="btn bg-white text-brand-700 hover:bg-brand-50">الكورسات <ArrowLeft size={16} /></Link>
           <Link to="/app/exams" className="btn bg-white/15 text-white hover:bg-white/25">الامتحانات</Link>

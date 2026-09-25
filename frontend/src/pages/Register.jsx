@@ -190,7 +190,7 @@ export default function Register() {
               <GraduationCap size={28} />
             </div>
             <div>
-              <p className="text-2xl font-extrabold leading-none">منارة</p>
+              <p className="text-2xl font-extrabold leading-none">مدارك</p>
               <p className="text-sm text-brand-200 mt-1">مدرسينك وكورساتك في مكان واحد</p>
             </div>
           </Link>
@@ -198,7 +198,7 @@ export default function Register() {
           <div>
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               className="text-4xl font-black leading-snug">
-              {teacher ? <>انضم لـ{teacher.name}<br />وابدأ من النهارده</> : <>انضم لمنارة<br />وابدأ رحلتك التعليمية</>}
+              {teacher ? <>انضم لـ{teacher.name}<br />وابدأ من النهارده</> : <>انضم لمدارك<br />وابدأ رحلتك التعليمية</>}
             </motion.h1>
             <p className="mt-4 max-w-md text-brand-100/80 leading-relaxed">
               حساب واحد يفتح لك كورساتك وحضورك ودرجاتك — وتقدر تضيف عليه أي مدرس تاني بعدين.
@@ -219,7 +219,7 @@ export default function Register() {
             </div>
           </div>
 
-          <p className="text-xs text-brand-200/60">© 2026 منارة · جميع الحقوق محفوظة</p>
+          <p className="text-xs text-brand-200/60">© 2026 مدارك · جميع الحقوق محفوظة</p>
         </div>
       </div>
 
@@ -231,7 +231,7 @@ export default function Register() {
               <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-glow">
                 <GraduationCap size={24} />
               </div>
-              <p className="text-xl font-extrabold text-ink-800">منارة</p>
+              <p className="text-xl font-extrabold text-ink-800">مدارك</p>
             </Link>
           </div>
 

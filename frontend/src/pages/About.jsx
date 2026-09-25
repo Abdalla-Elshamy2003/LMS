@@ -17,13 +17,13 @@ export default function About() {
   return (
     <div className="min-h-screen overflow-x-clip bg-[#f6fbff] text-ink-800">
       <MarketingNav solid />
-      <PageHero badge="مش بس منصة..." title="دي نقلة" highlight="في التعليم" subtitle="منارة صُممت لتكون شريكك التقني الكامل في إدارة رحلة التعليم — من أول تسجيل طالب لحد إصدار الشهادة." />
+      <PageHero badge="مش بس منصة..." title="دي نقلة" highlight="في التعليم" subtitle="مدارك صُممت لتكون شريكك التقني الكامل في إدارة رحلة التعليم — من أول تسجيل طالب لحد إصدار الشهادة." />
 
       <section className="mx-auto max-w-4xl px-5 py-8">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-          <h2 className="text-2xl font-black text-ink-800">قصة منارة</h2>
+          <h2 className="text-2xl font-black text-ink-800">قصة مدارك</h2>
           <p className="mt-4 leading-relaxed text-ink-600">
-            بدأت فكرة منارة من ملاحظة بسيطة: المراكز التعليمية والمدارس في مصر والوطن العربي بتدير جزءاً كبيراً من عملها
+            بدأت فكرة مدارك من ملاحظة بسيطة: المراكز التعليمية والمدارس في مصر والوطن العربي بتدير جزءاً كبيراً من عملها
             بطرق متفرقة — ورق، إكسل، مجموعات واتساب — وكل ده بياخد وقت ومجهود كان ممكن يتصرف على تطوير المحتوى ومتابعة الطلاب فعلياً.
             قررنا نبني منظومة واحدة متكاملة، عربية أولاً، تجمع كل حاجة محتاجها أي مؤسسة تعليمية في مكان واحد — من إدارة
             الطلاب والحضور، للامتحانات والواجبات، لمتابعة أولياء الأمور، وحتى الشهادات — بتجربة استخدام بسيطة واحترافية.
@@ -70,7 +70,7 @@ export default function About() {
         <div className="absolute inset-0 -z-10 bg-gradient-to-br from-brand-700 to-brand-950" />
         <div className="absolute inset-0 -z-10 bg-grid opacity-30" />
         <div className="mx-auto max-w-2xl px-5 text-center text-white">
-          <h2 className="text-3xl font-black sm:text-4xl">جاهز تبدأ رحلتك مع منارة؟</h2>
+          <h2 className="text-3xl font-black sm:text-4xl">جاهز تبدأ رحلتك مع مدارك؟</h2>
           <p className="mt-3 text-brand-100">14 يوم مجاناً — بدون بطاقة ائتمان</p>
           <Link to="/register" className="btn mt-6 inline-flex bg-white px-7 py-3.5 text-base text-brand-700 hover:bg-brand-50">
             ابدأ الآن مجاناً <ArrowLeft size={18} />

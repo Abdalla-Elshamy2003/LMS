@@ -171,7 +171,7 @@ function Card({ student, qr }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <img src="/images/logo.png" alt="" className="h-7 w-7 object-contain" />
-          <span className="text-[10px] font-black text-ink-500">منارة</span>
+          <span className="text-[10px] font-black text-ink-500">مدارك</span>
         </div>
         <p className="mt-3 truncate text-base font-black text-ink-800">{student.fullName}</p>
         <p className="mt-1 text-[11px] text-ink-500">{student.code}</p>

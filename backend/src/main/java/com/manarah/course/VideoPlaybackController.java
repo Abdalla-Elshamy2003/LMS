@@ -67,7 +67,7 @@ public class VideoPlaybackController {
         var auth = authorize(actor,id);
         LessonMaterial m = auth.material();
         String watermarkId = "M" + actor.getId() + "-" + Long.toString(Instant.now().getEpochSecond() / 60, 36).toUpperCase(Locale.ROOT);
-        String mark = "منارة · " + actor.getFullName() + " · " + watermarkId;
+        String mark = "مدارك · " + actor.getFullName() + " · " + watermarkId;
         String prefix = "https://player.vdocipher.com/v2/?video=";
         if (m.getUrl() != null && m.getUrl().startsWith(prefix) && m.getUrl().substring(prefix.length()).matches("[a-zA-Z0-9]{10,64}")) {
             if (apiSecret.isBlank()) throw new BadRequestException("حماية الفيديو المشفر تحتاج تفعيل مزود الخدمة من إدارة المنصة");

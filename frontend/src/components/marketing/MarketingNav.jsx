@@ -35,7 +35,7 @@ export default function MarketingNav({ solid = false }) {
           <motion.div whileHover={{ rotate: -8, scale: 1.06 }} className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-glow">
             <GraduationCap size={22} />
           </motion.div>
-          <span className="text-xl font-extrabold">منارة</span>
+          <span className="text-xl font-extrabold">مدارك</span>
         </Link>
         <nav className="mr-auto hidden items-center gap-6 text-sm font-semibold text-ink-600 lg:flex">
           {NAV_LINKS.map((l) => {

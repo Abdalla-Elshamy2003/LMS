@@ -9,7 +9,7 @@ const SCENARIOS = [
   {
     icon: User, tint: 'from-brand-500 to-brand-700', persona: 'المدرس المستقل',
     challenge: 'بيدي دروس خصوصية لعشرات الطلاب، ومتابعة الحضور والدرجات والواجبات بقت بتاخد وقت أكتر من التدريس نفسه.',
-    outcome: 'مع منارة، بيسجّل حضوره بـ QR في ثواني، ويولّد أسئلة امتحان بالذكاء الاصطناعي في دقايق، وأولياء الأمور بياخدوا تحديث تلقائي على الواتساب — من غير ما يبعت رسالة واحدة بنفسه.',
+    outcome: 'مع مدارك، بيسجّل حضوره بـ QR في ثواني، ويولّد أسئلة امتحان بالذكاء الاصطناعي في دقايق، وأولياء الأمور بياخدوا تحديث تلقائي على الواتساب — من غير ما يبعت رسالة واحدة بنفسه.',
   },
   {
     icon: Building2, tint: 'from-emerald-500 to-teal-700', persona: 'مركز التدريب',
@@ -32,8 +32,8 @@ export default function SuccessStories() {
   return (
     <div className="min-h-screen overflow-x-clip bg-[#f6fbff] text-ink-800">
       <MarketingNav solid />
-      <PageHero badge="لمين منارة؟" title="مصمّمة لكل" highlight="أنواع المؤسسات التعليمية"
-        subtitle="من المدرس المستقل للجامعة الكبيرة — شوف إزاي منارة بتحل تحديات كل نوع مؤسسة." />
+      <PageHero badge="لمين مدارك؟" title="مصمّمة لكل" highlight="أنواع المؤسسات التعليمية"
+        subtitle="من المدرس المستقل للجامعة الكبيرة — شوف إزاي مدارك بتحل تحديات كل نوع مؤسسة." />
 
       <section className="mx-auto max-w-6xl space-y-6 px-5 pb-20">
         {SCENARIOS.map((s, i) => (
@@ -49,7 +49,7 @@ export default function SuccessStories() {
                 <p className="mt-3 leading-relaxed text-ink-600">{s.challenge}</p>
               </div>
               <div>
-                <span className="chip bg-emerald-50 text-emerald-700"><CheckCircle2 size={13} /> الحل مع منارة</span>
+                <span className="chip bg-emerald-50 text-emerald-700"><CheckCircle2 size={13} /> الحل مع مدارك</span>
                 <p className="mt-3 leading-relaxed text-ink-600">{s.outcome}</p>
               </div>
             </div>

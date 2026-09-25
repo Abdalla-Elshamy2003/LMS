@@ -49,7 +49,7 @@ export default function Layout() {
 
   const brand = (
     <div className="min-w-0">
-      <p className="truncate text-lg font-extrabold text-white leading-none">{academy?.name || scopedAcademy?.name || 'منارة'}</p>
+      <p className="truncate text-lg font-extrabold text-white leading-none">{academy?.name || scopedAcademy?.name || 'مدارك'}</p>
       <p className="text-[11px] text-brand-200 mt-1">{academy?.name ? 'منصة المستر التعليمية' : 'نظام إدارة التعليم'}</p>
     </div>
   )

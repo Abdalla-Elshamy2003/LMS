@@ -163,7 +163,7 @@ export default function Reports() {
           <ReportHeader period={data.period} course={data.course} student={data.student} />
           {data.rows ? <AcademySheet data={data} /> : <StudentSheet data={data} />}
           <p className="mt-8 border-t border-ink-100 pt-4 text-center text-[11px] text-ink-400">
-            تقرير صادر من منصة منارة — {new Date().toLocaleDateString('ar-EG')}
+            تقرير صادر من منصة مدارك — {new Date().toLocaleDateString('ar-EG')}
           </p>
         </div>
       )}

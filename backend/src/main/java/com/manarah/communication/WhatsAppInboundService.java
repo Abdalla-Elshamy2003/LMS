@@ -43,7 +43,7 @@ import java.util.Set;
 public class WhatsAppInboundService {
 
     private static final Logger log = LoggerFactory.getLogger(WhatsAppInboundService.class);
-    private static final String ACK_REPLY = "تم استلام رسالتك، وسيتواصل معك فريق الدعم في أقرب وقت. يمكنك متابعة الرد من مركز التواصل داخل منصة منارة.";
+    private static final String ACK_REPLY = "تم استلام رسالتك، وسيتواصل معك فريق الدعم في أقرب وقت. يمكنك متابعة الرد من مركز التواصل داخل منصة مدارك.";
 
     private final GuardianRepository guardians;
     private final StudentRepository students;

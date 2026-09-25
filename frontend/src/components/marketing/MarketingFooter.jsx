@@ -8,13 +8,13 @@ export default function MarketingFooter() {
         <div className="sm:col-span-2 lg:col-span-2">
           <Link to="/" className="flex items-center gap-2.5">
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white"><GraduationCap size={18} /></div>
-            <span className="text-lg font-extrabold">منارة</span>
+            <span className="text-lg font-extrabold">مدارك</span>
           </Link>
           <p className="mt-3 max-w-xs text-sm leading-relaxed text-ink-400">
             منصة إدارة التعليم المتكاملة للمراكز والأكاديميات والمدارس — من التسجيل للتخرج في مكان واحد.
           </p>
           <div className="mt-4 flex items-center gap-2">
-            <a href="mailto:hello@manarah.io" className="chip bg-ink-100 text-ink-600 hover:bg-ink-200"><Mail size={13} /> hello@manarah.io</a>
+            <a href="mailto:hello@madarik.com.co" className="chip bg-ink-100 text-ink-600 hover:bg-ink-200"><Mail size={13} /> hello@madarik.com.co</a>
           </div>
         </div>
         <div>
@@ -39,7 +39,7 @@ export default function MarketingFooter() {
           <Link to="/register" className="btn-primary mt-3 inline-flex">سجّل الآن <ChevronLeft size={16} /></Link>
         </div>
       </div>
-      <div className="border-t border-ink-100 py-6 text-center text-sm text-ink-400">© 2026 منارة · نظام إدارة التعليم المتكامل</div>
+      <div className="border-t border-ink-100 py-6 text-center text-sm text-ink-400">© 2026 مدارك · نظام إدارة التعليم المتكامل</div>
     </footer>
   )
 }

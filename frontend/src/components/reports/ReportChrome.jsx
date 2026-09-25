@@ -10,7 +10,7 @@ export function ReportHeader({ title, subtitle }) {
           <GraduationCap size={24} />
         </div>
         <div>
-          <p className="text-lg font-black text-ink-900">منارة</p>
+          <p className="text-lg font-black text-ink-900">مدارك</p>
           <p className="text-xs text-ink-400">نظام إدارة التعليم المتكامل</p>
         </div>
       </div>
@@ -25,7 +25,7 @@ export function ReportHeader({ title, subtitle }) {
 export function ReportFooter() {
   return (
     <div className="mt-8 flex items-center justify-between border-t border-ink-200 pt-3 text-[11px] text-ink-400">
-      <span>تم إنشاء هذا التقرير تلقائياً بواسطة منارة</span>
+      <span>تم إنشاء هذا التقرير تلقائياً بواسطة مدارك</span>
       <span>تاريخ الإصدار: {fmtDate(new Date().toISOString())}</span>
     </div>
   )

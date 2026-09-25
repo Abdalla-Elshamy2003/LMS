@@ -283,7 +283,7 @@ export default function Home() {
       {/* ---------- Features ---------- */}
       <section className="mx-auto max-w-7xl px-5 pt-24">
         <motion.div {...reveal} className="text-center">
-          <span className="chip bg-brand-50 text-brand-700"><Zap size={14} /> ليه منارة؟</span>
+          <span className="chip bg-brand-50 text-brand-700"><Zap size={14} /> ليه مدارك؟</span>
           <h2 className="mt-4 text-3xl font-black sm:text-4xl">مش مجرد فيديوهات.. منظومة كاملة</h2>
           <p className="mx-auto mt-3 max-w-2xl text-ink-500">كل اللي المستر والطالب وولي الأمر محتاجينه، في مكان واحد ومترابط.</p>
         </motion.div>

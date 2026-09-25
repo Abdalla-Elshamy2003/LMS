@@ -33,7 +33,7 @@ export default function Community() {
         <MessagesSquare className="absolute -bottom-12 left-4 h-56 w-56 text-white/5" strokeWidth={1} />
         <div className="relative flex flex-wrap items-end justify-between gap-5">
           <div>
-            <span className="text-xs font-black text-cyan-300">مجتمع منارة التعليمي</span>
+            <span className="text-xs font-black text-cyan-300">مجتمع مدارك التعليمي</span>
             <h2 className="mt-3 text-2xl font-black sm:text-3xl">اسأل، ناقش، وشارك زملاءك في التعلّم</h2>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">منتدى مفتوح لكل الطلاب والمدرسين — اطرح سؤالاً عاماً أو دردش داخل مادة معينة.</p>
           </div>

@@ -10,7 +10,7 @@ import { fmtDate } from '../lib/format'
  * The PDF is produced by rasterizing this exact DOM (see lib/pdf.js) — the safest
  * route for perfectly-shaped Arabic text without backend font/RTL PDF plumbing.
  */
-export default function CertificateCard({ cert, tenantName = 'أكاديمية منارة' }) {
+export default function CertificateCard({ cert, tenantName = 'أكاديمية مدارك' }) {
   const ref = useRef(null)
   const [qr, setQr] = useState('')
   const [downloading, setDownloading] = useState(false)
