@@ -140,6 +140,9 @@ class YearSubscriptionTest {
         assertThat(states(student).get(motion)).isEqualTo("EXPIRED");
         assertThat(mySubscription(student).path("status").asText()).isEqualTo("ENDED");
         assertThat(call(get("/api/learning"), student, null, 200).findValuesAsText("title")).doesNotContain("الحركة");
+        // The teacher saves this student in their editor meanwhile (it only ticks open courses): a renewal must still reopen.
+        call(put("/api/academies/" + academyId + "/students/" + studentId(teacher, planId)), admin,
+                Map.of("fullName", "طالب أولى", "courseIds", List.of(newton)), 200);
 
         // Renewing: the student asks, the teacher activates — open again, except what the teacher closed.
         call(post("/api/me/plans/" + planId + "/request"), student, null, 200);

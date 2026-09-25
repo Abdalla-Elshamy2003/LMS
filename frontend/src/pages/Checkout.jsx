@@ -143,7 +143,7 @@ export default function Checkout() {
                 <div className="card p-8 text-center">
                   <CheckCircle2 size={56} className="mx-auto text-emerald-500" />
                   <h3 className="mt-4 text-xl font-black text-ink-800">{done.message}</h3>
-                  <p className="mt-2 text-ink-500">كورس {course.title} فتح — تقدر تبدأ المذاكرة دلوقتي.</p>
+                  <p className="mt-2 text-ink-500">تقدر تبدأ المذاكرة دلوقتي — كورساتك في لوحتك.</p>
                   <Link to="/app" className="btn-primary mt-6 w-full justify-center py-3">الذهاب إلى منصتي <ArrowLeft size={16} /></Link>
                 </div>
               ) : asStudent ? (

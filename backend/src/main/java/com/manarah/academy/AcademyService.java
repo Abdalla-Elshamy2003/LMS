@@ -221,11 +221,13 @@ public class AcademyService {
     }
     private void replaceAccess(TeacherAcademy a, Long studentId, Set<Long> ids) {
         var current = enrollments.findByTenantIdAndStudentId(a.getTenantId(), studentId);
-        // Ticking a course the student is waiting to pay for opens it; leaving it unticked leaves the request waiting
-        // rather than cancelling it — the editor only shows the courses the student already has open.
+        // Ticking a course the student is waiting to pay for (or whose subscription ran out) opens it; leaving it
+        // unticked leaves it as it is rather than closing it for good — the editor only shows the courses the student
+        // has open, and a renewal must still be able to reopen a course whose subscription ran out.
         for (var e : current) {
             if (ids.remove(e.getCourseId())) e.setStatus("ACTIVE");
-            else if (!com.manarah.enrollment.CourseRequests.WAITING.equals(e.getStatus())) e.setStatus("INACTIVE");
+            else if (!com.manarah.enrollment.CourseRequests.WAITING.equals(e.getStatus())
+                    && !com.manarah.subscription.PlanAccess.LOCKED.equals(e.getStatus())) e.setStatus("INACTIVE");
             enrollments.save(e);
         }
         for (Long courseId : ids) { var e = new Enrollment(); e.setTenantId(a.getTenantId()); e.setStudentId(studentId); e.setCourseId(courseId); enrollments.save(e); }

@@ -329,7 +329,7 @@ export default function Register() {
                 <select className="input" value={form.courseId} onChange={setCourse} disabled={!slug}>
                   <option value="">— من غير كورس دلوقتي —</option>
                   {visibleCourses.map((c) => (
-                    <option key={c.id} value={c.id}>{c.title}{c.year && !form.grade ? ` · ${c.year}` : ''} · {priceOf(c) > 0 ? fmtMoney(priceOf(c)) : 'مجاني'}</option>
+                    <option key={c.id} value={c.id}>{c.title}{c.year && !form.grade ? ` · ${c.year}` : ''} · {priceOf(c) > 0 ? 'ضمن اشتراك السنة' : 'مجاني'}</option>
                   ))}
                 </select>
                 {slug && form.grade && visibleCourses.length === 0 && (
@@ -405,7 +405,7 @@ function ChoiceSummary({ teacher, course, grade, plan }) {
         {grade && <p className="mt-0.5 text-xs font-bold text-brand-700">{grade}</p>}
       </div>
       {course && <span className={`shrink-0 rounded-full px-2.5 py-1 text-center text-xs font-bold ${priceOf(course) > 0 ? 'bg-brand-50 text-brand-700' : 'bg-emerald-50 text-emerald-700'}`}>
-        {plan ? <>{fmtMoney(plan.finalPrice)}<span className="block text-[10px] font-semibold">/ {monthsLabel(plan.months)}</span></> : priceOf(course) > 0 ? fmtMoney(priceOf(course)) : 'مجاني'}
+        {plan ? <>{fmtMoney(plan.finalPrice)}<span className="block text-[10px] font-semibold">/ {monthsLabel(plan.months)}</span></> : priceOf(course) > 0 ? 'السعر عند المدرس' : 'مجاني'}
       </span>}
     </div>
   )

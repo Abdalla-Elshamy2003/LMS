@@ -229,7 +229,9 @@ function Slider({ items, plans, subject, cta, login, reveal, onPreview, enroll, 
                       ? <span className="tl-price"><strong>مشاهدة</strong></span>
                       : plan
                         ? <div className="tl-price"><strong>{fmtMoney(plan.finalPrice)}</strong><small>/ {monthsLabel(plan.months)} للسنة كلها</small></div>
-                        : <div className="tl-price"><strong>{fmtMoney(c.finalPrice)}</strong>{c.discountPercent > 0 && <del>{fmtMoney(c.price)}</del>}</div>}
+                        : real && paid
+                          ? <div className="tl-price"><strong>السعر عند المستر</strong></div>
+                          : <div className="tl-price"><strong>{fmtMoney(c.finalPrice)}</strong>{c.discountPercent > 0 && <del>{fmtMoney(c.price)}</del>}</div>}
                     {(sample || c.isVideo)
                       ? <button aria-label={`معاينة ${c.title}`} onClick={() => onPreview(c, i)}>معاينة <ArrowUpLeft size={18} /></button>
                       : onPick

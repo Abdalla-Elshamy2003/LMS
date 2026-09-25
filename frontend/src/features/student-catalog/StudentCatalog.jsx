@@ -286,8 +286,8 @@ function CourseCard({ c, plan, owned, badge, focused, children }) {
         <p className="text-xs text-ink-400">{c.subject}</p>
         <p className="mt-1 font-extrabold leading-snug text-ink-800">{c.title}</p>
         {c.description && <p className="mt-1.5 line-clamp-2 text-xs leading-6 text-ink-500">{c.description}</p>}
-        {owned ? null : plan && price > 0 ? (
-          <p className="mt-3 text-xs text-ink-500">ضمن اشتراك {planLabel(plan)}: <b className="text-brand-700">{planPrice(plan)}</b></p>
+        {owned ? null : price > 0 ? (
+          <p className="mt-3 text-xs text-ink-500">ضمن اشتراك {plan ? planLabel(plan) : (c.year || 'السنة')}: <b className="text-brand-700">{plan ? planPrice(plan) : 'السعر عند المدرس'}</b></p>
         ) : (
           <div className="mt-3 flex items-baseline gap-2">
             <b className={price > 0 ? 'text-brand-700' : 'text-emerald-600'}>{price > 0 ? fmtMoney(price) : 'مجاني'}</b>
