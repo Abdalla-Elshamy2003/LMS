@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CheckCircle2, XCircle, LogIn, LogOut, GraduationCap, ArrowLeft } from 'lucide-react'
+import { CheckCircle2, XCircle, LogIn, LogOut, ArrowLeft } from 'lucide-react'
 import api from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { fmtDayTime } from '../lib/format'
 import { apiErrorMessage } from '../lib/apiError'
 import { TeacherBadge, TeacherChoices } from '../features/gate/ScanTeacher'
+import BrandLogo from '../components/Brand'
 
 /**
  * Where a scanned student pass lands. A staff phone's native camera opens this URL directly, so
@@ -42,8 +43,7 @@ export default function GateScan() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-700 to-brand-950 p-6" dir="rtl">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-2 text-white">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/15"><GraduationCap size={20} /></div>
-          <span className="text-xl font-extrabold">مدارك</span>
+          <BrandLogo onDark />
         </div>
 
         <div className="card p-7 text-center">

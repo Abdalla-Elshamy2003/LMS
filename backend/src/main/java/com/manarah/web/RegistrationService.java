@@ -150,7 +150,7 @@ public class RegistrationService {
 
         String token = linked.tokenFor(acc.user);
         return new RegistrationResult(token, "Bearer", jwtService.getAccessTokenTtlMinutes(),
-                acc.student.getCode(), "تم إنشاء حسابك بنجاح! أهلاً بك في مدارك.");
+                acc.student.getCode(), "تم إنشاء حسابك بنجاح! أهلاً بك في دروس.");
     }
 
     /**
@@ -285,7 +285,7 @@ public class RegistrationService {
                     .findFirst().orElse(null);
             if (owner == null) {
                 loginAttempts.failed(trimmedEmail);
-                throw new ConflictException("الإيميل ده عنده حساب على مدارك. سجّل دخولك بيه وانضم للمستر من صفحته، أو اكتب هنا نفس كلمة المرور بتاعته.");
+                throw new ConflictException("الإيميل ده عنده حساب على دروس. سجّل دخولك بيه وانضم للمستر من صفحته، أو اكتب هنا نفس كلمة المرور بتاعته.");
             }
             loginAttempts.succeeded(trimmedEmail);
             Student joined = linked.linkAtRegistration(owner, tenantId, fullName, phone, grade, educationType);

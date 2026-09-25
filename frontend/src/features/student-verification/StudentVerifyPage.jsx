@@ -1,9 +1,10 @@
 import { useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { AlertTriangle, CheckCircle2, GraduationCap, RefreshCw, ShieldOff, WifiOff, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, RefreshCw, ShieldOff, WifiOff, XCircle } from 'lucide-react'
 import StaffGateAction from './StaffGateAction'
 import { VerificationState, useStudentVerification } from './useStudentVerification'
 import { fmtDayTime } from '../../lib/format'
+import BrandLogo from '../../components/Brand'
 
 const ENROLLMENT_LABELS = {
   ACTIVE: 'مقيّد',
@@ -24,8 +25,7 @@ export default function StudentVerifyPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-700 to-brand-950 p-6" dir="rtl">
       <motion.main initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-2 text-white">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/15"><GraduationCap size={20} /></div>
-          <span className="text-xl font-extrabold">مدارك</span>
+          <BrandLogo onDark />
         </div>
 
         <div className="card p-7 text-center" aria-live="polite">

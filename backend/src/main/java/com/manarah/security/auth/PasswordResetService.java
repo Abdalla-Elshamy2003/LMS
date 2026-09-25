@@ -149,9 +149,9 @@ public class PasswordResetService {
     /** Tries email first, then WhatsApp; returns the channel that actually dispatched, or null. */
     private String deliver(User user, String token) {
         String link = appUrl + "/reset-password?token=" + token;
-        String title = "إعادة تعيين كلمة المرور — مدارك";
+        String title = "إعادة تعيين كلمة المرور — دروس";
         String body = "مرحباً " + user.getFullName() + "،\n\n"
-                + "وصلنا طلب لإعادة تعيين كلمة المرور لحسابك على منصة مدارك.\n"
+                + "وصلنا طلب لإعادة تعيين كلمة المرور لحسابك على منصة دروس.\n"
                 + "افتح الرابط ده خلال 30 دقيقة عشان تختار كلمة مرور جديدة:\n\n"
                 + link + "\n\n"
                 + "لو مش إنت اللي طلبت ده، تجاهل الرسالة — كلمة المرور الحالية هتفضل زي ما هي.";

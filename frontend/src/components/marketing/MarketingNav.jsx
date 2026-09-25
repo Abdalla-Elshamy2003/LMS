@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { GraduationCap, Menu, X, ArrowLeft } from 'lucide-react'
+import { Menu, X, ArrowLeft } from 'lucide-react'
+import { BrandMark, Wordmark } from '../Brand'
 
 export const NAV_LINKS = [
   { to: '/features', label: 'المميزات' },
@@ -32,10 +33,8 @@ export default function MarketingNav({ solid = false }) {
     <header className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${scrolled ? 'glass border-b border-white/50 shadow-soft' : 'bg-transparent'}`}>
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-5 py-3.5">
         <Link to="/" className="flex items-center gap-2.5">
-          <motion.div whileHover={{ rotate: -8, scale: 1.06 }} className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-glow">
-            <GraduationCap size={22} />
-          </motion.div>
-          <span className="text-xl font-extrabold">مدارك</span>
+          <motion.span whileHover={{ rotate: -8, scale: 1.06 }} className="inline-flex"><BrandMark /></motion.span>
+          <Wordmark />
         </Link>
         <nav className="mr-auto hidden items-center gap-6 text-sm font-semibold text-ink-600 lg:flex">
           {NAV_LINKS.map((l) => {

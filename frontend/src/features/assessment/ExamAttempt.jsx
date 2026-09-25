@@ -101,7 +101,7 @@ export default function ExamAttempt({ exam, onClose }) {
   return <div ref={hall} dir="rtl" className={`fixed inset-0 z-[70] flex flex-col bg-ink-50 text-ink-900 ${running && attempt.disableCopy ? 'select-none' : ''}`}
     onCopy={guard} onCut={guard} onPaste={guard} onContextMenu={e => { if (running && attempt.disableCopy) e.preventDefault() }} onDragStart={e => { if (running && attempt.disableCopy) e.preventDefault() }}>
     <header className="flex items-center justify-between gap-3 bg-brand-950 px-4 py-3 text-white sm:px-6">
-      <div className="min-w-0"><p className="truncate text-xs text-cyan-200">{exam.courseTitle || 'مدارك'} · قاعة الامتحان</p><h2 className="truncate text-base font-black sm:text-lg">{exam.title}</h2></div>
+      <div className="min-w-0"><p className="truncate text-xs text-cyan-200">{exam.courseTitle || 'دروس'} · قاعة الامتحان</p><h2 className="truncate text-base font-black sm:text-lg">{exam.title}</h2></div>
       {running && <div className="flex items-center gap-2 sm:gap-3">
         <span className="hidden items-center gap-1 rounded-xl bg-white/10 px-3 py-2 text-xs font-bold sm:inline-flex"><ListChecks size={15} /> {count} / {attempt.questions.length}</span>
         <span role="timer" aria-live="off" className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 font-black tabular-nums ${timerTone}`}><Clock size={17} />{mins}:{secs}</span>

@@ -12,6 +12,12 @@ server {
     index index.html;
     server_tokens off;
 
+    # The old Railway address forwards to the real domain: links and printed QR codes made before
+    # droos.com.co keep working, but nobody stays on the *.up.railway.app URL.
+    if ($host ~* \.up\.railway\.app$) {
+        return 301 https://droos.com.co$request_uri;
+    }
+
     # Compose healthcheck target — cheap, no proxying involved.
     location = /healthz {
         access_log off;

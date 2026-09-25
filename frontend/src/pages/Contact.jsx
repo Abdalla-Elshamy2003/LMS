@@ -14,7 +14,7 @@ const STUDENT_RANGES = ['1 - 50', '50 - 200', '200 - 500', '500 - 1,000', 'أك�
 const CHANNELS = [
   { icon: MessageCircle, title: 'واتساب', value: 'راسلنا على واتساب', href: 'https://wa.me/201000000000', tint: 'bg-emerald-50 text-emerald-600' },
   { icon: Phone, title: 'اتصل بنا', value: '+20 100 000 0000', href: 'tel:+201000000000', tint: 'bg-brand-50 text-brand-600' },
-  { icon: Mail, title: 'البريد الإلكتروني', value: 'hello@madarik.com.co', href: 'mailto:hello@madarik.com.co', tint: 'bg-violet-50 text-violet-600' },
+  { icon: Mail, title: 'البريد الإلكتروني', value: 'hello@droos.com.co', href: 'mailto:hello@droos.com.co', tint: 'bg-violet-50 text-violet-600' },
 ]
 
 export default function Contact() {

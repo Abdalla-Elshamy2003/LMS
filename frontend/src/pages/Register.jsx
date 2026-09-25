@@ -16,6 +16,7 @@ import PaymentIcon, { METHOD_META } from '../components/payments/PaymentIcon'
 import { qrDataUrl } from '../lib/qr'
 import { studentVerifyUrl } from '../features/student-verification/studentVerificationApi'
 import { apiErrorMessage } from '../lib/apiError'
+import BrandLogo from '../components/Brand'
 
 const FEATURES = [
   { icon: BookOpen, title: 'اختار مدرسك وكورسك', desc: 'المادة وسنتك بتتحدد لوحدها من الكورس اللي اخترته' },
@@ -185,20 +186,14 @@ export default function Register() {
           animate={{ scale: [1.1, 1, 1.1] }} transition={{ duration: 12, repeat: Infinity }} />
 
         <div className="relative z-10 flex flex-col justify-between p-12 text-white">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/15 backdrop-blur">
-              <GraduationCap size={28} />
-            </div>
-            <div>
-              <p className="text-2xl font-extrabold leading-none">مدارك</p>
-              <p className="text-sm text-brand-200 mt-1">مدرسينك وكورساتك في مكان واحد</p>
-            </div>
+          <Link to="/" className="inline-flex self-start">
+            <BrandLogo size="lg" onDark tagline="مدرسينك وكورساتك في مكان واحد" />
           </Link>
 
           <div>
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               className="text-4xl font-black leading-snug">
-              {teacher ? <>انضم لـ{teacher.name}<br />وابدأ من النهارده</> : <>انضم لمدارك<br />وابدأ رحلتك التعليمية</>}
+              {teacher ? <>انضم لـ{teacher.name}<br />وابدأ من النهارده</> : <>انضم لدروس<br />وابدأ رحلتك التعليمية</>}
             </motion.h1>
             <p className="mt-4 max-w-md text-brand-100/80 leading-relaxed">
               حساب واحد يفتح لك كورساتك وحضورك ودرجاتك — وتقدر تضيف عليه أي مدرس تاني بعدين.
@@ -219,7 +214,7 @@ export default function Register() {
             </div>
           </div>
 
-          <p className="text-xs text-brand-200/60">© 2026 مدارك · جميع الحقوق محفوظة</p>
+          <p className="text-xs text-brand-200/60">© 2026 دروس · جميع الحقوق محفوظة</p>
         </div>
       </div>
 
@@ -227,12 +222,7 @@ export default function Register() {
       <div className="flex items-center justify-center bg-[#f6f7fb] p-6 py-10">
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <Link to="/" className="flex items-center gap-3">
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-glow">
-                <GraduationCap size={24} />
-              </div>
-              <p className="text-xl font-extrabold text-ink-800">مدارك</p>
-            </Link>
+            <Link to="/" className="inline-flex"><BrandLogo /></Link>
           </div>
 
           <div className="flex items-center gap-2 mb-1">

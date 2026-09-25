@@ -62,7 +62,7 @@ export default function Login() {
         <Link to={home} className="tl-brand">
           <img src="/images/logo.png" alt="" className="tl-logo" />
           <span>
-            <strong>{profile?.name || 'مدارك'}</strong>
+            <strong>{profile?.name || 'دروس'}</strong>
             <small>{profile?.tagline || 'مساحتك للتعلّم'}</small>
           </span>
         </Link>

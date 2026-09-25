@@ -1,5 +1,6 @@
 import { ChevronsLeft, ChevronsRight } from 'lucide-react'
 import SidebarItem from './SidebarItem'
+import { BrandMark } from '../../components/Brand'
 
 /** A titled group of related items. In icon-only mode the title becomes a thin divider. */
 function SidebarSection({ section, collapsed, idPrefix, onNavigate, onAction }) {
@@ -31,9 +32,7 @@ export default function Sidebar({ sections, brand, banner, collapsed = false, on
   return (
     <div className="flex h-full flex-col">
       <div className={`flex items-center gap-3 py-6 ${isCollapsed ? 'justify-center px-2' : 'px-5'}`}>
-        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white p-1 shadow-glow">
-          <img src="/images/logo.png" alt="" className="h-full w-full object-contain" />
-        </div>
+        <BrandMark size="lg" onDark />
         {!isCollapsed && brand}
       </div>
 

@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Award, Download, GraduationCap } from 'lucide-react'
+import { Award, Download } from 'lucide-react'
 import { qrDataUrl } from '../lib/qr'
 import { exportElementToPdfLandscape } from '../lib/pdf'
 import { fmtDate } from '../lib/format'
+import { BrandMark, LatinWordmark } from './Brand'
 
 /**
  * Renders a printable certificate design and offers a "Download PDF" button.
  * The PDF is produced by rasterizing this exact DOM (see lib/pdf.js) — the safest
  * route for perfectly-shaped Arabic text without backend font/RTL PDF plumbing.
  */
-export default function CertificateCard({ cert, tenantName = 'أكاديمية مدارك' }) {
+export default function CertificateCard({ cert, tenantName = 'أكاديمية دروس' }) {
   const ref = useRef(null)
   const [qr, setQr] = useState('')
   const [downloading, setDownloading] = useState(false)
@@ -40,9 +41,7 @@ export default function CertificateCard({ cert, tenantName = 'أكاديمية �
         <div className="pointer-events-none absolute inset-3 rounded-xl border border-amber-300/60" />
         <div className="relative flex h-full flex-col items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white">
-              <GraduationCap size={20} />
-            </div>
+            <BrandMark />
             <span className="text-lg font-black text-brand-900">{tenantName}</span>
           </div>
 
@@ -60,6 +59,10 @@ export default function CertificateCard({ cert, tenantName = 'أكاديمية �
             <div className="text-right">
               <p>تاريخ الإصدار: {fmtDate(cert.issuedAt)}</p>
               <p>الرقم التسلسلي: {cert.serial}</p>
+            </div>
+            <div className="flex flex-col items-center gap-1 self-center">
+              <LatinWordmark className="h-6" />
+              <span className="text-[9px] text-ink-400">droos.com.co</span>
             </div>
             {qr && (
               <div className="flex flex-col items-center gap-1">

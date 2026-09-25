@@ -1,16 +1,14 @@
-import { GraduationCap } from 'lucide-react'
 import { fmtDate } from '../../lib/format'
+import { BrandMark, Wordmark, LatinWordmark } from '../Brand'
 
 /** Shared header/footer chrome for printable A4-ish report pages. */
 export function ReportHeader({ title, subtitle }) {
   return (
     <div className="flex items-center justify-between border-b-2 border-brand-600 pb-4">
       <div className="flex items-center gap-3">
-        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white">
-          <GraduationCap size={24} />
-        </div>
+        <BrandMark size="lg" />
         <div>
-          <p className="text-lg font-black text-ink-900">مدارك</p>
+          <Wordmark className="text-2xl" />
           <p className="text-xs text-ink-400">نظام إدارة التعليم المتكامل</p>
         </div>
       </div>
@@ -25,7 +23,7 @@ export function ReportHeader({ title, subtitle }) {
 export function ReportFooter() {
   return (
     <div className="mt-8 flex items-center justify-between border-t border-ink-200 pt-3 text-[11px] text-ink-400">
-      <span>تم إنشاء هذا التقرير تلقائياً بواسطة مدارك</span>
+      <span className="flex items-center gap-2">تم إنشاء هذا التقرير تلقائياً بواسطة <LatinWordmark className="h-5" /></span>
       <span>تاريخ الإصدار: {fmtDate(new Date().toISOString())}</span>
     </div>
   )

@@ -60,7 +60,7 @@ export default function Features() {
     <div className="min-h-screen overflow-x-clip bg-[#f6fbff] text-ink-800">
       <MarketingNav solid />
       <PageHero badge="كل الأدوات اللي هتحتاجها" title="منظومة تعليمية" highlight="متكاملة بكل التفاصيل"
-        subtitle="من تسجيل الطالب الأول لحد إصدار الشهادة — مدارك بتدير كل خطوة في رحلة التعليم." />
+        subtitle="من تسجيل الطالب الأول لحد إصدار الشهادة — دروس بتدير كل خطوة في رحلة التعليم." />
 
       {/* Flagship features */}
       <section className="mx-auto max-w-7xl space-y-6 px-5 pb-6">

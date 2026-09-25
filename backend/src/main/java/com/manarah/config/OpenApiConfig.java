@@ -16,9 +16,9 @@ public class OpenApiConfig {
         final String scheme = "bearerAuth";
         return new OpenAPI()
                 .info(new Info()
-                        .title("Madarik LMS API")
+                        .title("Droos LMS API")
                         .version("1.0.0")
-                        .description("منصة مدارك التعليمية المتكاملة — واجهة برمجية"))
+                        .description("منصة دروس التعليمية المتكاملة — واجهة برمجية"))
                 .addSecurityItem(new SecurityRequirement().addList(scheme))
                 .components(new Components().addSecuritySchemes(scheme,
                         new SecurityScheme()

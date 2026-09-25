@@ -152,7 +152,7 @@ export default function PackageCheckout() {
                   <button type="submit" disabled={saving || !(price > 0)} className="btn-primary w-full py-3 text-base">
                     {saving ? <Spinner className="h-5 w-5 border-white/40 border-t-white" /> : <>تفعيل الباقة <ArrowLeft size={18} /></>}
                   </button>
-                  {!user && <p className="text-center text-sm text-ink-400">عندك حساب على مدارك؟ <Link to="/login" className="font-bold text-brand-600 hover:underline">سجّل دخولك</Link> وارجع هنا — وحسابك نفسه هيتضافله كل المدرسين.</p>}
+                  {!user && <p className="text-center text-sm text-ink-400">عندك حساب على دروس؟ <Link to="/login" className="font-bold text-brand-600 hover:underline">سجّل دخولك</Link> وارجع هنا — وحسابك نفسه هيتضافله كل المدرسين.</p>}
                 </form>
               )}
             </motion.div>

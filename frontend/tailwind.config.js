@@ -5,6 +5,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Cairo', 'Tajawal', 'system-ui', 'sans-serif'],
+        brand: ['"Reem Kufi"', 'Cairo', 'sans-serif'],
       },
       colors: {
         brand: {

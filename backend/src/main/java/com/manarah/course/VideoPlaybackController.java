@@ -72,7 +72,7 @@ public class VideoPlaybackController {
         var auth = authorize(actor,id);
         LessonMaterial m = auth.material();
         String watermarkId = "M" + actor.getId() + "-" + Long.toString(Instant.now().getEpochSecond() / 60, 36).toUpperCase(Locale.ROOT);
-        String mark = "مدارك · " + actor.getFullName() + " · " + watermarkId;
+        String mark = "دروس · " + actor.getFullName() + " · " + watermarkId;
         if (m.getVideoAssetId() != null) {
             if (requireDrm) throw new ForbiddenException("هذا الفيديو يحتاج نقله إلى الاستضافة المشفرة قبل المشاهدة");
             var asset = asset(m);

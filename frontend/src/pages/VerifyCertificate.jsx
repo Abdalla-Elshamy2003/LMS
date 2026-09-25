@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CheckCircle2, XCircle, GraduationCap, ArrowLeft } from 'lucide-react'
+import { CheckCircle2, XCircle, ArrowLeft } from 'lucide-react'
 import api from '../lib/api'
 import { PageLoader } from '../components/ui'
 import { fmtDate } from '../lib/format'
+import BrandLogo from '../components/Brand'
 
 /** Public page a certificate's QR code resolves to — no auth required. */
 export default function VerifyCertificate() {
@@ -19,8 +20,7 @@ export default function VerifyCertificate() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-700 to-brand-950 p-6">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-2 text-white">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/15"><GraduationCap size={20} /></div>
-          <span className="text-xl font-extrabold">مدارك</span>
+          <BrandLogo onDark />
         </div>
         <div className="card p-8 text-center">
           {!result ? <PageLoader /> : result.valid ? (

@@ -68,7 +68,7 @@ public class StudentPassEmailService {
         }
 
         String verifyUrl = appUrl + "/student/verify/" + passTokens.ensure(student).getPassToken();
-        String institution = institutions.nameOf(tenantId).orElse("مدارك");
+        String institution = institutions.nameOf(tenantId).orElse("دروس");
         Map<String, String> details = details(student, email, institution);
 
         boolean delivered = mail.sendHtml(email, "كود الـ QR الخاص بك — " + institution,

@@ -41,7 +41,7 @@ export default function BundleLanding() {
     api.get(`/public/bundles/${slug}`).then(r => live && setData(r.data)).catch(() => live && setError('الباقة دي مش متاحة دلوقتي.'))
     return () => { live = false }
   }, [slug])
-  useEffect(() => { if (data) { const old = document.title; document.title = `${data.name} | مدارك`; return () => { document.title = old } } }, [data])
+  useEffect(() => { if (data) { const old = document.title; document.title = `${data.name} | دروس`; return () => { document.title = old } } }, [data])
 
   // Scroll-spy for the rail: the section crossing the middle of the screen is the "current" teacher.
   useEffect(() => {

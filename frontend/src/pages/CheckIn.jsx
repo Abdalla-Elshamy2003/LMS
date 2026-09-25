@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CheckCircle2, XCircle, GraduationCap, ArrowLeft } from 'lucide-react'
+import { CheckCircle2, XCircle, ArrowLeft } from 'lucide-react'
 import api from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { PageLoader } from '../components/ui'
 import { apiErrorMessage } from '../lib/apiError'
+import BrandLogo from '../components/Brand'
 
 /**
  * Where a scanned attendance QR lands (see AttendanceService's rotateQr URL). A phone's native
@@ -36,8 +37,7 @@ export default function CheckIn() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-700 to-brand-950 p-6">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-2 text-white">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/15"><GraduationCap size={20} /></div>
-          <span className="text-xl font-extrabold">مدارك</span>
+          <BrandLogo onDark />
         </div>
         <div className="card p-8 text-center">
           {authLoading || submitting ? (

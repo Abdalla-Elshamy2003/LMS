@@ -10,6 +10,7 @@ import api from '../lib/api'
 import Sidebar from '../features/navigation/Sidebar'
 import { buildNavigation, currentItem } from '../features/navigation/navConfig'
 import { useSidebarCollapsed } from '../features/navigation/useSidebarCollapsed'
+import { Wordmark } from './Brand'
 
 function NotificationBell() {
   const [count, setCount] = useState(0)
@@ -49,7 +50,9 @@ export default function Layout() {
 
   const brand = (
     <div className="min-w-0">
-      <p className="truncate text-lg font-extrabold text-white leading-none">{academy?.name || scopedAcademy?.name || 'مدارك'}</p>
+      {academy?.name || scopedAcademy?.name
+        ? <p className="truncate text-lg font-extrabold text-white leading-none">{academy?.name || scopedAcademy?.name}</p>
+        : <Wordmark onDark className="block text-2xl" />}
       <p className="text-[11px] text-brand-200 mt-1">{academy?.name ? 'منصة المستر التعليمية' : 'نظام إدارة التعليم'}</p>
     </div>
   )

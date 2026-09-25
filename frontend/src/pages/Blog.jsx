@@ -13,7 +13,7 @@ export default function Blog() {
   return (
     <div className="min-h-screen overflow-x-clip bg-[#f6fbff] text-ink-800">
       <MarketingNav solid />
-      <PageHero badge="مدوّنة مدارك" title="مقالات في" highlight="إدارة التعليم" subtitle="أفكار ونصائح عملية لكل من يدير مؤسسة تعليمية." />
+      <PageHero badge="مدوّنة دروس" title="مقالات في" highlight="إدارة التعليم" subtitle="أفكار ونصائح عملية لكل من يدير مؤسسة تعليمية." />
 
       <section className="mx-auto max-w-6xl px-5 pb-20">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
