@@ -61,23 +61,24 @@ export default function ProtectedVideo({ material, videoRef, position = 0, onPro
     const t = setInterval(beat, (session.heartbeatSeconds || 20) * 1000); lastTick.current = Date.now()
     return () => clearInterval(t)
   }, [session?.session])
-  // HLS: attach hls.js to the <video> (Safari plays HLS itself). When a playlist, key or segment is refused, one
-  // heartbeat tells why: another device took over (show that, never take it back) or this session merely lapsed
-  // (start a fresh one).
+  // A refused HLS stream: one heartbeat tells why — another device took over (show that, never take it back) or this
+  // session merely lapsed (start a fresh one, at most twice in a row).
+  const recheck = async () => {
+    try {
+      await api.post(`/files/playback/${material.id}/heartbeat`, { session: sessionRef.current?.session, played: 0 })
+      if (hlsRetries.current++ < 2) load(); else setError('تعذّر تشغيل الفيديو. تحقق من الاتصال ثم أعد المحاولة.')
+    } catch (e) { videoRef.current?.pause(); setEnded(apiErrorMessage(e, 'انتهت جلسة المشاهدة')) }
+  }
+  // HLS: attach hls.js to the <video> (Safari plays HLS itself, and reports a refusal through the element's onError).
   useEffect(() => {
     const v = videoRef.current
     if (session?.mode !== 'HLS' || !v) return
     let hls, dead = false
     const stop = new AbortController()
-    const refused = async () => {
-      hls?.destroy(); hls = null
-      try {
-        await api.post(`/files/playback/${material.id}/heartbeat`, { session: session.session, played: 0 })
-        if (dead) return
-        if (hlsRetries.current++ < 2) load(); else setError('تعذّر تشغيل الفيديو. تحقق من الاتصال ثم أعد المحاولة.')
-      }
-      catch (e) { if (dead) return; v.pause(); setEnded(apiErrorMessage(e, 'انتهت جلسة المشاهدة')) }
-    }
+    const refused = () => { hls?.destroy(); hls = null; if (!dead) recheck() }
+    let recoveries = 0
+    // Real playback resets the counts. Not FRAG_BUFFERED: hls.js reports even an unplayable segment as buffered.
+    v.addEventListener('playing', () => { recoveries = 0; hlsRetries.current = 0 }, { signal: stop.signal })
     import('hls.js').then(({ default: Hls }) => {
       if (dead) return
       if (Hls.isSupported()) {
@@ -87,7 +88,6 @@ export default function ProtectedVideo({ material, videoRef, position = 0, onPro
         // hls.js already retries a failed request a few times before calling it fatal; after that we try to recover
         // twice, then stop — a segment that can never play must not be fetched in a loop. Anything that actually
         // reaches the screen resets both counts.
-        let recoveries = 0
         hls.on(Hls.Events.ERROR, (_, data) => {
           if (!data.fatal) return
           const code = data.response?.code
@@ -99,8 +99,6 @@ export default function ProtectedVideo({ material, videoRef, position = 0, onPro
           hls.destroy(); hls = null
           setError('تعذّر تشغيل الفيديو. تحقق من الاتصال ثم أعد المحاولة.')
         })
-        // Not FRAG_BUFFERED: hls.js reports even an unplayable segment as buffered, which would reset the counts forever.
-        v.addEventListener('playing', () => { recoveries = 0; hlsRetries.current = 0 }, { signal: stop.signal })
         hls.loadSource(session.url)
         hls.attachMedia(v)
       } else if (v.canPlayType('application/vnd.apple.mpegurl')) {
@@ -121,7 +119,7 @@ export default function ProtectedVideo({ material, videoRef, position = 0, onPro
         onLoadedMetadata={e => { if (resume.current < e.currentTarget.duration) e.currentTarget.currentTime = resume.current }}
         onPlay={() => { setShield(null); lastTick.current = Date.now(); if (sessionRef.current?.mode === 'SESSION' && Date.now() > Date.parse(sessionRef.current.expiresAt)) load() }}
         onTimeUpdate={e => onProgress?.(e.currentTarget.currentTime)} onPause={e => onPause?.(e.currentTarget.currentTime)} onEnded={e => onEnded?.(e.currentTarget.currentTime)}
-        onError={() => { if (session?.mode === 'HLS') return; if (session?.mode === 'SESSION' && Date.now() > Date.parse(session.expiresAt)) load(); else setError('تعذّر تشغيل الفيديو. تحقق من الاتصال ثم أعد المحاولة.') }} />}
+        onError={e => { if (session?.mode === 'HLS') { if (!e.currentTarget.src.startsWith('blob:')) recheck(); return } if (session?.mode === 'SESSION' && Date.now() > Date.parse(session.expiresAt)) load(); else setError('تعذّر تشغيل الفيديو. تحقق من الاتصال ثم أعد المحاولة.') }} />}
     {session && !error && !ended && <>
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 overflow-hidden opacity-[0.07]"><div className="grid h-[140%] w-[140%] -rotate-12 grid-cols-3 gap-10 text-[13px] font-black text-white">{Array.from({ length: 18 }).map((_, i) => <span key={i} className="whitespace-nowrap">{session.watermarkId}</span>)}</div></div>
       <div aria-hidden="true" style={positions[markIndex]} className="pointer-events-none absolute z-10 max-w-[75%] select-none rounded-lg bg-black/35 px-3 py-1.5 text-[11px] font-bold text-white/80 transition-all duration-700">{session.watermark}</div>
