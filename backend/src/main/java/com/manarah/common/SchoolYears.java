@@ -43,6 +43,11 @@ public final class SchoolYears {
         return s.replaceAll("(^| )الصف( |$)", " ").trim();
     }
 
+    /** "للصف الثاني الثانوي" / "لـتانية ثانوي": "for <year>" the way it's written in Arabic. */
+    public static String forYear(String year) {
+        return year.startsWith("ال") ? "لل" + year.substring(2) : "لـ" + year;
+    }
+
     /** Whether two years are the same year. Blank never matches anything. */
     public static boolean same(String a, String b) {
         String ka = key(a);

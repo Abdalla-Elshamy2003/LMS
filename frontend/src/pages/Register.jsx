@@ -3,41 +3,43 @@ import { Link, useNavigate, Navigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   GraduationCap, Mail, Lock, User, Phone, ArrowLeft, CheckCircle2,
-  Sparkles, ShieldCheck, Trophy,
+  ShieldCheck, Trophy, BookOpen, Copy, Smartphone, Wallet,
 } from 'lucide-react'
 import api from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { Spinner } from '../components/ui'
-import { SCHOOL_YEARS, GRADES } from '../lib/format'
+import { SCHOOL_YEARS, GRADES, fmtMoney } from '../lib/format'
+import { yearKey, sameYear, distinctYears } from '../lib/schoolYears'
 import { qrDataUrl } from '../lib/qr'
 import { studentVerifyUrl } from '../features/student-verification/studentVerificationApi'
 import { apiErrorMessage } from '../lib/apiError'
 
 const FEATURES = [
-  { icon: Sparkles, title: 'حصة تجريبية مجانية', desc: 'ابدأ فوراً وجرّب المنصة قبل أي التزام' },
-  { icon: ShieldCheck, title: 'حساب آمن وخاص بك', desc: 'بريدك وكلمة مرورك تدخلك مباشرة لمنصتك' },
-  { icon: Trophy, title: 'متابعة لحظية', desc: 'حضور، درجات، وشهادات في مكان واحد' },
+  { icon: BookOpen, title: 'اختار مدرسك وكورسك', desc: 'المادة وسنتك بتتحدد لوحدها من الكورس اللي اخترته' },
+  { icon: ShieldCheck, title: 'حساب واحد لكل مدرسينك', desc: 'نفس الإيميل والباسورد مع أي مدرس تشترك معاه' },
+  { icon: Trophy, title: 'كل جديد لسنتك بيوصلك', desc: 'أي كورس المدرس ينزّله لسنتك بيظهرلك على طول' },
 ]
 
-const EDUCATION_TYPES = [
-  ['عادي', 'عادي'],
-  ['لغات', 'لغات'],
-  ['تجريبي', 'تجريبي'],
-]
+const EDUCATION_TYPES = ['عادي', 'لغات', 'تجريبي']
+const priceOf = (c) => Number(c?.finalPrice ?? c?.price ?? 0)
+// The teacher's years in school order, whatever spelling each course used.
+const rank = (y) => { const i = GRADES.findIndex((g) => sameYear(g, y)); return i < 0 ? 999 : i }
+const sortYears = (list) => [...list].sort((a, b) => rank(a) - rank(b))
 
-// Course years are typed by teachers ("الثالث الثانوي" or "الصف الثالث الثانوي"); map either to the
-// standard label so the dropdown, the filter and the year saved on the student all agree.
-const stripPrefix = (s) => String(s || '').replace(/^الصف\s+/, '').trim()
-const canonicalYear = (y) => (y ? GRADES.find((g) => stripPrefix(g) === stripPrefix(y)) || y : '')
-
+/**
+ * Signing up with a teacher. From a course on the teacher's page (?academy=…&course=…) the teacher, the subject, the
+ * year and the course are already filled in — the year comes from the course, so a "تانية ثانوي" course makes the
+ * student "تانية ثانوي". Straight to /register, the student picks the teacher from every published teacher.
+ * A free course opens right after signup; a paid one waits on the dashboard with the teacher's payment details.
+ */
 export default function Register() {
   const { user, loginWithToken } = useAuth()
   const nav = useNavigate()
   const [params] = useSearchParams()
-  // Coming from a teacher's own page: the account is created inside that teacher's space and the
-  // course they clicked is preselected. Its tenant slug is the same as the page slug.
-  const academy = params.get('academy') || ''
-  const [teacherName, setTeacherName] = useState('')
+  const fixedSlug = params.get('academy') || ''
+  const [teachers, setTeachers] = useState([])
+  const [slug, setSlug] = useState(fixedSlug)
+  const [teacher, setTeacher] = useState(null)
   const [courses, setCourses] = useState([])
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
@@ -46,46 +48,59 @@ export default function Register() {
     guardianName: '', guardianPhone: '', courseId: params.get('course') || '',
   })
   const [saving, setSaving] = useState(false)
-  const [pass, setPass] = useState(null), [qr, setQr] = useState("")
-  const [error, setError] = useState('')
-
-  // A course opened from a card/landing page carries its year with it, so the year dropdown and the
-  // course list are already consistent when the form appears.
-  const applyCourses = (list) => {
-    setCourses(list)
-    const wanted = params.get('course')
-    const pre = wanted && list.find((c) => String(c.id) === wanted)
-    if (pre?.year) setForm((f) => ({ ...f, grade: f.grade || canonicalYear(pre.year) }))
-  }
+  const [done, setDone] = useState(null)
+  const [pass, setPass] = useState(null), [qr, setQr] = useState('')
+  const [error, setError] = useState(''), [conflict, setConflict] = useState(false)
 
   useEffect(() => {
-    if (academy) {
-      api.get(`/public/academies/${encodeURIComponent(academy)}`)
-        .then((r) => { applyCourses(r.data.courses || []); setTeacherName(r.data.profile?.name || '') })
-        .catch(() => setError('صفحة المستر دي مش متاحة حالياً'))
-    } else {
-      api.get('/public/landing').then((r) => applyCourses(r.data.courses || [])).catch(() => {})
-    }
-  }, [academy])
+    if (!fixedSlug) api.get('/public/academies').then((r) => setTeachers(r.data || [])).catch(() => {})
+  }, [fixedSlug])
 
-  if (user) return <Navigate to="/app" replace />
+  useEffect(() => {
+    if (!slug) { setTeacher(null); setCourses([]); return }
+    let live = true
+    api.get(`/public/academies/${encodeURIComponent(slug)}`)
+      .then((r) => {
+        if (!live) return
+        const list = r.data.courses || []
+        setTeacher(r.data.profile); setCourses(list); setError('')
+        // A course picked on the teacher's page brings its year with it; one that's gone is simply dropped.
+        setForm((f) => {
+          const pre = list.find((c) => String(c.id) === String(f.courseId))
+          return pre ? { ...f, grade: pre.year || f.grade } : { ...f, courseId: '' }
+        })
+      })
+      .catch(() => live && setError('صفحة المدرس دي مش متاحة حالياً'))
+    return () => { live = false }
+  }, [slug])
+
+  // Already signed in (and not because they just signed up here): a student who came from a course is sent
+  // through "join" instead, which adds that teacher and course to the account they have.
+  if (user && !done) {
+    if (user.role === 'STUDENT' && fixedSlug && params.get('course'))
+      return <JoinWithCourse slug={fixedSlug} courseId={params.get('course')} />
+    return <Navigate to="/app" replace />
+  }
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+  const chosen = courses.find((c) => String(c.id) === String(form.courseId))
+  const teacherYears = sortYears(distinctYears(courses.map((c) => c.year)))
+  const yearOptions = distinctYears([form.grade, ...(teacherYears.length ? teacherYears : SCHOOL_YEARS)])
+  const visibleCourses = courses.filter((c) => !form.grade || !c.year || sameYear(c.year, form.grade))
+  const yearFromCourse = !!chosen?.year
 
-  // Only the years this teacher actually teaches, and only the courses of the chosen year. A course
-  // with no year set applies to every year. If no course states a year, nothing is filtered.
-  const courseYears = [...new Set(courses.map((c) => canonicalYear(c.year)).filter(Boolean))]
-    .sort((a, b) => (GRADES.indexOf(a) + 1 || 999) - (GRADES.indexOf(b) + 1 || 999))
-  const yearOptions = courseYears.length ? courseYears : SCHOOL_YEARS
-  const needsYear = courseYears.length > 0 && !form.grade
-  const visibleCourses = courses.filter((c) => !form.grade || !c.year || canonicalYear(c.year) === form.grade)
+  // Picking a course sets the year to the course's year; picking a year drops a course of another year.
+  const setCourse = (e) => {
+    const c = courses.find((x) => String(x.id) === e.target.value)
+    setForm((f) => ({ ...f, courseId: e.target.value, grade: c?.year || f.grade }))
+  }
   const setGrade = (e) => {
     const grade = e.target.value
-    setForm((f) => {
-      const current = courses.find((c) => String(c.id) === String(f.courseId))
-      const keep = !current || !current.year || !grade || canonicalYear(current.year) === grade
-      return { ...f, grade, courseId: keep ? f.courseId : '' }
-    })
+    setForm((f) => ({ ...f, grade, courseId: chosen && chosen.year && !sameYear(chosen.year, grade) ? '' : f.courseId }))
+  }
+  const setTeacherSlug = (e) => {
+    setSlug(e.target.value)
+    setForm((f) => ({ ...f, courseId: '' }))
   }
 
   const validateStep1 = () => {
@@ -96,8 +111,9 @@ export default function Register() {
     if (!form.phone.trim()) return 'رقم الهاتف مطلوب'
     return ''
   }
-
   const validateStep2 = () => {
+    if (!slug) return 'اختار المدرس اللي عايز تسجّل معاه'
+    if (!form.grade) return 'اختار سنتك الدراسية'
     if (form.nationalId && !/^\d{14}$/.test(form.nationalId.trim())) return 'الرقم القومي يجب أن يتكون من 14 رقماً'
     return ''
   }
@@ -106,7 +122,7 @@ export default function Register() {
     e.preventDefault()
     const err = validateStep1()
     if (err) { setError(err); return }
-    setError('')
+    setError(''); setConflict(false)
     setStep(2)
   }
 
@@ -114,7 +130,7 @@ export default function Register() {
     e.preventDefault()
     const err = validateStep2()
     if (err) { setError(err); return }
-    setSaving(true); setError('')
+    setSaving(true); setError(''); setConflict(false)
     try {
       const { data } = await api.post('/public/register', {
         fullName: form.fullName.trim(),
@@ -127,24 +143,29 @@ export default function Register() {
         guardianName: form.guardianName || null,
         guardianPhone: form.guardianPhone || null,
         courseId: form.courseId || null,
-        tenantSlug: academy || null,
+        tenantSlug: slug,
       })
+      // Mark the signup done before the session exists, so this page shows the pass instead of redirecting.
+      setDone({ course: chosen || null, teacher })
       await loginWithToken(data.accessToken)
       // Hand them their gate pass right away rather than dropping them straight on the dashboard —
       // this QR is what gets scanned at the door, so it's the one thing they need before arriving.
       try {
-        const { data: pass } = await api.get('/gate/my-pass')
-        setPass(pass)
-        setQr(await qrDataUrl(studentVerifyUrl(pass.token), { width: 280 }))
+        const { data: p } = await api.get('/gate/my-pass')
+        setPass(p)
+        setQr(await qrDataUrl(studentVerifyUrl(p.token), { width: 280 }))
       } catch { /* pass can be re-opened any time from the profile page */ }
       setStep(3)
     } catch (err) {
+      setDone(null)
       setError(apiErrorMessage(err, 'تعذّر إتمام التسجيل، حاول مرة أخرى'))
-      if (err.response?.status === 409) setStep(1)
+      if (err.response?.status === 409) { setConflict(true); setStep(1) }
     } finally {
       setSaving(false)
     }
   }
+
+  const loginHref = slug ? `/login?academy=${encodeURIComponent(slug)}${form.courseId ? `&course=${form.courseId}` : ''}` : '/login'
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
@@ -153,7 +174,7 @@ export default function Register() {
         <div className="absolute inset-0 bg-grid opacity-60" />
         <motion.div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-brand-400/30 blur-3xl"
           animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 10, repeat: Infinity }} />
-        <motion.div className="absolute bottom-0 -right-16 h-96 w-96 rounded-full bg-indigo-500/30 blur-3xl"
+        <motion.div className="absolute bottom-0 -right-16 h-96 w-96 rounded-full bg-teal-400/20 blur-3xl"
           animate={{ scale: [1.1, 1, 1.1] }} transition={{ duration: 12, repeat: Infinity }} />
 
         <div className="relative z-10 flex flex-col justify-between p-12 text-white">
@@ -163,17 +184,17 @@ export default function Register() {
             </div>
             <div>
               <p className="text-2xl font-extrabold leading-none">منارة</p>
-              <p className="text-sm text-brand-200 mt-1">منصة إدارة التعليم المتكاملة</p>
+              <p className="text-sm text-brand-200 mt-1">مدرسينك وكورساتك في مكان واحد</p>
             </div>
           </Link>
 
           <div>
             <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               className="text-4xl font-black leading-snug">
-              انضم لمنارة<br />وابدأ رحلتك التعليمية
+              {teacher ? <>انضم لـ{teacher.name}<br />وابدأ من النهارده</> : <>انضم لمنارة<br />وابدأ رحلتك التعليمية</>}
             </motion.h1>
             <p className="mt-4 max-w-md text-brand-100/80 leading-relaxed">
-              حساب واحد يفتح لك كل شيء: كورساتك، حضورك، درجاتك، وشهاداتك — في تجربة سريعة وأنيقة.
+              حساب واحد يفتح لك كورساتك وحضورك ودرجاتك — وتقدر تضيف عليه أي مدرس تاني بعدين.
             </p>
             <div className="mt-8 space-y-4">
               {FEATURES.map((f, i) => (
@@ -213,14 +234,16 @@ export default function Register() {
             <span className={`h-1.5 flex-1 rounded-full ${step >= 3 ? 'bg-emerald-500' : 'bg-ink-100'}`} />
           </div>
           <h2 className="mt-5 text-2xl font-black text-ink-800">
-            {step === 1 ? 'إنشاء حساب جديد' : step === 2 ? 'بيانات إضافية (اختياري)' : 'كود الدخول الخاص بيك'}
+            {step === 1 ? 'إنشاء حساب جديد' : step === 2 ? 'مدرسك وسنتك وكورسك' : 'حسابك جاهز'}
           </h2>
           <p className="mt-1 text-sm text-ink-400">
-            {step === 1 ? 'خطوة 1 من 3 — بيانات الحساب' : step === 2 ? 'خطوة 2 من 3 — يمكنك تخطّيها وإكمالها لاحقاً' : 'خطوة 3 من 3 — احتفظ بالكود'}
+            {step === 1 ? 'خطوة 1 من 3 — بيانات الحساب' : step === 2 ? 'خطوة 2 من 3 — اتملت من الكورس اللي اخترته، راجعها بس' : 'خطوة 3 من 3 — كود الدخول بتاعك'}
           </p>
 
-          {step === 1 ? (
-            <form onSubmit={goStep2} className="mt-7 space-y-4">
+          {step < 3 && teacher && <ChoiceSummary teacher={teacher} course={chosen} grade={form.grade} />}
+
+          {step === 1 && (
+            <form onSubmit={goStep2} className="mt-6 space-y-4">
               <div>
                 <label className="label">الاسم الكامل</label>
                 <div className="relative">
@@ -259,56 +282,86 @@ export default function Register() {
                 </div>
               </div>
 
-              {error && (
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  className="rounded-2xl bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-600">{error}</motion.p>
-              )}
+              <ErrorBox error={error} conflict={conflict} loginHref={loginHref} />
 
               <button type="submit" className="btn-primary w-full py-3 text-base">
                 التالي <ArrowLeft size={18} />
               </button>
             </form>
-          ) : (
-            <form onSubmit={submit} className="mt-7 space-y-4">
+          )}
+
+          {step === 2 && (
+            <form onSubmit={submit} className="mt-6 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="label">السنة الدراسية</label>
-                  <select className="input" value={form.grade} onChange={setGrade}>
-                    <option value="">— اختر —</option>
-                    {yearOptions.map((g) => <option key={g} value={g}>{g}</option>)}
-                  </select>
+                  <label className="label">المدرس</label>
+                  {fixedSlug ? (
+                    <input className="input bg-ink-50" value={teacher?.name || ''} readOnly />
+                  ) : (
+                    <select className="input" value={slug} onChange={setTeacherSlug}>
+                      <option value="">— اختار المدرس —</option>
+                      {teachers.map((t) => <option key={t.slug} value={t.slug}>{t.name}{t.subject ? ` — ${t.subject}` : ''}</option>)}
+                    </select>
+                  )}
                 </div>
                 <div>
-                  <label className="label">نظام التعليم</label>
-                  <select className="input" value={form.educationType} onChange={set('educationType')}>
-                    {EDUCATION_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>
+                  <label className="label">المادة</label>
+                  <input className="input bg-ink-50" value={teacher?.subject || ''} readOnly placeholder="بتتحدد من المدرس" />
                 </div>
-              </div>
-              <div>
-                <label className="label">الرقم القومي</label>
-                <input value={form.nationalId} onChange={set('nationalId')} className="input" placeholder="14 رقماً (اختياري)" inputMode="numeric" maxLength={14} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="label">اسم ولي الأمر</label><input value={form.guardianName} onChange={set('guardianName')} className="input" placeholder="اختياري" /></div>
-                <div><label className="label">هاتف ولي الأمر</label><input value={form.guardianPhone} onChange={set('guardianPhone')} className="input" placeholder="اختياري" /></div>
-              </div>
-              <div>
-                <label className="label">{teacherName ? `كورسات ${teacherName}` : 'الكورس المهتم به'}</label>
-                <select className="input" value={form.courseId} onChange={set('courseId')} disabled={needsYear}>
-                  <option value="">{needsYear ? '— اختر السنة الدراسية الأول —' : '— اختر (اختياري) —'}</option>
-                  {visibleCourses.map((c) => <option key={c.id} value={c.id}>{c.title}{Number(c.finalPrice ?? c.price) > 0 ? '' : ' · مجاني'}</option>)}
-                </select>
-                {!needsYear && form.grade && visibleCourses.length === 0 && (
-                  <p className="mt-1 text-xs text-amber-600">مفيش كورسات متاحة للسنة دي حالياً.</p>
-                )}
-                {teacherName && <p className="mt-1 text-xs text-ink-400">هيتعملك حساب في مساحة المستر {teacherName}. الكورس المجاني يتفتح فوراً، والمدفوع بعد إتمام الدفع.</p>}
               </div>
 
-              {error && (
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  className="rounded-2xl bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-600">{error}</motion.p>
-              )}
+              <div>
+                <label className="label">السنة الدراسية</label>
+                <select className="input" value={form.grade} onChange={setGrade} disabled={!slug}>
+                  <option value="">— اختار سنتك —</option>
+                  {yearOptions.map((g) => <option key={yearKey(g)} value={g}>{g}</option>)}
+                </select>
+                {yearFromCourse && <p className="mt-1 text-xs text-brand-700">اتحددت من الكورس اللي اخترته.</p>}
+              </div>
+
+              <div>
+                <label className="label">{teacher ? `كورسات ${teacher.name}` : 'الكورس'}</label>
+                <select className="input" value={form.courseId} onChange={setCourse} disabled={!slug}>
+                  <option value="">— من غير كورس دلوقتي —</option>
+                  {visibleCourses.map((c) => (
+                    <option key={c.id} value={c.id}>{c.title}{c.year && !form.grade ? ` · ${c.year}` : ''} · {priceOf(c) > 0 ? fmtMoney(priceOf(c)) : 'مجاني'}</option>
+                  ))}
+                </select>
+                {slug && form.grade && visibleCourses.length === 0 && (
+                  <p className="mt-1 text-xs text-amber-600">مفيش كورسات لسنتك عند المدرس دلوقتي — أول ما ينزّل هتظهرلك في لوحتك.</p>
+                )}
+                {chosen && (
+                  <p className={`mt-2 rounded-xl px-3 py-2 text-xs leading-6 ${priceOf(chosen) > 0 ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-700'}`}>
+                    {priceOf(chosen) > 0
+                      ? `الكورس هيظهر في لوحتك «مستني الدفع» (${fmtMoney(priceOf(chosen))}) ومعاه طريقة الدفع، ويتفتح أول ما المدرس يأكّد.`
+                      : 'الكورس مجاني وهيتفتحلك على طول بعد التسجيل.'}
+                  </p>
+                )}
+              </div>
+
+              <details className="rounded-2xl border border-ink-100 bg-white p-4">
+                <summary className="cursor-pointer text-sm font-bold text-ink-600">بيانات إضافية (اختياري)</summary>
+                <div className="mt-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="label">نظام التعليم</label>
+                      <select className="input" value={form.educationType} onChange={set('educationType')}>
+                        {EDUCATION_TYPES.map((v) => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="label">الرقم القومي</label>
+                      <input value={form.nationalId} onChange={set('nationalId')} className="input" placeholder="14 رقم" inputMode="numeric" maxLength={14} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="label">اسم ولي الأمر</label><input value={form.guardianName} onChange={set('guardianName')} className="input" /></div>
+                    <div><label className="label">هاتف ولي الأمر</label><input value={form.guardianPhone} onChange={set('guardianPhone')} className="input" /></div>
+                  </div>
+                </div>
+              </details>
+
+              <ErrorBox error={error} conflict={conflict} loginHref={loginHref} />
 
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => setStep(1)} className="btn-ghost">رجوع</button>
@@ -319,45 +372,122 @@ export default function Register() {
             </form>
           )}
 
-          {step === 3 && (
-            <div className="mt-7 space-y-5 text-center">
-              <div className="rounded-2xl bg-emerald-50 p-4 text-sm font-bold leading-7 text-emerald-800">
-                تم إنشاء حسابك بنجاح 🎉
-              </div>
-
-              <div className="rounded-3xl border border-ink-100 bg-white p-5">
-                {qr
-                  ? <img src={qr} alt="كود الدخول الخاص بك" className="mx-auto w-full max-w-[240px]" />
-                  : <p className="py-10 text-sm text-ink-400">هتلاقي الكود في صفحة ملفك الشخصي.</p>}
-                {pass && <p className="mt-3 text-xs font-bold text-ink-500">{pass.fullName} · {pass.code}</p>}
-              </div>
-
-              <p className="rounded-2xl bg-brand-50 p-4 text-sm leading-7 text-brand-800">
-                ده كود الدخول الخاص بيك — بتدخل بيه الحصة، وفيه كل بياناتك.
-                احتفظ بيه، وهتلاقيه دايماً في صفحة <b>ملفك الشخصي</b>.
-                وهنبعت لك نسخة منه مع بياناتك على <b>{form.email.trim()}</b> (شوف الـ Spam لو ما وصلتش).
-              </p>
-
-              <div className="flex flex-wrap justify-center gap-2">
-                {qr && (
-                  <a href={qr} download={`gate-pass-${pass?.code || 'manarah'}.png`} className="btn-soft">
-                    تحميل الكود
-                  </a>
-                )}
-                <button onClick={() => nav('/app')} className="btn-primary">
-                  ابدأ من لوحتي <ArrowLeft size={17} />
-                </button>
-              </div>
-            </div>
-          )}
+          {step === 3 && done && <Welcome done={done} pass={pass} qr={qr} email={form.email.trim()} onGo={(to) => nav(to)} />}
 
           {step !== 3 && (
             <p className="mt-8 text-center text-sm text-ink-400">
-              لديك حساب بالفعل؟ <Link to="/login" className="font-bold text-brand-600 hover:underline">سجّل الدخول</Link>
+              عندك حساب قبل كده؟ <Link to={loginHref} className="font-bold text-brand-600 hover:underline">سجّل دخولك</Link>
+              {form.courseId ? ' والكورس هيتضاف لحسابك.' : ''}
             </p>
           )}
         </motion.div>
       </div>
+    </div>
+  )
+}
+
+function ChoiceSummary({ teacher, course, grade }) {
+  return (
+    <div className="mt-5 flex items-center gap-3 rounded-2xl border border-brand-100 bg-white p-3">
+      {teacher.photoUrl
+        ? <img src={teacher.photoUrl} alt="" className="h-12 w-12 shrink-0 rounded-xl bg-brand-50 object-cover object-top" />
+        : <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700"><GraduationCap size={22} /></span>}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-extrabold text-ink-800">{course ? course.title : teacher.name}</p>
+        <p className="mt-0.5 truncate text-xs text-ink-500">
+          {course ? `${teacher.name} · ` : ''}{teacher.subject}{grade ? ` · ${grade}` : ''}
+        </p>
+      </div>
+      {course && <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${priceOf(course) > 0 ? 'bg-brand-50 text-brand-700' : 'bg-emerald-50 text-emerald-700'}`}>
+        {priceOf(course) > 0 ? fmtMoney(priceOf(course)) : 'مجاني'}
+      </span>}
+    </div>
+  )
+}
+
+function ErrorBox({ error, conflict, loginHref }) {
+  if (!error) return null
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} role="alert"
+      className="rounded-2xl bg-rose-50 px-4 py-2.5 text-sm font-semibold leading-7 text-rose-600">
+      {error}
+      {conflict && <> <Link to={loginHref} className="font-black text-brand-700 underline">سجّل دخولك من هنا</Link></>}
+    </motion.div>
+  )
+}
+
+function Welcome({ done, pass, qr, email, onGo }) {
+  const { course, teacher } = done
+  const paid = course && priceOf(course) > 0
+  const [copied, setCopied] = useState('')
+  const copy = (text, key) => navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1500) })
+  const hasPayment = teacher?.instapayNumber || teacher?.vodafoneCashNumber
+  return (
+    <div className="mt-7 space-y-5 text-center">
+      <div className="rounded-2xl bg-emerald-50 p-4 text-sm font-bold leading-7 text-emerald-800">
+        تم إنشاء حسابك بنجاح 🎉
+        {course && <span className="block font-semibold">{paid ? `«${course.title}» اتضاف لحسابك ومستني الدفع.` : `«${course.title}» اتفتحلك.`}</span>}
+      </div>
+
+      {paid && (
+        <div className="rounded-3xl border border-amber-200 bg-amber-50/60 p-4 text-right">
+          <p className="text-sm font-extrabold text-amber-900">فاضل الدفع: {fmtMoney(priceOf(course))}</p>
+          {hasPayment ? (
+            <div className="mt-3 space-y-2">
+              {teacher.instapayNumber && (
+                <button type="button" onClick={() => copy(teacher.instapayNumber, 'ip')} className="flex w-full items-center justify-between gap-3 rounded-2xl bg-white p-3 text-right">
+                  <span className="flex items-center gap-2 text-sm font-bold text-sky-800"><Smartphone size={16} /> إنستاباي</span>
+                  <span dir="ltr" className="flex items-center gap-2 font-mono text-sm">{teacher.instapayNumber} <Copy size={13} />{copied === 'ip' && <span className="text-[11px]">تم النسخ</span>}</span>
+                </button>
+              )}
+              {teacher.vodafoneCashNumber && (
+                <button type="button" onClick={() => copy(teacher.vodafoneCashNumber, 'vf')} className="flex w-full items-center justify-between gap-3 rounded-2xl bg-white p-3 text-right">
+                  <span className="flex items-center gap-2 text-sm font-bold text-rose-800"><Wallet size={16} /> فودافون كاش</span>
+                  <span dir="ltr" className="flex items-center gap-2 font-mono text-sm">{teacher.vodafoneCashNumber} <Copy size={13} />{copied === 'vf' && <span className="text-[11px]">تم النسخ</span>}</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="mt-2 text-xs leading-6 text-amber-800">تواصل مع المدرس عشان تعرف تدفع إزاي.</p>
+          )}
+          <p className="mt-3 text-xs leading-6 text-amber-800">بعد التحويل المدرس هيبعتلك كود تكتبه في لوحتك، أو يفعّل الكورس من عنده — والكورس يتفتح على طول.</p>
+        </div>
+      )}
+
+      <div className="rounded-3xl border border-ink-100 bg-white p-5">
+        {qr
+          ? <img src={qr} alt="كود الدخول الخاص بك" className="mx-auto w-full max-w-[220px]" />
+          : <p className="py-10 text-sm text-ink-400">هتلاقي الكود في صفحة ملفك الشخصي.</p>}
+        {pass && <p className="mt-3 text-xs font-bold text-ink-500">{pass.fullName} · {pass.code}</p>}
+        <p className="mt-3 text-xs leading-6 text-ink-500">
+          ده كود الدخول بتاعك — بيتعمله سكان في الحصة عند أي مدرس من مدرسينك. هتلاقيه دايماً في <b>ملفك الشخصي</b>،
+          وبعتناه كمان على <b dir="ltr">{email}</b>.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap justify-center gap-2">
+        {qr && <a href={qr} download={`gate-pass-${pass?.code || 'manarah'}.png`} className="btn-soft">تحميل الكود</a>}
+        {course && !paid
+          ? <button onClick={() => onGo(`/app/courses/${course.id}`)} className="btn-primary">ادخل على الكورس <ArrowLeft size={17} /></button>
+          : <button onClick={() => onGo(course ? `/app/courses?focus=${course.id}` : '/app')} className="btn-primary">روح لكورساتك <ArrowLeft size={17} /></button>}
+      </div>
+    </div>
+  )
+}
+
+/** A signed-in student who opened a course's signup link: add the teacher and the course to the account they have. */
+function JoinWithCourse({ slug, courseId }) {
+  const { joinTeacher } = useAuth()
+  const [error, setError] = useState('')
+  useEffect(() => {
+    joinTeacher(slug, Number(courseId), `/app/courses?focus=${courseId}`)
+      .catch((e) => setError(apiErrorMessage(e, 'تعذّر إضافة الكورس لحسابك')))
+  }, [slug, courseId])
+  return (
+    <div className="grid min-h-screen place-items-center bg-[#f6f7fb] p-6 text-center">
+      {error
+        ? <div className="card max-w-sm p-6"><p className="text-sm font-bold text-rose-600">{error}</p><Link to="/app" className="btn-primary mt-4">روح للوحتك</Link></div>
+        : <div className="flex flex-col items-center gap-3 text-sm text-ink-500"><Spinner className="h-8 w-8 border-brand-200 border-t-brand-600" />بنضيف الكورس لحسابك…</div>}
     </div>
   )
 }

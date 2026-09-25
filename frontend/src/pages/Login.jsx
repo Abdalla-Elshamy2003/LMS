@@ -9,7 +9,7 @@ import './teacher-landing.css'
 import { apiErrorMessage } from '../lib/apiError'
 
 export default function Login() {
-  const { user, login } = useAuth()
+  const { user, login, joinTeacher } = useAuth()
   const [params] = useSearchParams(), nav = useNavigate()
   const [profile, setProfile] = useState(null)
   const [username, setUsername] = useState(''), [password, setPassword] = useState('')
@@ -17,6 +17,8 @@ export default function Login() {
   const [busy, setBusy] = useState(false), [error, setError] = useState('')
 
   const slug = params.get('academy') || 'default'
+  // Signing in from a course on a teacher's page: that course is added to the account right after.
+  const course = params.get('course')
   const requested = params.get('returnTo')
   const destination = requested?.startsWith('/app/') ? requested : '/app'
   const home = profile ? `/t/${profile.slug}` : '/'
@@ -29,13 +31,16 @@ export default function Login() {
     return () => { live = false }
   }, [slug])
 
-  if (user) return <Navigate to={destination} replace />
+  // Not while signing in: a student who came from a course is still being added to it (see submit).
+  if (user && !busy) return <Navigate to={destination} replace />
 
   const submit = async e => {
     e.preventDefault()
     setBusy(true); setError('')
     try {
       const account = await login(username.trim(), password)
+      if (account.role === 'STUDENT' && course && params.get('academy'))
+        return await joinTeacher(params.get('academy'), Number(course), `/app/courses?focus=${course}`)
       // An admin signing in from a teacher's own login link (?academy=...) works inside that teacher's space;
       // the plain /login is head office.
       if (profile && params.get('academy') && ['SUPER_ADMIN', 'BRANCH_ADMIN', 'ACADEMIC_MANAGER'].includes(account.role)
@@ -163,7 +168,8 @@ export default function Login() {
 
           <p className="mt-7 text-center text-sm text-slate-600">
             لسه معندكش حساب؟{' '}
-            <Link to="/register" className="font-black" style={{ color: 'var(--blue)' }}>
+            <Link to={params.get('academy') ? `/register?academy=${encodeURIComponent(params.get('academy'))}${course ? `&course=${course}` : ''}` : '/register'}
+              className="font-black" style={{ color: 'var(--blue)' }}>
               اعمل حساب جديد
             </Link>
           </p>

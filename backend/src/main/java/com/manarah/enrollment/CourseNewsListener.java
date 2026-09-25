@@ -60,7 +60,7 @@ public class CourseNewsListener {
                 if (s.getUserId() == null || "ARCHIVED".equals(s.getStatus())) continue;
                 // A course for one year goes to that year only; a course for every year goes to everyone.
                 if (!year.isEmpty() && !SchoolYears.same(s.getGrade(), year)) continue;
-                tell(e.tenantId(), s.getUserId(), year.isEmpty() ? "كورس جديد" : "كورس جديد لـ" + year,
+                tell(e.tenantId(), s.getUserId(), year.isEmpty() ? "كورس جديد" : "كورس جديد " + SchoolYears.forYear(year),
                         teacher + " نزّل «" + c.getTitle() + "». هتلاقيه في «كورساتي» وتقدر تشترك فيه من هناك.", c.getId());
             }
         } catch (RuntimeException ex) {

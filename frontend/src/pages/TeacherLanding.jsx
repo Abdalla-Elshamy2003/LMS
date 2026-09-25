@@ -62,10 +62,16 @@ export default function TeacherLanding() {
   const cards = [...data.courses, ...videoCards, ...(demo ? samples : [])]
   const login = `/login?academy=${encodeURIComponent(p.slug)}`
   const seat = mine?.find(m => m.slug === p.slug)
+  // A signed-in student: a course clicked here is asked for right away (free: open, paid: waiting for payment on
+  // their dashboard), with this teacher joined on the way if they're new to them.
   const enter = async (courseId) => {
     if (joining) return
     setJoining(true); setJoinError('')
-    try { seat ? await switchTeacher(seat.userId, '/app/courses') : await joinTeacher(p.slug, courseId, '/app/courses') }
+    try {
+      if (courseId) await joinTeacher(p.slug, courseId, `/app/courses?focus=${courseId}`)
+      else if (seat) await switchTeacher(seat.userId, '/app/courses')
+      else await joinTeacher(p.slug, null, '/app/courses')
+    }
     catch (e) { setJoinError(apiErrorMessage(e, 'تعذّر الانضمام للمستر، حاول تاني')); setJoining(false) }
   }
   const reveal = { initial: reduced ? false : { opacity: 0, y: 22 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: 0.12 }, transition: { duration: .55 } }
@@ -102,8 +108,8 @@ export default function TeacherLanding() {
         {cards.length === 0
           ? <div className="tl-empty">الكورسات الجديدة في الطريق. تواصل مع المستر لمعرفة تفاصيل الاشتراك.</div>
           : <Slider items={cards} subject={p.subject} cta={cta} login={login} reveal={reveal} onPreview={(c, i) => setLesson(c.video || lessons[i % 3])}
-              enroll={(c) => Number(c.finalPrice ?? c.price) > 0 ? `/checkout/${c.id}` : `/register?academy=${encodeURIComponent(p.slug)}&course=${c.id}`}
-              onEnrollFree={asStudent ? (c) => enter(c.id) : undefined} />}
+              enroll={(c) => `/register?academy=${encodeURIComponent(p.slug)}&course=${c.id}`}
+              onPick={asStudent ? (c) => enter(c.id) : undefined} />}
         {demo && <p className="tl-demo-note">الكروت المعلّمة «نموذج تجريبي» أمثلة للعرض وأسعارها توضيحية. الاشتراك وإتاحة الكورسات الفعلية عن طريق المستر.</p>}
       </section>
 
@@ -111,8 +117,8 @@ export default function TeacherLanding() {
 
       {demo && <section id="lessons" className="tl-section tl-container"><motion.div {...reveal} className="tl-section-head"><div><span className="tl-kicker">فكرة بسيطة تعمل فرق</span><h2>جرّب تفهمها معانا<span>.</span></h2></div><p>أمثلة تعليمية قصيرة للمعاينة.<br/>افتح أي كارت وجرّب تحل بنفسك.</p></motion.div><div className="tl-lessons">{lessons.map((l, i) => <motion.button {...reveal} key={l.title} onClick={() => setLesson(l)} className="tl-lesson"><div className={`tl-lesson-preview lesson-${i}`}><span dir="ltr">{l.formula}</span><i><ArrowUpLeft size={22}/></i></div><div className="tl-lesson-info"><small>{l.tag} · قراءة قصيرة</small><h3>{l.title}</h3><span>افتح المثال <ArrowLeft size={16}/></span></div></motion.button>)}</div></section>}
 
-      <section className="tl-container tl-steps-section"><div><span className="tl-kicker">رحلتك هنا بسيطة</span><h2>من أول دخول..<br/>لأول «أنا فهمتها!»</h2></div><div className="tl-steps">{[['01', 'استلم حسابك', 'المستر أو الإدارة بيسلّموك اسم المستخدم وكلمة المرور.'], ['02', 'ادخل على كورساتك', 'هتلاقي الكورسات اللي اتحددت لك، وكل محتواها في مكان واحد.'], ['03', 'افهم وطبّق وراجع', 'تابع دروسك وتدريباتك، وارجع للفكرة وقت ما تحتاج.']].map(([n, title, text]) => <div key={n}><b>{n}</b><h3>{title}</h3><p>{text}</p></div>)}</div></section>
-      <section id="faq" className="tl-section tl-container tl-faq"><div><span className="tl-kicker">قبل ما تبدأ</span><h2>عندك سؤال؟<br/>خلّينا نوضّحه.</h2><p>كل حاجة تحتاج تعرفها عن دخولك للمنصة.</p></div><div>{[['إزاي أعمل حساب وأشترك؟', 'تواصل مع المستر أو الإدارة. هيتم إنشاء اسم مستخدم وكلمة مرور خاصة بيك، وتحديد الكورسات المتاحة لحسابك.'], ['هل هلاقي كورسات مدرسين تانيين؟', `دي مساحة خاصة بمستر ${p.name}. كل المحتوى هنا يخص المستر، وحسابك بيعرض الكورسات المسموح لك بيها.`], ['مش لاقي كورس اتفقت عليه، أعمل إيه؟', 'تواصل مع المستر أو الإدارة لمراجعة إتاحة الكورس لحسابك، وبعد التعديل حدّث صفحة الكورسات.'], ['نسيت كلمة المرور؟', 'اطلب من المستر أو الإدارة تعيين كلمة مرور جديدة، وبعد الدخول تقدر تغيّرها من ملفك الشخصي.']].map(([q, a]) => <details key={q}><summary>{q}<ChevronDown size={18}/></summary><p>{a}</p></details>)}</div></section>
+      <section className="tl-container tl-steps-section"><div><span className="tl-kicker">رحلتك هنا بسيطة</span><h2>من أول دخول..<br/>لأول «أنا فهمتها!»</h2></div><div className="tl-steps">{[['01', 'اختار كورسك', 'دوس «اشترك» على الكورس اللي عايزه من الكورسات اللي فوق.'], ['02', 'اعمل حسابك في دقيقة', 'المادة وسنتك الدراسية والكورس بيتحددوا لوحدهم من الكورس اللي اخترته.'], ['03', 'ابدأ على طول', 'المجاني بيتفتح فوراً، والمدفوع بيتفتح أول ما المستر يأكّد التحويل. وأي كورس جديد لسنتك بيظهرلك لوحده.']].map(([n, title, text]) => <div key={n}><b>{n}</b><h3>{title}</h3><p>{text}</p></div>)}</div></section>
+      <section id="faq" className="tl-section tl-container tl-faq"><div><span className="tl-kicker">قبل ما تبدأ</span><h2>عندك سؤال؟<br/>خلّينا نوضّحه.</h2><p>كل حاجة تحتاج تعرفها عن دخولك للمنصة.</p></div><div>{[['إزاي أعمل حساب وأشترك؟', 'دوس «اشترك» على الكورس اللي عايزه واعمل حسابك بالإيميل. الكورس المجاني بيتفتح على طول، والمدفوع بيظهر في لوحتك ومعاه طريقة الدفع — أول ما تحوّل، المستر يبعتلك كود أو يفعّله من عنده.'], ['لو المستر نزّل كورس جديد لسنتي هعرف إزاي؟', 'هيظهرلك في لوحتك تحت «متاح لسنتك» ويوصلك إشعار، وتشترك فيه لوحده.'], ['عندي حساب مع مدرس تاني، أعمل حساب جديد؟', `لأ. سجّل دخولك بنفس الإيميل ودوس «اشترك» على كورس مستر ${p.name} — هيتضاف لحسابك وتتنقل بين مدرسينك من «مدرسيني».`], ['مش لاقي كورس اتفقت عليه، أعمل إيه؟', 'تواصل مع المستر يراجع إتاحة الكورس لحسابك، وبعدها حدّث صفحة كورساتك.'], ['نسيت كلمة المرور؟', 'دوس «نسيت كلمة المرور؟» في صفحة الدخول وهيوصلك رابط على إيميلك.']].map(([q, a]) => <details key={q}><summary>{q}<ChevronDown size={18}/></summary><p>{a}</p></details>)}</div></section>
       <section className="tl-container tl-final-cta"><div><span>مسألتك الجاية.. إنت قدّها.</span><h2>جاهز تبدأ وتفهمها صح؟</h2><p>خطوة بسيطة دلوقتي، تفرق في رحلتك كلها.</p></div><a href={cta} className="tl-button light">{p.phone ? 'تواصل مع المستر' : 'ادخل على حسابك'} <ArrowUpLeft size={20}/></a><span className="tl-cta-math" aria-hidden="true">∑</span></section>
     </main>
     <footer className="tl-container tl-footer"><Link to={slug ? `/t/${slug}` : '/'} className="tl-brand"><img src="/images/logo.png" alt="" className="tl-logo" /><span><strong>{p.name}</strong><small>{p.tagline}</small></span></Link><p>مساحتك للفهم، والتطبيق، والثقة.</p><span>© {new Date().getFullYear()} · مستر {p.name}</span></footer>
@@ -136,7 +142,7 @@ const covers = ['/images/course-1.jpg', '/images/course-2.jpg', '/images/course-
  * disable at each end; the track stays plain overflow-scroll underneath, so touch swipe and
  * keyboard scrolling keep working even if the arrows are hidden on small screens.
  */
-function Slider({ items, subject, cta, login, reveal, onPreview, enroll, onEnrollFree }) {
+function Slider({ items, subject, cta, login, reveal, onPreview, enroll, onPick }) {
   const track = useRef(null)
   const [edge, setEdge] = useState({ start: true, end: false })
 
@@ -172,6 +178,12 @@ function Slider({ items, subject, cta, login, reveal, onPreview, enroll, onEnrol
         {items.map((c, i) => {
           const sample = String(c.id).startsWith('demo')
           const cover = c.coverUrl || covers[i % covers.length]
+          const paid = Number(c.finalPrice ?? c.price) > 0
+          const real = !sample && !c.isVideo
+          // Tapping the artwork does what the card's button does: preview a video, or take the course.
+          const coverTo = c.isVideo || sample || !(onPick || enroll) ? login : enroll ? enroll(c) : login
+          const coverClick = c.isVideo ? (e) => { e.preventDefault(); onPreview(c, i) }
+            : real && onPick ? (e) => { e.preventDefault(); onPick(c) } : undefined
           return (
             <motion.article {...reveal} key={c.id} className="tl-slide">
               {/* Separate element for the bobbing motion: framer-motion writes an inline transform
@@ -179,9 +191,7 @@ function Slider({ items, subject, cta, login, reveal, onPreview, enroll, onEnrol
                   transform animation on either of those would fight the other two. */}
               <div className="tl-bob">
               <div className="tl-course">
-                {/* Tapping the artwork sends visitors to sign in — the actual content lives
-                    behind the account, so that's the honest next step rather than a dead image. */}
-                <Link to={login} className="tl-cover" aria-label={`سجّل الدخول لمشاهدة ${c.title}`}>
+                <Link to={coverTo} onClick={coverClick} className="tl-cover" aria-label={c.isVideo ? `معاينة ${c.title}` : `اشترك في ${c.title}`}>
                   <img src={cover} alt={c.title} loading="lazy" />
                   <span className="tl-cover-veil" />
                   <div className="tl-cover-top">
@@ -203,12 +213,13 @@ function Slider({ items, subject, cta, login, reveal, onPreview, enroll, onEnrol
                       : <div className="tl-price"><strong>{fmtMoney(c.finalPrice)}</strong>{c.discountPercent > 0 && <del>{fmtMoney(c.price)}</del>}</div>}
                     {(sample || c.isVideo)
                       ? <button aria-label={`معاينة ${c.title}`} onClick={() => onPreview(c, i)}>معاينة <ArrowUpLeft size={18} /></button>
-                      : onEnrollFree && Number(c.finalPrice ?? c.price) <= 0
-                        ? <button type="button" onClick={() => onEnrollFree(c)}>اشترك مجاناً <ArrowUpLeft size={17} /></button>
+                      : onPick
+                        ? <button type="button" onClick={() => onPick(c)}>{paid ? 'اشترك الآن' : 'ابدأ مجاناً'} <ArrowUpLeft size={17} /></button>
                       : enroll
-                        ? <Link to={enroll(c)}>{Number(c.finalPrice ?? c.price) > 0 ? 'اشترك الآن' : 'اشترك مجاناً'} <ArrowUpLeft size={17} /></Link>
+                        ? <Link to={enroll(c)}>{paid ? 'اشترك الآن' : 'اشترك مجاناً'} <ArrowUpLeft size={17} /></Link>
                         : <a href={cta}>التواصل للاشتراك <ArrowUpLeft size={17} /></a>}
                   </div>
+                  {real && paid && <Link to={`/checkout/${c.id}`} className="tl-code-link">معاك كود اشتراك من المستر؟</Link>}
                 </div>
               </div>
               </div>

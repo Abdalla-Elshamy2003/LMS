@@ -11,6 +11,8 @@ import { exportElementToPdf } from '../lib/pdf'
 import ParentReportPrint from '../components/reports/ParentReportPrint'
 import LearningHub from '../components/LearningHub'
 import DeskSummary from '../features/assistant/DeskSummary'
+import StudentCatalog from '../features/student-catalog/StudentCatalog'
+import PendingRequests from '../features/student-catalog/PendingRequests'
 import { SchedulePreview } from './Schedule'
 
 const HW_STATUS = {
@@ -171,6 +173,7 @@ function TeacherDashboard({ data }) {
   const { user } = useAuth()
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
+      {['TEACHER', 'ASSISTANT'].includes(user.role) && <PendingRequests />}
       {['TEACHER', 'ASSISTANT'].includes(user.role) && <DeskSummary />}
       {['TEACHER', 'ASSISTANT'].includes(user.role) && <LearningHub compact />}
       <SchedulePreview />
@@ -196,15 +199,10 @@ function TeacherDashboard({ data }) {
 function StudentDashboard({ user, data }) {
   const d = data?.dashboard || {}
   const g = data?.gamification || {}
-  const [enrollments, setEnrollments] = useState(null)
   const LEVELS = { DIAMOND: 'ماسي', PLATINUM: 'بلاتيني', GOLD: 'ذهبي', SILVER: 'فضي', BRONZE: 'برونزي' }
-
-  useEffect(() => { api.get('/students/me').then((r) => setEnrollments(r.data.enrollments)).catch(() => setEnrollments([])) }, [])
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
-      <LearningHub compact />
-      <SchedulePreview />
       <motion.div variants={fadeUp} className="card overflow-hidden">
         <div className="relative overflow-hidden bg-gradient-to-l from-brand-600 to-brand-800 p-7 text-white">
           <motion.div aria-hidden animate={{ y: [0, -10, 0], rotate: [0, 5, 0] }} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }} className="absolute -bottom-7 left-8 grid h-28 w-28 place-items-center rounded-[32px] bg-white/10 text-white/30"><GraduationCap size={54} /></motion.div>
@@ -219,6 +217,11 @@ function StudentDashboard({ user, data }) {
         </div>
       </motion.div>
 
+      {/* Their courses with this teacher, what waits for payment, and everything offered for their year. */}
+      <StudentCatalog compact />
+      <LearningHub compact />
+      <SchedulePreview />
+
       <motion.div variants={fadeUp} className="flex flex-wrap gap-3">
         <Link to="/app/courses" className="btn-soft"><BookOpen size={16} /> الكورسات</Link>
         <Link to="/app/academic-profile" className="btn-soft"><UserRound size={16} /> ملفي ودرجاتي</Link>
@@ -229,66 +232,6 @@ function StudentDashboard({ user, data }) {
         <Link to="/app/leaderboard" className="btn-soft"><Trophy size={16} /> لوحة الشرف</Link>
         <Link to="/app/support" className="btn-soft"><LifeBuoy size={16} /> اسأل مدرسك أو الإدارة</Link>
       </motion.div>
-
-      <motion.div variants={fadeUp} className="card p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-base font-extrabold text-ink-800">كورساتي</h3>
-          <Link to="/app/courses" className="text-sm font-semibold text-brand-600">تصفّح كل الكورسات ←</Link>
-        </div>
-        {!enrollments ? <Spinner className="h-5 w-5 border-brand-200 border-t-brand-600" /> : enrollments.length === 0 ? (
-          <EmptyState icon={BookOpen} title="لست ملتحقاً بأي كورس بعد" hint="تصفّح الكورسات المتاحة والتحق بأول كورس لك" />
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {enrollments.map((e) => (
-              <Link key={e.id} to={`/app/courses/${e.courseId}`}
-                className="rounded-2xl border border-ink-100 p-4 transition hover:border-brand-300 hover:bg-brand-50/40">
-                <p className="font-bold text-ink-800">{e.courseTitle}</p>
-                <span className="mt-1 inline-block chip bg-brand-50 text-brand-700">{e.status === 'ACTIVE' ? 'نشط' : e.status}</span>
-              </Link>
-            ))}
-          </div>
-        )}
-      </motion.div>
-
-      {/* Everything offered for the year this student signed up for. */}
-      {(d.yearCourses || []).length > 0 && (
-        <motion.div variants={fadeUp} className="card p-5 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="text-lg font-extrabold text-ink-800">كورسات سنتك الدراسية</h3>
-              <p className="mt-1 text-xs text-ink-400">{d.grade}</p>
-            </div>
-            <span className="chip bg-brand-50 text-brand-700">{d.yearCourses.length} كورس</span>
-          </div>
-
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {d.yearCourses.map((c) => (
-              <Link key={c.id} to={c.enrolled ? `/app/courses/${c.id}` : '/app/courses'}
-                className="group overflow-hidden rounded-2xl border border-ink-100 transition hover:-translate-y-1 hover:border-brand-300 hover:shadow-glow">
-                <div className="relative h-28 overflow-hidden bg-ink-50">
-                  {c.coverUrl && <img src={c.coverUrl} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-110" />}
-                  {c.discountPercent > 0 && (
-                    <span className="absolute right-2 top-2 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                      خصم {c.discountPercent}%
-                    </span>
-                  )}
-                </div>
-                <div className="p-4">
-                  <p className="text-xs text-ink-400">{c.subject}</p>
-                  <p className="mt-1 line-clamp-2 text-sm font-bold text-ink-800">{c.title}</p>
-                  <div className="mt-3 flex items-baseline justify-between gap-2">
-                    <span className="flex items-baseline gap-1.5">
-                      <b className={c.discountPercent > 0 ? 'text-rose-600' : 'text-brand-600'}>{fmtMoney(c.finalPrice)}</b>
-                      {c.discountPercent > 0 && <del className="text-[10px] text-ink-400">{fmtMoney(c.price)}</del>}
-                    </span>
-                    {c.enrolled && <span className="chip bg-emerald-50 text-[10px] text-emerald-700">ملتحق</span>}
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </motion.div>
-      )}
     </motion.div>
   )
 }

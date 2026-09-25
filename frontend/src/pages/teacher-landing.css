@@ -163,3 +163,5 @@
 a.tl-cover{display:block;cursor:pointer}
 
 @media(prefers-reduced-motion:reduce){.teacher-site *,.tl-auth *{scroll-behavior:auto!important;animation:none!important;transition:none!important}.tl-sat{opacity:1!important}.tl-math-bg{display:none!important}.tl-slide:nth-child(2n){padding-top:0}}
+/* The quiet way in for a student who already paid and holds the teacher's code. */
+.tl-code-link{display:inline-block;margin-top:10px;font-size:10px;font-weight:700;color:#6f7f87;text-decoration:underline;text-underline-offset:3px}.tl-code-link:hover{color:var(--blue)}
