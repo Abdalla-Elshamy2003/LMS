@@ -292,7 +292,7 @@ export default function Register() {
 
           {step === 2 && (
             <form onSubmit={submit} className="mt-6 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr]">
                 <div>
                   <label className="label">المدرس</label>
                   {fixedSlug ? (
@@ -394,9 +394,8 @@ function ChoiceSummary({ teacher, course, grade }) {
         : <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700"><GraduationCap size={22} /></span>}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-extrabold text-ink-800">{course ? course.title : teacher.name}</p>
-        <p className="mt-0.5 truncate text-xs text-ink-500">
-          {course ? `${teacher.name} · ` : ''}{teacher.subject}{grade ? ` · ${grade}` : ''}
-        </p>
+        <p className="mt-0.5 truncate text-xs text-ink-500">{course ? `${teacher.name} · ` : ''}{teacher.subject}</p>
+        {grade && <p className="mt-0.5 text-xs font-bold text-brand-700">{grade}</p>}
       </div>
       {course && <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${priceOf(course) > 0 ? 'bg-brand-50 text-brand-700' : 'bg-emerald-50 text-emerald-700'}`}>
         {priceOf(course) > 0 ? fmtMoney(priceOf(course)) : 'مجاني'}

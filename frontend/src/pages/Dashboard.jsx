@@ -76,6 +76,8 @@ export default function Dashboard() {
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
+      {/* Inside a teacher's space the admin can open paid requests for that teacher, the same as the teacher. */}
+      {sessionStorage.getItem('manarah_academy') && user.role !== 'ACCOUNTANT' && <PendingRequests />}
       {user.role !== 'ACCOUNTANT' && <LearningHub compact />}
       {user.role !== 'ACCOUNTANT' && <SchedulePreview />}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">

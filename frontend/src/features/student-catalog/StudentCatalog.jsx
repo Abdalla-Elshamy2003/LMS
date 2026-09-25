@@ -88,7 +88,7 @@ export default function StudentCatalog({ compact = false }) {
             <h2 className="mt-0.5 text-xl font-black">{data.teacher?.subject || 'الكورسات'}</h2>
           </div>
           <button type="button" onClick={() => setPickYear(true)}
-            className="rounded-2xl bg-white/10 px-4 py-2 text-right text-xs font-bold transition hover:bg-white/20">
+            className="basis-full rounded-2xl bg-white/10 px-4 py-2 text-right text-xs font-bold transition hover:bg-white/20 sm:basis-auto">
             <span className="block text-[11px] font-semibold text-brand-100">سنتك الدراسية</span>
             {data.grade || 'اختار سنتك'} <span className="text-brand-200">· تغيير</span>
           </button>
@@ -110,7 +110,7 @@ export default function StudentCatalog({ compact = false }) {
         <Section title="مستني الدفع" hint="حوّل للمدرس، وبعدها اكتب الكود اللي هيبعتهولك — أو المدرس يفعّله من عنده." tone="amber">
           {waiting.map((c) => (
             <CourseCard key={c.id} c={c} focused={focus === c.id} badge={<Chip tone="amber"><Clock3 size={12} /> مستني الدفع</Chip>}>
-              <button type="button" onClick={() => setPayFor(c)} className="btn-primary w-full justify-center">إزاي أدفع؟ · {fmtMoney(priceOf(c))}</button>
+              <button type="button" onClick={() => setPayFor(c)} className="btn-primary w-full justify-center"><Wallet size={16} /> إزاي أدفع؟</button>
               <button type="button" onClick={() => setCodeFor(c)} className="btn-ghost w-full justify-center text-xs"><KeyRound size={14} /> معايا الكود</button>
             </CourseCard>
           ))}
