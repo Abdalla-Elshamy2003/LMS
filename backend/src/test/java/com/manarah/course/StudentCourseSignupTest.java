@@ -18,9 +18,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * A student picks a course on a teacher's page and signs up: the course's year becomes theirs, a paid course waits on
- * their dashboard until the teacher is paid (a code or the teacher's "فعّل"), a free one opens at once, and whatever
- * the teacher publishes later for their year shows up for them — each course still subscribed to (and paid) on its own.
+ * A student picks a course on a teacher's page and signs up: the course's year becomes theirs, a paid course asks for
+ * that year's subscription and waits on their dashboard until the teacher is paid, a free one opens at once, and
+ * whatever the teacher publishes later for their year shows up for them (and opens, while they're subscribed).
  */
 @SpringBootTest(properties = {
         "manarah.security.jwt.secret=dGVzdC1vbmx5LW1hbmFyYWgtand0LXNlY3JldC0zMi1ieXRlcy1taW4=",
@@ -99,11 +99,12 @@ class StudentCourseSignupTest {
         call(get("/api/courses/" + motion), student, null, 403);
         assertThat(call(get("/api/learning"), student, null, 200).size()).isZero();
 
-        // The teacher sees the request with the student's contact details; unpaid requests aren't counted as students.
-        JsonNode pending = call(get("/api/enrollments/pending"), teacher, null, 200);
+        // The teacher sees the request for the year's subscription with the student's contact details; unpaid
+        // requests aren't counted as students.
+        JsonNode pending = call(get("/api/plans/requests"), teacher, null, 200);
         assertThat(pending.size()).isEqualTo(1);
         assertThat(pending.get(0).path("email").asText()).isEqualTo("paid.pick@example.com");
-        assertThat(pending.get(0).path("courseTitle").asText()).isEqualTo("الحركة");
+        assertThat(pending.get(0).path("plan").asText()).contains(SECOND);
         assertThat(call(get("/api/dashboard/teacher"), teacher, null, 200).path("students").asLong()).isZero();
         long studentId = pending.get(0).path("studentId").asLong();
 
@@ -113,34 +114,35 @@ class StudentCourseSignupTest {
         call(get("/api/courses/" + review), student, null, 200);
         assertThat(call(post("/api/me/catalog/" + motion + "/request"), student, null, 200).path("state").asText()).isEqualTo("PENDING");
 
-        // The teacher got paid: activate. Only once, and only their own requests.
-        long requestId = pending.get(0).path("enrollmentId").asLong();
-        call(post("/api/enrollments/" + requestId + "/activate"), student, null, 403);
-        call(post("/api/enrollments/" + requestId + "/activate"), teacher, null, 200);
-        call(post("/api/enrollments/" + requestId + "/activate"), teacher, null, 409);
+        // The teacher got paid: activate. Only once, and only their own requests. The year's courses open —
+        // "أساسيات لكل السنين" too, being physics for every year.
+        long requestId = pending.get(0).path("id").asLong();
+        call(post("/api/plan-subscriptions/" + requestId + "/activate"), student, null, 403);
+        call(post("/api/plan-subscriptions/" + requestId + "/activate"), teacher, null, 200);
+        call(post("/api/plan-subscriptions/" + requestId + "/activate"), teacher, null, 409);
         call(get("/api/courses/" + motion), student, null, 200);
         assertThat(catalog(student).get(motion).path("state").asText()).isEqualTo("ACTIVE");
-        assertThat(call(get("/api/dashboard/teacher"), teacher, null, 200).path("students").asLong()).isEqualTo(2);
+        assertThat(call(get("/api/dashboard/teacher"), teacher, null, 200).path("students").asLong()).isEqualTo(3);
 
-        // A course the teacher publishes later for this year appears by itself, marked new; another year's doesn't.
+        // A course the teacher publishes later for this year opens by itself for a subscriber; another year's doesn't show.
         long later = course(teacher, "الكهربية", 250, "2 ثانوي");
         long laterFirst = course(teacher, "الموجات", 250, FIRST);
         seen = catalog(student);
-        assertThat(seen.get(later).path("state").asText()).isEqualTo("NONE");
-        assertThat(seen.get(later).path("isNew").asBoolean()).isTrue();
+        assertThat(seen.get(later).path("state").asText()).isEqualTo("ACTIVE");
         assertThat(seen).doesNotContainKey(laterFirst);
-
-        // Asked for, then turned down by the teacher: back to not subscribed.
-        call(post("/api/me/catalog/" + later + "/request"), student, null, 200);
-        long laterRequest = call(get("/api/enrollments/pending"), teacher, null, 200).get(0).path("enrollmentId").asLong();
-        call(delete("/api/enrollments/" + laterRequest + "/request"), teacher, null, 200);
-        assertThat(catalog(student).get(later).path("state").asText()).isEqualTo("NONE");
 
         // A new school year: the catalog follows it, and what they already study stays.
         call(put("/api/me/catalog/grade"), student, Map.of("grade", "أولى ثانوي"), 200);
         seen = catalog(student);
-        assertThat(seen).containsKeys(firstYear, laterFirst, motion, review, forAll).doesNotContainKey(later);
+        assertThat(seen).containsKeys(firstYear, laterFirst, motion, review, forAll, later);
         assertThat(seen.get(motion).path("forYear").asBoolean()).isFalse();
+        assertThat(seen.get(firstYear).path("state").asText()).isEqualTo("NONE");
+
+        // Asked for أولى ثانوي, then turned down by the teacher: back to not subscribed.
+        assertThat(call(post("/api/me/catalog/" + firstYear + "/request"), student, null, 200).path("state").asText()).isEqualTo("PENDING");
+        long firstRequest = call(get("/api/plans/requests"), teacher, null, 200).get(0).path("id").asLong();
+        call(delete("/api/plan-subscriptions/" + firstRequest), teacher, null, 200);
+        assertThat(catalog(student).get(firstYear).path("state").asText()).isEqualTo("NONE");
 
         assertThat(call(post("/api/me/catalog/" + forAll + "/request"), student, null, 200).path("state").asText()).isEqualTo("ACTIVE");
 

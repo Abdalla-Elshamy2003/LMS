@@ -20,9 +20,10 @@ import java.util.List;
 
 /**
  * A student asking for a course — at registration, when joining a teacher, or from their dashboard. A free course
- * opens straight away; a paid one is recorded as {@code TRIAL}, i.e. "picked, waiting for payment": it shows on the
- * student's dashboard with the teacher's payment details and opens only once the teacher's code is redeemed or the
- * teacher activates it. A TRIAL row grants no access anywhere — learning, exams and homework all require ACTIVE.
+ * opens straight away. A paid one is sold with its year and subject: asking for it asks to subscribe to that
+ * teacher's plan for the year ({@link com.manarah.subscription.PlanAccess}), which waits for payment and then opens
+ * every course of the year and subject for the plan's months. ({@code TRIAL} rows — a single course waiting for
+ * payment — come from before plans and are still honoured.) Nothing waiting grants access anywhere.
  *
  * <p>Idempotent, and never overrides the teacher: asking again for a course already open or already waiting changes
  * nothing, and a course the teacher closed for this student ({@code INACTIVE}) stays closed.
@@ -36,20 +37,23 @@ public class CourseRequests {
     private final StudentRepository students;
     private final NotificationService notifications;
     private final ApplicationEventPublisher events;
+    private final com.manarah.subscription.PlanAccess plans;
 
     public CourseRequests(EnrollmentRepository enrollments, TeacherAcademyRepository academies, StudentRepository students,
-                          NotificationService notifications, ApplicationEventPublisher events) {
+                          NotificationService notifications, ApplicationEventPublisher events,
+                          com.manarah.subscription.PlanAccess plans) {
         this.enrollments = enrollments; this.academies = academies; this.students = students;
-        this.notifications = notifications; this.events = events;
+        this.notifications = notifications; this.events = events; this.plans = plans;
     }
 
-    /** What the student sees for a course: ACTIVE, COMPLETED, PENDING (waiting for payment), CLOSED or NONE. */
+    /** What the student sees for a course: ACTIVE, COMPLETED, PENDING (waiting for payment), EXPIRED (their subscription ran out), CLOSED or NONE. */
     public static String stateOf(Enrollment e) {
         if (e == null) return "NONE";
         return switch (e.getStatus()) {
             case "ACTIVE" -> "ACTIVE";
             case "COMPLETED" -> "COMPLETED";
             case WAITING -> "PENDING";
+            case com.manarah.subscription.PlanAccess.LOCKED -> "EXPIRED";
             default -> "CLOSED";
         };
     }
@@ -67,10 +71,23 @@ public class CourseRequests {
         if (existing != null) {
             String state = stateOf(existing);
             if ("CLOSED".equals(state)) throw new ForbiddenException("اشتراكك في الكورس ده موقوف عند المدرس. تواصل معاه.");
-            return state;
+            if (!"EXPIRED".equals(state)) return state;
         }
+        if (existing == null && isFree(course)) return requestFree(tenantId, studentId, course);
+        // Paid (or its subscription ran out): subscribe to the teacher's plan for the course's year and subject.
+        String grade = students.findByTenantIdAndId(tenantId, studentId).map(s -> s.getGrade()).orElse(null);
+        var plan = plans.planFor(course, grade);
+        if (plans.running(plan.getId(), studentId, java.time.Instant.now())) {
+            plans.open(plan, studentId);
+            return stateOf(enrollments.findByTenantIdAndStudentIdAndCourseId(tenantId, studentId, course.getId()).orElse(null));
+        }
+        plans.request(plan, studentId);
+        return "PENDING";
+    }
+
+    private String requestFree(Long tenantId, Long studentId, Course course) {
         // An unpublished teacher space is invite-only: even a free course waits for the teacher there.
-        boolean open = isFree(course) && academies.findByTenantId(tenantId).map(TeacherAcademy::isPublished).orElse(true);
+        boolean open = academies.findByTenantId(tenantId).map(TeacherAcademy::isPublished).orElse(true);
         Enrollment e = new Enrollment();
         e.setTenantId(tenantId);
         e.setStudentId(studentId);

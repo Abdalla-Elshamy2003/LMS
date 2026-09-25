@@ -66,6 +66,7 @@ public class RegistrationService {
     private final com.manarah.security.auth.LoginAttemptLimiter loginAttempts;
     private final com.manarah.academy.BundleSubscriptionService packages;
     private final com.manarah.enrollment.CourseRequests requests;
+    private final com.manarah.subscription.PlanService planService;
 
     public RegistrationService(TenantRepository tenants, BranchRepository branches, CourseRepository courses,
                                StudentRepository students, GuardianRepository guardians,
@@ -76,9 +77,11 @@ public class RegistrationService {
                                com.manarah.academy.LinkedStudentAccounts linked,
                                com.manarah.security.auth.LoginAttemptLimiter loginAttempts,
                                com.manarah.academy.BundleSubscriptionService packages,
-                               com.manarah.enrollment.CourseRequests requests) {
+                               com.manarah.enrollment.CourseRequests requests,
+                               com.manarah.subscription.PlanService planService) {
         this.packages = packages;
         this.requests = requests;
+        this.planService = planService;
         this.events = events;
         this.linked = linked;
         this.loginAttempts = loginAttempts;
@@ -188,6 +191,7 @@ public class RegistrationService {
     @Transactional
     public RegistrationResult redeem(RedeemCommand cmd) {
         if (com.manarah.academy.BundleSubscriptionService.isPackageCode(cmd.code())) return redeemPackage(cmd);
+        if (com.manarah.subscription.PlanService.isPlanCode(cmd.code())) return redeemPlan(cmd);
         var code = accessCodes.findRedeemable(cmd.code());
         Course course = courses.findByTenantIdAndId(code.getTenantId(), code.getCourseId())
                 .orElseThrow(() -> new BadRequestException("الكورس المرتبط بهذا الكود لم يعد متاحاً"));
@@ -214,6 +218,20 @@ public class RegistrationService {
         String token = linked.tokenFor(acc.user);
         return new RegistrationResult(token, "Bearer", jwtService.getAccessTokenTtlMinutes(),
                 acc.student.getCode(), "تم تفعيل الباقة! كل مدرسين الباقة وكورساتهم بقوا عندك في «باقتي».");
+    }
+
+    /** Signing up with a subscription code: the account is made with the plan's teacher, in the plan's year, and the period starts. */
+    private RegistrationResult redeemPlan(RedeemCommand cmd) {
+        var code = planService.findRedeemable(cmd.code());
+        var plan = planService.planOf(code);
+        String grade = cmd.grade() == null || cmd.grade().isBlank() ? plan.getYearLabel() : cmd.grade();
+        Account acc = createAccount(plan.getTenantId(), cmd.fullName(), cmd.email(), cmd.password(), cmd.phone(),
+                grade, cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone());
+        var period = planService.use(code, acc.student.getId());
+        String token = linked.tokenFor(acc.user);
+        return new RegistrationResult(token, "Bearer", jwtService.getAccessTokenTtlMinutes(), acc.student.getCode(),
+                "تم تفعيل اشتراك " + com.manarah.subscription.PlanAccess.label(plan) + " لحد يوم "
+                        + com.manarah.subscription.PlanAccess.day(period.getEndsAt()) + ".");
     }
 
     private static String checkoutMessage(com.manarah.payment.CourseCheckoutService.OrderView order) {

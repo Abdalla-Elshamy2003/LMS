@@ -19,9 +19,12 @@ public class AcademyController {
     private final CourseRepository courses;
     private final com.manarah.student.repo.StudentRepository students;
     private final BundleService bundles;
+    private final com.manarah.subscription.SubscriptionPlanRepository plans;
     public AcademyController(AcademyService service, TeacherAcademyRepository academies, CourseRepository courses,
-                             com.manarah.student.repo.StudentRepository students, BundleService bundles) {
+                             com.manarah.student.repo.StudentRepository students, BundleService bundles,
+                             com.manarah.subscription.SubscriptionPlanRepository plans) {
         this.service = service; this.academies = academies; this.courses = courses; this.students = students; this.bundles = bundles;
+        this.plans = plans;
     }
 
     /** Public home page payload: platform-wide numbers, the teacher cards and the teacher packages. */
@@ -126,6 +129,10 @@ public class AcademyController {
             // landing page shows them in the same slider as the courses, so publishing either one
             // is enough to make it appear publicly.
             "videos", a.getVideos(),
+            // What the teacher charges per year and subject, for how many months — only the ones with a price set.
+            "plans", plans.findByTenantId(a.getTenantId()).stream().filter(p -> p.isActive() && p.getPrice() != null)
+                .map(p -> Map.<String,Object>of("id", p.getId(), "year", p.getYearLabel(), "yearKey", p.getYearKey(), "subject", p.getSubject(),
+                    "price", p.getPrice(), "finalPrice", p.finalPrice(), "discountPercent", p.getDiscountPercent(), "months", p.getMonths())).toList(),
             "courses", courses.findByTenantIdAndTeacherId(a.getTenantId(), a.getTeacherId()).stream().filter(c -> "ACTIVE".equals(c.getStatus()))
                 .map(c -> Map.<String,Object>of("id", c.getId(), "title", c.getTitle(), "grade", Objects.toString(c.getGradeLevel(), ""),
                     "year", Objects.toString(c.getGrade(), ""), "coverUrl", Objects.toString(c.getCoverUrl(), ""),

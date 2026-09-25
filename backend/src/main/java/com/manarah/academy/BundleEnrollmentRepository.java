@@ -7,4 +7,5 @@ import java.util.List;
 public interface BundleEnrollmentRepository extends JpaRepository<BundleEnrollment, Long> {
     List<BundleEnrollment> findBySubscriptionId(Long subscriptionId);
     boolean existsBySubscriptionIdAndEnrollmentId(Long subscriptionId, Long enrollmentId);
+    List<BundleEnrollment> findByEnrollmentId(Long enrollmentId);
 }

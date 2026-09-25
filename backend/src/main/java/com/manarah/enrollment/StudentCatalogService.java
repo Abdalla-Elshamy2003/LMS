@@ -27,14 +27,15 @@ import java.util.stream.Collectors;
 /**
  * The student's courses with their current teacher: what they study, what waits for payment, and everything the
  * teacher offers for their school year. Worked out on every read, so a course the teacher publishes for "تانية ثانوي"
- * shows up for every تانية ثانوي student at once, without creating anything for them — they still subscribe (and pay)
- * per course. A course with no year set is for every year.
+ * shows up for every تانية ثانوي student at once. Paid courses are sold by year and subject: the catalog also carries
+ * the student's subscriptions with this teacher — when each started, when it ends — and each course names the plan
+ * it belongs to. A course with no year set is for every year.
  */
 @Service
 public class StudentCatalogService {
     /** How long a course the student hasn't taken counts as "جديد". */
     private static final Duration NEW_FOR = Duration.ofDays(21);
-    private static final List<String> ORDER = List.of("ACTIVE", "PENDING", "COMPLETED", "NONE", "CLOSED");
+    private static final List<String> ORDER = List.of("ACTIVE", "PENDING", "EXPIRED", "COMPLETED", "NONE", "CLOSED");
 
     private final CourseRepository courses;
     private final EnrollmentRepository enrollments;
@@ -42,19 +43,31 @@ public class StudentCatalogService {
     private final TeacherAcademyRepository academies;
     private final LinkedStudentAccounts linked;
     private final CourseRequests requests;
+    private final com.manarah.subscription.PlanAccess planAccess;
+    private final com.manarah.subscription.PlanService planService;
+    private final com.manarah.subscription.SubscriptionPlanRepository plans;
+    private final com.manarah.subscription.PlanSubscriptionRepository planSubs;
 
     public StudentCatalogService(CourseRepository courses, EnrollmentRepository enrollments, StudentRepository students,
-                                 TeacherAcademyRepository academies, LinkedStudentAccounts linked, CourseRequests requests) {
+                                 TeacherAcademyRepository academies, LinkedStudentAccounts linked, CourseRequests requests,
+                                 com.manarah.subscription.PlanAccess planAccess, com.manarah.subscription.PlanService planService,
+                                 com.manarah.subscription.SubscriptionPlanRepository plans, com.manarah.subscription.PlanSubscriptionRepository planSubs) {
         this.courses = courses; this.enrollments = enrollments; this.students = students;
         this.academies = academies; this.linked = linked; this.requests = requests;
+        this.planAccess = planAccess; this.planService = planService; this.plans = plans; this.planSubs = planSubs;
     }
 
     public record Teacher(String name, String subject, String slug, String photoUrl) {}
     public record Payment(String instapayNumber, String vodafoneCashNumber, String note) {}
     public record CatalogCourse(Long id, String title, String subject, String year, String description, String coverUrl,
                                 BigDecimal price, BigDecimal finalPrice, int discountPercent, boolean free,
-                                String state, boolean isNew, boolean forYear) {}
-    public record Catalog(String grade, List<String> years, Teacher teacher, Payment payment, List<CatalogCourse> courses) {}
+                                String state, boolean isNew, boolean forYear, Long planId) {}
+    /** A plan the student has with this teacher, or the one for their year: price, months, and their own dates. */
+    public record PlanInfo(Long id, String year, String subject, BigDecimal price, BigDecimal finalPrice, int discountPercent,
+                           int months, boolean active, String status, Instant startsAt, Instant endsAt,
+                           long daysLeft, boolean renewalPending) {}
+    public record Catalog(String grade, List<String> years, Teacher teacher, Payment payment, List<PlanInfo> plans,
+                          List<CatalogCourse> courses) {}
 
     public Catalog forStudent(UserPrincipal actor) {
         Student me = student(actor);
@@ -63,10 +76,23 @@ public class StudentCatalogService {
         Map<Long, Enrollment> mine = enrollments.findByTenantIdAndStudentId(tenantId, me.getId()).stream()
                 .collect(Collectors.toMap(Enrollment::getCourseId, Function.identity(), (a, b) -> a));
         List<Course> all = courses.findByTenantId(tenantId);
-        Instant fresh = Instant.now().minus(NEW_FOR);
+        Instant now = Instant.now(), fresh = now.minus(NEW_FOR);
+        // The student's periods and requests, per plan of this teacher.
+        Map<Long, List<com.manarah.subscription.PlanSubscription>> myPlans = planSubs.findByStudentIdInOrderByIdDesc(List.of(me.getId())).stream()
+                .filter(x -> tenantId.equals(x.getTenantId()))
+                .collect(Collectors.groupingBy(com.manarah.subscription.PlanSubscription::getPlanId, LinkedHashMap::new, Collectors.toList()));
+        Set<Long> waitingPlans = new HashSet<>();
+        myPlans.forEach((planId, periods) -> {
+            if (periods.stream().anyMatch(x -> com.manarah.subscription.PlanSubscription.PENDING.equals(x.getStatus()))) waitingPlans.add(planId);
+        });
 
         List<CatalogCourse> list = all.stream().map(c -> {
-            String state = CourseRequests.stateOf(mine.get(c.getId()));
+            String raw = CourseRequests.stateOf(mine.get(c.getId()));
+            // Only a course the teacher still offers belongs to a plan; a hidden one is shown only if the student has it.
+            Long planId = CourseRequests.isFree(c) || !"ACTIVE".equals(c.getStatus()) ? null
+                    : planAccess.findPlanFor(c, me.getGrade()).map(com.manarah.subscription.SubscriptionPlan::getId).orElse(null);
+            // Asked to subscribe (or renew) and waiting for payment.
+            String state = planId != null && waitingPlans.contains(planId) && ("NONE".equals(raw) || "EXPIRED".equals(raw)) ? "PENDING" : raw;
             boolean has = !"NONE".equals(state) && !"CLOSED".equals(state);
             boolean yearMatch = SchoolYears.same(me.getGrade(), c.getGrade());
             boolean offered = "ACTIVE".equals(c.getStatus()) && (yearKey.isEmpty() || blank(c.getGrade()) || yearMatch);
@@ -74,7 +100,7 @@ public class StudentCatalogService {
             boolean isNew = "NONE".equals(state) && c.getCreatedAt() != null && c.getCreatedAt().isAfter(fresh);
             return new CatalogCourse(c.getId(), c.getTitle(), Objects.toString(c.getSubject(), ""), Objects.toString(c.getGrade(), ""),
                     Objects.toString(c.getDescription(), ""), Objects.toString(c.getCoverUrl(), ""), c.getPrice(), c.getFinalPrice(),
-                    c.getDiscountPercent() == null ? 0 : c.getDiscountPercent(), CourseRequests.isFree(c), state, isNew, yearMatch);
+                    c.getDiscountPercent() == null ? 0 : c.getDiscountPercent(), CourseRequests.isFree(c), state, isNew, yearMatch, planId);
         }).filter(Objects::nonNull).sorted(Comparator.comparingInt((CatalogCourse c) -> ORDER.indexOf(c.state()))
                 .thenComparing(CatalogCourse::isNew, Comparator.reverseOrder())
                 .thenComparing(CatalogCourse::id, Comparator.reverseOrder())).toList();
@@ -90,7 +116,16 @@ public class StudentCatalogService {
         Payment payment = academy.filter(a -> !blank(a.getInstapayNumber()) || !blank(a.getVodafoneCashNumber()))
                 .map(a -> new Payment(Objects.toString(a.getInstapayNumber(), ""), Objects.toString(a.getVodafoneCashNumber(), ""),
                         Objects.toString(a.getPaymentNote(), ""))).orElse(null);
-        return new Catalog(Objects.toString(me.getGrade(), ""), new ArrayList<>(years.values()), teacher, payment, list);
+        // Plans to show: every one the student has asked for here, and the one for their year.
+        Set<Long> planIds = new LinkedHashSet<>(myPlans.keySet());
+        list.stream().filter(c -> c.forYear() && c.planId() != null).forEach(c -> planIds.add(c.planId()));
+        var academyRow = academy.orElse(null);
+        List<PlanInfo> planInfos = planIds.stream().map(id -> plans.findById(id).orElse(null)).filter(Objects::nonNull).map(p -> {
+            var s = planService.summary(p, myPlans.getOrDefault(p.getId(), List.of()), now, academyRow, me, true);
+            return new PlanInfo(p.getId(), p.getYearLabel(), p.getSubject(), p.getPrice(), p.finalPrice(), p.getDiscountPercent(),
+                    p.getMonths(), p.isActive(), s.status(), s.startsAt(), s.endsAt(), s.daysLeft(), s.renewalPending());
+        }).toList();
+        return new Catalog(Objects.toString(me.getGrade(), ""), new ArrayList<>(years.values()), teacher, payment, planInfos, list);
     }
 
     /** Ask for one of the current teacher's courses. Returns the new state (ACTIVE for a free course, else PENDING). */

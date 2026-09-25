@@ -48,6 +48,17 @@ public final class SchoolYears {
         return year.startsWith("ال") ? "لل" + year.substring(2) : "لـ" + year;
     }
 
+    /** Comparable key for a subject: "الفيزياء" and "فيزياء", "اللغة العربية" and "لغة عربية" are the same subject. */
+    public static String subjectKey(String raw) {
+        StringBuilder out = new StringBuilder();
+        for (String word : normalize(raw).split(" ")) {
+            if (word.isEmpty()) continue;
+            if (out.length() > 0) out.append(' ');
+            out.append(word.startsWith("ال") && word.length() > 3 ? word.substring(2) : word);
+        }
+        return out.toString();
+    }
+
     /** Whether two years are the same year. Blank never matches anything. */
     public static boolean same(String a, String b) {
         String ka = key(a);

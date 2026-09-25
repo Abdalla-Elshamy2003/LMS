@@ -21,11 +21,14 @@ public class CourseController {
     private final LessonSummaryService summaryService;
     private final com.manarah.payment.CourseAccessCodeService accessCodeService;
     private final com.manarah.academy.BundleSubscriptionService packages;
+    private final com.manarah.subscription.PlanService planService;
 
     public CourseController(CourseService service, LearningService learning, LessonCheckpointService checkpointService,
                             LessonSummaryService summaryService, com.manarah.payment.CourseAccessCodeService accessCodeService,
-                            com.manarah.academy.BundleSubscriptionService packages) {
+                            com.manarah.academy.BundleSubscriptionService packages,
+                            com.manarah.subscription.PlanService planService) {
         this.packages = packages;
+        this.planService = planService;
         this.service = service;
         this.learning = learning;
         this.checkpointService = checkpointService;
@@ -193,6 +196,11 @@ public class CourseController {
         // Any code box takes a package code too: it opens every teacher in the package ("باقتي").
         if (com.manarah.academy.BundleSubscriptionService.isPackageCode(req.code()))
             return java.util.Map.of("bundleId", packages.redeem(actor, req.code()));
+        // A subscription code starts a period of a year-and-subject plan (with this teacher or, after paying them, another).
+        if (com.manarah.subscription.PlanService.isPlanCode(req.code())) {
+            Long seat = planService.redeem(actor, req.code());
+            return seat == null ? java.util.Map.of("plan", true) : java.util.Map.of("plan", true, "switchTo", seat);
+        }
         Long switchTo = accessCodeService.redeemForCurrentStudent(actor, req.code());
         // A code from another teacher opened the course with that teacher — the app switches the student there.
         return switchTo == null ? java.util.Map.of() : java.util.Map.of("switchTo", switchTo);

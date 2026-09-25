@@ -37,11 +37,14 @@ public class AdminControlService {
     private final EnrollmentRepository enrollments;
     private final PasswordEncoder passwords;
     private final com.manarah.audit.AuditService audit;
+    private final org.springframework.context.ApplicationEventPublisher events;
 
     public AdminControlService(BundleService bundleService, TeacherAcademyRepository academies, TeacherBundleRepository bundles,
                                TeacherBundleMemberRepository bundleMembers, BundleSubscriptionRepository subscriptions, UserRepository users,
                                StudentRepository students, CourseRepository courses, EnrollmentRepository enrollments,
-                               PasswordEncoder passwords, com.manarah.audit.AuditService audit) {
+                               PasswordEncoder passwords, com.manarah.audit.AuditService audit,
+                               org.springframework.context.ApplicationEventPublisher events) {
+        this.events = events;
         this.bundleService = bundleService; this.academies = academies; this.bundles = bundles; this.bundleMembers = bundleMembers;
         this.subscriptions = subscriptions; this.users = users; this.students = students; this.courses = courses;
         this.enrollments = enrollments; this.passwords = passwords; this.audit = audit;
@@ -200,6 +203,8 @@ public class AdminControlService {
             c.setStatus(req.status());
         }
         courses.save(c);
+        if ("ACTIVE".equals(c.getStatus()) && !before.endsWith("/ACTIVE"))
+            events.publishEvent(new com.manarah.common.events.DomainEvents.CourseOffered(c.getTenantId(), c.getId()));
         audit.record(actor, "COURSE_UPDATED_BY_ADMIN", "Course", c.getId(), before, c.getPrice() + "/" + c.getStatus());
         return row(c, a);
     }
