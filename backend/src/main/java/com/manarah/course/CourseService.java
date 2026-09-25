@@ -264,6 +264,6 @@ public class CourseService {
 
     private MaterialView toMaterial(LessonMaterial m) {
         return new MaterialView(m.getId(), m.getType(), m.getTitle(), m.getDescription(), m.getUrl(), m.getFileKey(),
-                m.getSizeBytes(), m.getDurationSec(), m.getCreatedAt());
+                m.getSizeBytes(), m.getDurationSec(), m.getCreatedAt(), m.getVideoAssetId());
     }
 }

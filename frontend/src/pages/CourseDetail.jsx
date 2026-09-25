@@ -10,6 +10,7 @@ import { useAuth } from '../lib/auth'
 import { Modal, PageLoader, EmptyState, stagger, fadeUp } from '../components/ui'
 import { fmtMoney } from '../lib/format'
 import { apiErrorMessage } from '../lib/apiError'
+import { uploadVideo } from '../lib/videoUpload'
 
 const MAT = {
   VIDEO: { icon: Video, c: 'bg-rose-50 text-rose-600', label: 'فيديو' },
@@ -137,6 +138,12 @@ export function AddMaterials({ lessonId, onClose, onSaved }) {
       for (const r of rows) {
         if (r.saved) continue
         const rowIndex = rows.indexOf(r)
+        // A video file goes straight to the video store in parts, and completing it adds it to the lesson.
+        if (r.type === 'VIDEO' && r.file) {
+          await uploadVideo({ lessonId, title: r.title.trim(), file: r.file, onProgress: setUploadPercent })
+          update(rowIndex, { saved: true })
+          continue
+        }
         let fileKey = r.fileKey || null
         if (r.file && !fileKey) {
           const fd = new FormData(); fd.append('file', r.file); fd.append('folder', 'materials')
@@ -174,7 +181,7 @@ export function AddMaterials({ lessonId, onClose, onSaved }) {
             <div className="mt-3"><label className="label">الوصف</label><input className="input" value={r.description} onChange={(e) => update(i, { description: e.target.value })} placeholder="وصف يظهر للطالب" /></div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div><label className="label">رفع ملف</label><input type="file" className="input" onChange={(e) => update(i, { file: e.target.files[0] })} /></div>
-              <div><label className="label">أو رابط خارجي / فيديو مشفر</label><input className="input" value={r.url} onChange={(e) => update(i, { url: e.target.value })} placeholder="https://..." />{r.type === "VIDEO" && <p className="mt-2 text-xs leading-6 text-ink-500">للفيديو المشفر: ارفع الفيديو إلى VdoCipher ثم أدخل https://player.vdocipher.com/v2/?video= متبوعاً بمعرّف الفيديو. يحتاج تفعيل المزود من الإدارة. الفيديو المحلي له حماية وصول فقط.</p>}</div>
+              <div><label className="label">أو رابط خارجي / فيديو مشفر</label><input className="input" value={r.url} onChange={(e) => update(i, { url: e.target.value })} placeholder="https://..." />{r.type === "VIDEO" && <p className="mt-2 text-xs leading-6 text-ink-500">الفيديو اللي بترفعه هنا بيترفع على أجزاء (ينفع لحد 4 جيجا) وما بيتشافش غير من المشغّل المحمي للطالب المشترك، وبعد المعالجة بيتشغّل بث مشفّر بجودة على قد نت الطالب. أو حط رابط VdoCipher (https://player.vdocipher.com/v2/?video=…) لو المزود متفعّل من الإدارة.</p>}</div>
             </div>
           </fieldset>
         ))}

@@ -192,7 +192,8 @@ export default function LessonWorkspace() {
     lessons.find((l) => String(l.id) === params.get("lesson")) || lessons[0];
   const saved = progress.find((p) => p.lessonId === active?.id);
   const materials = active?.materials || [];
-  const videos = materials.filter((m) => m.type === "VIDEO" && mediaUrl(m));
+  // An uploaded video (videoAssetId) has no public URL: the protected player asks the server for it.
+  const videos = materials.filter((m) => m.type === "VIDEO" && (m.videoAssetId || mediaUrl(m)));
   const selected = videos.find((m) => m.id === materialId) || videos[0];
   const src = mediaUrl(selected);
   const embed = youtubeUrl(src);

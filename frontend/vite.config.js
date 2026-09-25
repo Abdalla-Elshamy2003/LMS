@@ -16,6 +16,7 @@ export default defineConfig({
         manualChunks: {
           three: ['three', '@react-three/fiber', '@react-three/drei'],
           pdf: ['jspdf', 'html2canvas'],
+          hls: ['hls.js'],
         },
       },
     },

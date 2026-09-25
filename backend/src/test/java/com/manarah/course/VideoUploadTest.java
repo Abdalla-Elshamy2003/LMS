@@ -100,6 +100,11 @@ class VideoUploadTest {
         assertThat(done.path("status").asText()).isEqualTo("READY");
         long material = done.path("materialId").asLong();
         call(post("/api/videos/uploads/" + assetId + "/complete"), teacher, Map.of("parts", parts), 409);
+        // The student's lesson lists it as an uploaded video (no URL or file key: only the protected player plays it).
+        JsonNode listed = call(get("/api/courses/" + course), student, null, 200).path("modules").get(0).path("lessons").get(0).path("materials").get(0);
+        assertThat(listed.path("id").asLong()).isEqualTo(material);
+        assertThat(listed.path("videoAssetId").asLong()).isEqualTo(assetId);
+        assertThat(listed.hasNonNull("fileKey")).isFalse();
 
         // A part short: the upload is refused and nothing joins the lesson.
         JsonNode bad = call(post("/api/videos/uploads"), teacher, start, 200);

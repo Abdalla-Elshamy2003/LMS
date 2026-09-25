@@ -17,8 +17,9 @@ public class CourseDtos {
     public record SetDiscountRequest(Integer discountPercent) {
     }
 
+    /** videoAssetId: a video uploaded to the video store (played through the protected player, never by fileKey/url). */
     public record MaterialView(Long id, String type, String title, String description, String url, String fileKey,
-                               Long sizeBytes, Integer durationSec, Instant createdAt) {
+                               Long sizeBytes, Integer durationSec, Instant createdAt, Long videoAssetId) {
     }
 
     public record LessonView(Long id, String title, int position, int durationMin, String contentText,

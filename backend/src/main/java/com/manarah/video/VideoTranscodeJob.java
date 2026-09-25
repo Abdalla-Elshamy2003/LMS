@@ -28,7 +28,7 @@ import java.util.stream.Stream;
  * <p>Off unless {@code manarah.video.transcode.enabled} is on: FFmpeg needs real CPU, which the server has to have.
  */
 @Component
-@ConditionalOnProperty(name = "manarah.video.transcode.enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "manarah.video.transcode", name = {"enabled", "worker"}, havingValue = "true")
 public class VideoTranscodeJob {
     private static final Logger log = LoggerFactory.getLogger(VideoTranscodeJob.class);
     private static final long LOCK_KEY = 851205L;

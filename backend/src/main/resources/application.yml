@@ -118,8 +118,11 @@ manarah:
       access-key: ${MANARAH_R2_ACCESS_KEY_ID:}
       secret-key: ${MANARAH_R2_SECRET_ACCESS_KEY:}
     transcode:
-      # FFmpeg -> HLS (360p/720p/1080p, AES-128). Needs real CPU: turn it on where the server has it.
+      # FFmpeg -> HLS (360p/720p/1080p, AES-128). Needs real CPU. 'enabled' queues new uploads for processing;
+      # 'worker' runs FFmpeg on this server. A separate processing server (same jar) sets both to true while the
+      # web server keeps enabled=true, worker=false.
       enabled: ${MANARAH_VIDEO_TRANSCODE:false}
+      worker: ${MANARAH_VIDEO_TRANSCODE_WORKER:true}
       ffmpeg: ${MANARAH_FFMPEG:ffmpeg}
       ffprobe: ${MANARAH_FFPROBE:ffprobe}
       work-dir: ${MANARAH_VIDEO_WORK_DIR:${java.io.tmpdir}}
