@@ -3,16 +3,18 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   BarChart3, BookOpen, Eye, EyeOff, ExternalLink, GraduationCap, KeyRound, Layers, LayoutDashboard, LogIn, Plus, Search,
-  ShieldCheck, Sparkles, UserCheck, UserX, Users, Wand2, Wrench,
+  ShieldCheck, Sparkles, UserCheck, UserX, Users, Wallet, Wand2, Wrench,
 } from 'lucide-react'
 import api from '../lib/api'
 import { apiErrorMessage } from '../lib/apiError'
 import { fmtDate } from '../lib/format'
 import { EmptyState, Modal, PageLoader, Spinner } from '../components/ui'
 import Bundles from './Bundles'
+import PaymentsAdmin from '../features/payments/PaymentsAdmin'
 
 const TABS = [
   ['overview', 'نظرة عامة', LayoutDashboard],
+  ['payments', 'المدفوعات', Wallet],
   ['teachers', 'المدرسين', GraduationCap],
   ['students', 'الطلاب', Users],
   ['courses', 'الكورسات والأسعار', BookOpen],
@@ -56,6 +58,7 @@ export default function ControlCenter() {
       {tab === 'students' && <Students say={say} fail={fail} />}
       {tab === 'courses' && <Courses say={say} fail={fail} />}
       {tab === 'packages' && <Bundles />}
+      {tab === 'payments' && <PaymentsAdmin />}
       {tab === 'tools' && <Tools say={say} fail={fail} />}
     </div>
   )

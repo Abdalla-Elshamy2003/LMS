@@ -6,6 +6,7 @@ import { fmtMoney, timeAgo } from '../../lib/format'
 import { apiErrorMessage } from '../../lib/apiError'
 import { Spinner, fadeUp } from '../../components/ui'
 import { monthsLabel } from '../../lib/subscriptions'
+import { METHOD_META } from '../../components/payments/PaymentIcon'
 
 /**
  * Students waiting for the teacher to confirm their payment: subscriptions to a year and subject (and, from before
@@ -21,7 +22,8 @@ export default function PendingRequests() {
     api.get('/enrollments/pending').then((r) => r.data).catch(() => []),
   ]).then(([plans, courses]) => setRows([
     ...plans.map((p) => ({ key: `p${p.id}`, kind: 'plan', id: p.id, studentName: p.studentName, grade: p.grade, email: p.email, phone: p.phone,
-      what: `اشتراك ${p.plan}${p.renewal ? ' (تجديد)' : ''}`, price: p.price, months: p.months, requestedAt: p.requestedAt })),
+      what: `اشتراك ${p.plan}${p.renewal ? ' (تجديد)' : ''}`, price: p.price, months: p.months, requestedAt: p.requestedAt,
+      paid: p.paymentStatus === 'SUBMITTED' ? `دفع بـ${METHOD_META[p.paymentMethod]?.label || ''} — الإدارة بتراجعه` : null })),
     ...courses.map((c) => ({ key: `c${c.enrollmentId}`, kind: 'course', id: c.enrollmentId, studentName: c.studentName, grade: c.grade,
       email: c.email, phone: c.phone, what: `كورس ${c.courseTitle}`, price: c.price, requestedAt: c.requestedAt })),
   ].sort((a, b) => String(b.requestedAt).localeCompare(String(a.requestedAt)))))
@@ -74,6 +76,7 @@ export default function PendingRequests() {
                   {r.phone && <a href={`tel:${r.phone}`} dir="ltr" className="inline-flex items-center gap-1 hover:text-brand-700"><Phone size={12} /> {r.phone}</a>}
                   {r.requestedAt && <span>{timeAgo(r.requestedAt)}</span>}
                 </p>
+                {r.paid && <p className="mt-1 inline-block rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-bold text-sky-800">{r.paid}</p>}
               </div>
               <div className="flex gap-2">
                 <button type="button" disabled={busy === r.key} onClick={() => act(r, 'activate')} className="btn-primary">

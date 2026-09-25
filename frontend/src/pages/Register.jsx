@@ -11,6 +11,8 @@ import { Spinner } from '../components/ui'
 import { SCHOOL_YEARS, GRADES, fmtMoney } from '../lib/format'
 import { yearKey, sameYear, distinctYears } from '../lib/schoolYears'
 import { monthsLabel, planLabel, planPrice } from '../lib/subscriptions'
+import { usePlatformMethods } from '../features/payments/PayForm'
+import PaymentIcon, { METHOD_META } from '../components/payments/PaymentIcon'
 import { qrDataUrl } from '../lib/qr'
 import { studentVerifyUrl } from '../features/student-verification/studentVerificationApi'
 import { apiErrorMessage } from '../lib/apiError'
@@ -427,6 +429,7 @@ function Welcome({ done, pass, qr, email, onGo }) {
   const paid = course && priceOf(course) > 0
   const [copied, setCopied] = useState('')
   const copy = (text, key) => navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1500) })
+  const platform = usePlatformMethods()
   const hasPayment = teacher?.instapayNumber || teacher?.vodafoneCashNumber
   return (
     <div className="mt-7 space-y-5 text-center">
@@ -438,7 +441,17 @@ function Welcome({ done, pass, qr, email, onGo }) {
       {paid && (
         <div className="rounded-3xl border border-amber-200 bg-amber-50/60 p-4 text-right">
           <p className="text-sm font-extrabold text-amber-900">فاضل الدفع: {plan ? planPrice(plan) : 'تواصل مع المدرس للسعر'}</p>
-          {hasPayment ? (
+          {platform?.length > 0 ? (
+            <div className="mt-3 space-y-2">
+              {platform.map((m) => (
+                <button key={m.code} type="button" onClick={() => copy(m.account, m.code)} className="flex w-full items-center justify-between gap-3 rounded-2xl bg-white p-2.5 text-right">
+                  <span className="flex items-center gap-2 text-sm font-bold text-ink-700"><PaymentIcon code={m.code} size={28} /> {METHOD_META[m.code]?.label || m.name}</span>
+                  <span dir="ltr" className="flex items-center gap-2 font-mono text-sm">{m.account} <Copy size={13} />{copied === m.code && <span className="text-[11px]">تم النسخ</span>}</span>
+                </button>
+              ))}
+              <p className="text-xs leading-6 text-amber-800">بعد التحويل ادخل «كورساتي» ودوس «ادفع دلوقتي» وابعت رقم العملية وصورة الإيصال — الإدارة بتأكّد واشتراكك يبدأ على طول.</p>
+            </div>
+          ) : hasPayment ? (
             <div className="mt-3 space-y-2">
               {teacher.instapayNumber && (
                 <button type="button" onClick={() => copy(teacher.instapayNumber, 'ip')} className="flex w-full items-center justify-between gap-3 rounded-2xl bg-white p-3 text-right">

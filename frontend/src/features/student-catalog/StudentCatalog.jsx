@@ -7,6 +7,8 @@ import { useAuth } from '../../lib/auth'
 import { fmtMoney, SCHOOL_YEARS } from '../../lib/format'
 import { distinctYears, forYear } from '../../lib/schoolYears'
 import { fmtDay, monthsLabel, planLabel, planPrice } from '../../lib/subscriptions'
+import PayForm, { usePlatformMethods } from '../payments/PayForm'
+import PaymentIcon, { METHOD_META } from '../../components/payments/PaymentIcon'
 import { courseHref } from '../../lib/courseNavigation'
 import { apiErrorMessage } from '../../lib/apiError'
 import { Modal, PageLoader, Spinner, EmptyState, stagger, fadeUp } from '../../components/ui'
@@ -31,7 +33,10 @@ export default function StudentCatalog({ compact = false }) {
   const [payFor, setPayFor] = useState(null)
   const [codeFor, setCodeFor] = useState(null)
   const [pickYear, setPickYear] = useState(false)
+  const [notice, setNotice] = useState('')
   const opened = useRef(false)
+  // How to pay: through the platform once head office set it up, otherwise the teacher's own numbers.
+  const platform = usePlatformMethods()
 
   const load = () => api.get('/me/catalog').then((r) => { setData(r.data); return r.data }).catch((e) => setError(apiErrorMessage(e, 'تعذّر تحميل كورساتك')))
   useEffect(() => { load() }, [])
@@ -122,6 +127,8 @@ export default function StudentCatalog({ compact = false }) {
         )}
       </motion.div>
 
+      {notice && <motion.p variants={fadeUp} className="rounded-2xl bg-emerald-50 p-4 text-sm font-bold leading-7 text-emerald-800">{notice}</motion.p>}
+
       {(data.plans || []).length > 0 && (
         <motion.div variants={fadeUp} className="grid gap-3 md:grid-cols-2">
           {data.plans.map((p) => <PlanCard key={p.id} p={p} busy={busyId === `plan-${p.id}`}
@@ -136,7 +143,9 @@ export default function StudentCatalog({ compact = false }) {
       )}
 
       {waiting.length > 0 && (
-        <Section title="مستني الدفع" hint="حوّل للمدرس، وبعدها اكتب الكود اللي هيبعتهولك — أو المدرس يفعّله من عنده." tone="amber">
+        <Section title="مستني الدفع" tone="amber" hint={platform?.length
+          ? 'ادفع من «ادفع دلوقتي» وابعت بيانات التحويل — الإدارة بتأكّد والاشتراك يبدأ على طول.'
+          : 'حوّل للمدرس، وبعدها اكتب الكود اللي هيبعتهولك — أو المدرس يفعّله من عنده.'}>
           {waiting.map((c) => (
             <CourseCard key={c.id} c={c} plan={planOf(c)} focused={focus === c.id} badge={<Chip tone="amber"><Clock3 size={12} /> مستني الدفع</Chip>}>
               <button type="button" onClick={() => setPayFor({ course: c, plan: planOf(c) })} className="btn-primary w-full justify-center"><Wallet size={16} /> إزاي أدفع؟</button>
@@ -197,7 +206,9 @@ export default function StudentCatalog({ compact = false }) {
         </Section>
       )}
 
-      {payFor && <PayModal course={payFor.course} plan={payFor.plan} payment={data.payment} teacher={data.teacher} onClose={() => {
+      {payFor && <PayModal course={payFor.course} plan={payFor.plan} payment={data.payment} teacher={data.teacher} platform={platform}
+        onSent={async () => { setPayFor(null); setNotice('بعتنا الدفع للإدارة تراجعه. أول ما يتأكد اشتراكك هيبدأ على طول ويوصلك إشعار.'); await load() }}
+        onClose={() => {
         setPayFor(null)
         if (focus) { params.delete('focus'); setParams(params, { replace: true }) }
       }} onHaveCode={() => { setCodeFor(payFor.course || { title: planLabel(payFor.plan) }); setPayFor(null) }} />}
@@ -234,10 +245,20 @@ function PlanCard({ p, busy, onSubscribe, onPay, onCode }) {
           <p className="mt-1 text-xs text-ink-500">{planPrice(p)}</p>
         </div>
       </div>
+      {waiting && p.paymentStatus === 'SUBMITTED' && (
+        <p className="mt-3 flex items-center gap-2 rounded-xl bg-white/70 p-2.5 text-xs font-bold text-amber-800">
+          <PaymentIcon code={p.paymentMethod} size={22} /> بعتّ الدفع بـ{METHOD_META[p.paymentMethod]?.label || ''} — الإدارة بتراجعه
+        </p>
+      )}
+      {waiting && p.paymentStatus === 'REJECTED' && (
+        <p className="mt-3 rounded-xl bg-rose-50 p-2.5 text-xs font-bold leading-6 text-rose-700">الدفع ما اتأكدش: {p.paymentNote} — ابعته تاني.</p>
+      )}
       <div className="mt-3 flex flex-wrap gap-2">
         {waiting ? (
           <>
-            <button type="button" onClick={onPay} className="btn-primary flex-1 justify-center"><Wallet size={15} /> {p.renewalPending ? 'ادفع التجديد' : 'إزاي أدفع؟'}</button>
+            <button type="button" onClick={onPay} className={`${p.paymentStatus === 'SUBMITTED' ? 'btn-soft' : 'btn-primary'} flex-1 justify-center`}>
+              <Wallet size={15} /> {p.paymentStatus === 'SUBMITTED' ? 'عدّل بيانات الدفع' : p.paymentStatus === 'REJECTED' ? 'ابعت الدفع تاني' : p.renewalPending ? 'ادفع التجديد' : 'ادفع دلوقتي'}
+            </button>
             <button type="button" onClick={onCode} className="btn-ghost"><KeyRound size={14} /> معايا الكود</button>
           </>
         ) : p.active !== false && (
@@ -300,7 +321,9 @@ function CourseCard({ c, plan, owned, badge, focused, children }) {
   )
 }
 
-function PayModal({ course, plan, payment, teacher, onClose, onHaveCode }) {
+function PayModal({ course, plan, payment, teacher, platform, onSent, onClose, onHaveCode }) {
+  const viaPlatform = platform?.length > 0 && plan?.pendingId
+  const amount = plan ? (plan.finalPrice != null ? fmtMoney(plan.finalPrice) : 'المبلغ') : fmtMoney(priceOf(course))
   const [copied, setCopied] = useState('')
   const copy = (text, key) => navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1500) })
   return (
@@ -311,6 +334,13 @@ function PayModal({ course, plan, payment, teacher, onClose, onHaveCode }) {
           <p className="mt-1 text-2xl font-black text-brand-700">{plan ? (plan.finalPrice != null ? fmtMoney(plan.finalPrice) : 'السعر عند المدرس') : fmtMoney(priceOf(course))}</p>
           {plan && <p className="mt-1 text-xs leading-6 text-ink-600">لمدة {monthsLabel(plan.months)} — بيفتحلك كل كورسات السنة{course ? `، ومنها «${course.title}»` : ''}، واللي المدرس هينزّله بعدين كمان.</p>}
         </div>
+        {viaPlatform ? (
+          <>
+            {plan.paymentStatus === 'REJECTED' && <p className="rounded-2xl bg-rose-50 p-3 text-xs font-bold leading-6 text-rose-700">الدفع اللي فات ما اتأكدش: {plan.paymentNote}</p>}
+            <PayForm methods={platform} subscriptionId={plan.pendingId} amountText={amount} onSent={onSent} />
+            <button type="button" onClick={onHaveCode} className="btn-ghost w-full justify-center text-xs"><KeyRound size={14} /> معايا كود اشتراك</button>
+          </>
+        ) : <>
         {payment ? (
           <div className="space-y-2">
             <p className="text-sm font-bold text-ink-700">حوّل المبلغ على:</p>
@@ -342,6 +372,7 @@ function PayModal({ course, plan, payment, teacher, onClose, onHaveCode }) {
           <button type="button" onClick={onHaveCode} className="btn-primary flex-1 justify-center"><KeyRound size={16} /> معايا الكود</button>
           <button type="button" onClick={onClose} className="btn-ghost">بعدين</button>
         </div>
+        </>}
       </div>
     </Modal>
   )
