@@ -47,11 +47,14 @@ public class StudentCatalogService {
     private final com.manarah.subscription.PlanService planService;
     private final com.manarah.subscription.SubscriptionPlanRepository plans;
     private final com.manarah.subscription.PlanSubscriptionRepository planSubs;
+    private final com.manarah.billing.PaymentSubmissionRepository payments;
 
     public StudentCatalogService(CourseRepository courses, EnrollmentRepository enrollments, StudentRepository students,
                                  TeacherAcademyRepository academies, LinkedStudentAccounts linked, CourseRequests requests,
                                  com.manarah.subscription.PlanAccess planAccess, com.manarah.subscription.PlanService planService,
-                                 com.manarah.subscription.SubscriptionPlanRepository plans, com.manarah.subscription.PlanSubscriptionRepository planSubs) {
+                                 com.manarah.subscription.SubscriptionPlanRepository plans, com.manarah.subscription.PlanSubscriptionRepository planSubs,
+                                 com.manarah.billing.PaymentSubmissionRepository payments) {
+        this.payments = payments;
         this.courses = courses; this.enrollments = enrollments; this.students = students;
         this.academies = academies; this.linked = linked; this.requests = requests;
         this.planAccess = planAccess; this.planService = planService; this.plans = plans; this.planSubs = planSubs;
@@ -65,7 +68,8 @@ public class StudentCatalogService {
     /** A plan the student has with this teacher, or the one for their year: price, months, and their own dates. */
     public record PlanInfo(Long id, String year, String subject, BigDecimal price, BigDecimal finalPrice, int discountPercent,
                            int months, boolean active, String status, Instant startsAt, Instant endsAt,
-                           long daysLeft, boolean renewalPending) {}
+                           long daysLeft, boolean renewalPending, Long pendingId, String paymentStatus, String paymentMethod,
+                           String paymentNote) {}
     public record Catalog(String grade, List<String> years, Teacher teacher, Payment payment, List<PlanInfo> plans,
                           List<CatalogCourse> courses) {}
 
@@ -121,9 +125,15 @@ public class StudentCatalogService {
         list.stream().filter(c -> c.forYear() && c.planId() != null).forEach(c -> planIds.add(c.planId()));
         var academyRow = academy.orElse(null);
         List<PlanInfo> planInfos = planIds.stream().map(id -> plans.findById(id).orElse(null)).filter(Objects::nonNull).map(p -> {
-            var s = planService.summary(p, myPlans.getOrDefault(p.getId(), List.of()), now, academyRow, me, true);
+            var periods = myPlans.getOrDefault(p.getId(), List.of());
+            var s = planService.summary(p, periods, now, academyRow, me, true);
+            // The request waiting for payment, and what happened to the payment sent for it.
+            Long pendingId = periods.stream().filter(x -> com.manarah.subscription.PlanSubscription.PENDING.equals(x.getStatus()))
+                    .map(com.manarah.subscription.PlanSubscription::getId).findFirst().orElse(null);
+            var paid = pendingId == null ? null : payments.findFirstByPlanSubscriptionIdOrderByIdDesc(pendingId).orElse(null);
             return new PlanInfo(p.getId(), p.getYearLabel(), p.getSubject(), p.getPrice(), p.finalPrice(), p.getDiscountPercent(),
-                    p.getMonths(), p.isActive(), s.status(), s.startsAt(), s.endsAt(), s.daysLeft(), s.renewalPending());
+                    p.getMonths(), p.isActive(), s.status(), s.startsAt(), s.endsAt(), s.daysLeft(), s.renewalPending(), pendingId,
+                    paid == null ? null : paid.getStatus(), paid == null ? null : paid.getMethodCode(), paid == null ? "" : paid.getNote());
         }).toList();
         return new Catalog(Objects.toString(me.getGrade(), ""), new ArrayList<>(years.values()), teacher, payment, planInfos, list);
     }

@@ -46,11 +46,13 @@ public class PlanService {
     private final UserRepository users;
     private final LinkedStudentAccounts linked;
     private final com.manarah.audit.AuditService audit;
+    private final com.manarah.billing.PaymentSubmissionRepository payments;
 
     public PlanService(SubscriptionPlanRepository plans, PlanSubscriptionRepository subs, PlanAccessCodeRepository codes,
                        PlanAccess access, TeacherAcademyRepository academies, TeacherScope teacherScope, CourseRepository courses,
                        StudentRepository students, UserRepository users, LinkedStudentAccounts linked,
-                       com.manarah.audit.AuditService audit) {
+                       com.manarah.audit.AuditService audit, com.manarah.billing.PaymentSubmissionRepository payments) {
+        this.payments = payments;
         this.plans = plans; this.subs = subs; this.codes = codes; this.access = access; this.academies = academies;
         this.teacherScope = teacherScope; this.courses = courses; this.students = students; this.users = users;
         this.linked = linked; this.audit = audit;
@@ -131,7 +133,8 @@ public class PlanService {
     // ---- Teacher: requests and subscribers -----------------------------------------------------------------------
 
     public record RequestRow(Long id, Long planId, String plan, BigDecimal price, int months, Long studentId, String studentName,
-                             String email, String phone, String grade, Instant requestedAt, boolean renewal) {}
+                             String email, String phone, String grade, Instant requestedAt, boolean renewal,
+                             String paymentStatus, String paymentMethod) {}
     public record SubscriberRow(Long subscriptionId, Long studentId, String studentName, String email, String phone,
                                 String status, Instant startsAt, Instant endsAt, long daysLeft) {}
 
@@ -144,9 +147,11 @@ public class PlanService {
                     Student st = students.findById(s.getStudentId()).orElse(null);
                     boolean renewal = subs.findByPlanIdAndStudentIdOrderByIdDesc(p.getId(), s.getStudentId()).stream()
                             .anyMatch(x -> !PENDING.equals(x.getStatus()));
+                    var paid = payments.findFirstByPlanSubscriptionIdOrderByIdDesc(s.getId()).orElse(null);
                     return new RequestRow(s.getId(), p.getId(), PlanAccess.label(p), p.finalPrice(), p.getMonths(), s.getStudentId(),
                             st == null ? "طالب" : st.getFullName(), email(st), st == null ? "" : Objects.toString(st.getPhone(), ""),
-                            st == null ? "" : Objects.toString(st.getGrade(), ""), s.getRequestedAt(), renewal);
+                            st == null ? "" : Objects.toString(st.getGrade(), ""), s.getRequestedAt(), renewal,
+                            paid == null ? null : paid.getStatus(), paid == null ? null : paid.getMethodCode());
                 }).toList();
     }
 
