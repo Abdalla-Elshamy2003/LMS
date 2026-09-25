@@ -3,8 +3,7 @@ package com.manarah.academy;
 import com.manarah.common.exception.ApiExceptions.*;
 import com.manarah.course.domain.Course;
 import com.manarah.course.repo.CourseRepository;
-import com.manarah.enrollment.domain.Enrollment;
-import com.manarah.enrollment.repo.EnrollmentRepository;
+import com.manarah.enrollment.CourseRequests;
 import com.manarah.identity.domain.Role;
 import com.manarah.identity.domain.User;
 import com.manarah.identity.repo.UserRepository;
@@ -22,7 +21,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.*;
 
 /**
@@ -41,7 +39,7 @@ public class LinkedStudentAccounts {
     private final TeacherAcademyRepository academies;
     private final BranchRepository branches;
     private final CourseRepository courses;
-    private final EnrollmentRepository enrollments;
+    private final CourseRequests requests;
     private final GuardianRepository guardians;
     private final StudentGuardianRepository guardianLinks;
     private final JwtService jwt;
@@ -49,11 +47,11 @@ public class LinkedStudentAccounts {
     private final com.manarah.audit.AuditService audit;
 
     public LinkedStudentAccounts(UserRepository users, StudentRepository students, TeacherAcademyRepository academies,
-                                 BranchRepository branches, CourseRepository courses, EnrollmentRepository enrollments,
+                                 BranchRepository branches, CourseRepository courses, CourseRequests requests,
                                  GuardianRepository guardians, StudentGuardianRepository guardianLinks, JwtService jwt,
                                  PasswordEncoder passwords, com.manarah.audit.AuditService audit) {
         this.users = users; this.students = students; this.academies = academies; this.branches = branches;
-        this.courses = courses; this.enrollments = enrollments; this.guardians = guardians; this.guardianLinks = guardianLinks;
+        this.courses = courses; this.requests = requests; this.guardians = guardians; this.guardianLinks = guardianLinks;
         this.jwt = jwt; this.passwords = passwords; this.audit = audit;
     }
 
@@ -164,7 +162,7 @@ public class LinkedStudentAccounts {
     /**
      * The student joins a teacher from that teacher's page. A published page only — an unpublished one is still
      * invite-only. Idempotent: joining a teacher they already have just switches to them. A course picked on the
-     * way in is handled exactly as at registration: a free one opens, a paid one waits for the teacher's code.
+     * way in is asked for either way (see {@link CourseRequests}): a free one opens, a paid one waits for payment.
      */
     @Transactional
     public Session join(UserPrincipal actor, String slug, Long courseId) {
@@ -173,17 +171,20 @@ public class LinkedStudentAccounts {
                 .orElseThrow(() -> new NotFoundException("صفحة المدرس غير متاحة"));
         User me = users.findById(actor.getId()).orElseThrow(() -> new UnauthorizedException("الجلسة غير صالحة"));
         User owner = owner(me);
-        var existing = rowIn(owner, academy.getTenantId());
-        if (existing.isPresent()) {
-            if (!usable(existing.get())) throw new ForbiddenException("المدرس ده وقّف حسابك عنده. تواصل معاه.");
-            return new Session(existing.get(), tokenFor(existing.get()));
-        }
         Course course = courseId == null ? null : courses.findByTenantIdAndId(academy.getTenantId(), courseId)
                 .filter(c -> "ACTIVE".equals(c.getStatus()))
                 .orElseThrow(() -> new BadRequestException("الكورس ده مش متاح عند المدرس"));
+        var existing = rowIn(owner, academy.getTenantId());
+        if (existing.isPresent()) {
+            if (!usable(existing.get())) throw new ForbiddenException("المدرس ده وقّف حسابك عنده. تواصل معاه.");
+            // Already studying with this teacher: the course they clicked is still what they came for.
+            if (course != null) requests.request(academy.getTenantId(),
+                    students.findByTenantIdAndUserId(academy.getTenantId(), existing.get().getId()).orElseThrow().getId(), course);
+            return new Session(existing.get(), tokenFor(existing.get()));
+        }
         var from = profileOf(owner);
         Student joined = createRow(owner, academy.getTenantId(), from.getFullName(), from.getPhone(), from.getGrade(), from.getEducationType());
-        if (course != null) enroll(academy.getTenantId(), joined.getId(), course.getId(), isFree(course) ? "ACTIVE" : "TRIAL");
+        if (course != null) requests.request(academy.getTenantId(), joined.getId(), course);
         User row = users.findById(joined.getUserId()).orElseThrow();
         return new Session(row, tokenFor(row));
     }
@@ -270,16 +271,5 @@ public class LinkedStudentAccounts {
                 });
             }
         });
-    }
-
-    private void enroll(Long tenantId, Long studentId, Long courseId, String status) {
-        Enrollment e = new Enrollment();
-        e.setTenantId(tenantId); e.setStudentId(studentId); e.setCourseId(courseId); e.setStatus(status);
-        enrollments.save(e);
-    }
-
-    private static boolean isFree(Course c) {
-        BigDecimal price = c.getFinalPrice() != null ? c.getFinalPrice() : c.getPrice();
-        return price == null || price.signum() <= 0;
     }
 }

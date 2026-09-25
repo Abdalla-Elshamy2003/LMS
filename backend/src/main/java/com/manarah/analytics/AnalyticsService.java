@@ -91,13 +91,13 @@ public class AnalyticsService {
         Long tenantId = TenantContext.require();
         var myCourses = courses.findByTenantIdAndTeacherId(tenantId, teacherId);
         long studentCount = myCourses.stream()
-                .mapToLong(c -> enrollments.countByTenantIdAndCourseId(tenantId, c.getId())).sum();
+                .mapToLong(c -> enrollments.countStudying(tenantId, c.getId())).sum();
         return Map.of(
                 "courses", myCourses.size(),
                 "students", studentCount,
                 "myCourses", myCourses.stream().map(c -> Map.of(
                         "id", c.getId(), "title", c.getTitle(),
-                        "students", enrollments.countByTenantIdAndCourseId(tenantId, c.getId()))).toList());
+                        "students", enrollments.countStudying(tenantId, c.getId()))).toList());
     }
 
     public Map<String, Object> studentDashboard(Long studentId) {

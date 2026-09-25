@@ -30,14 +30,17 @@ public class CourseService {
     private final LessonCheckpointRepository checkpoints;
     private final LessonCheckpointAnswerRepository checkpointAnswers;
     private final com.manarah.academy.TeacherScope teacherScope;
+    private final org.springframework.context.ApplicationEventPublisher events;
 
     public CourseService(CourseRepository courses, CourseModuleRepository modules, LessonRepository lessons,
                          LessonMaterialRepository materials, EnrollmentRepository enrollments, UserRepository users,
                          com.manarah.academy.TeacherAcademyRepository academies, LessonProgressRepository progress,
                          VideoWatchSessionRepository watchSessions, LessonCheckpointRepository checkpoints,
                          LessonCheckpointAnswerRepository checkpointAnswers,
-                         com.manarah.academy.TeacherScope teacherScope) {
+                         com.manarah.academy.TeacherScope teacherScope,
+                         org.springframework.context.ApplicationEventPublisher events) {
         this.teacherScope = teacherScope;
+        this.events = events;
         this.progress = progress;
         this.watchSessions = watchSessions;
         this.checkpoints = checkpoints;
@@ -118,6 +121,7 @@ public class CourseService {
         c.setSchedule(req.schedule());
         c.setGrade(req.grade());
         courses.save(c);
+        if ("ACTIVE".equals(c.getStatus())) events.publishEvent(new com.manarah.common.events.DomainEvents.CourseOffered(tenantId, c.getId()));
         return get(c.getId(), true);
     }
 
@@ -148,6 +152,10 @@ public class CourseService {
         l.setContentText(req.contentText());
         l.setReleaseAt(req.releaseAt());
         lessons.save(l);
+        // A scheduled lesson isn't news yet: students only hear about lessons they can open now.
+        if (l.getReleaseAt() == null || !l.getReleaseAt().isAfter(Instant.now()))
+            modules.findById(moduleId).ifPresent(m -> events.publishEvent(
+                    new com.manarah.common.events.DomainEvents.LessonAdded(tenantId, m.getCourseId(), l.getId())));
         return new LessonView(l.getId(), l.getTitle(), l.getPosition(), l.getDurationMin(), l.getContentText(),
                 List.of(), l.getCreatedAt(), l.getReleaseAt(), l.getAiSummary());
     }
@@ -248,7 +256,7 @@ public class CourseService {
     private CourseSummary toSummary(Long tenantId, Course c) {
         String teacherName = c.getTeacherId() == null ? null
                 : users.findById(c.getTeacherId()).map(u -> u.getFullName()).orElse(null);
-        long count = enrollments.countByTenantIdAndCourseId(tenantId, c.getId());
+        long count = enrollments.countStudying(tenantId, c.getId());
         return new CourseSummary(c.getId(), c.getTitle(), c.getSubject(), c.getGradeLevel(), c.getStatus(),
                 c.getPrice(), c.getTeacherId(), teacherName, count, c.getCoverUrl(), c.getSchedule(), c.getGrade(),
                 c.getDiscountPercent(), c.getFinalPrice(), academies.findByTenantId(tenantId).map(a -> a.getId()).orElse(null));

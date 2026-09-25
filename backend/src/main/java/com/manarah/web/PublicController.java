@@ -70,7 +70,7 @@ public class PublicController {
             item.put("schedule", nn(c.getSchedule(), "")); item.put("price", c.getPrice());
             item.put("discountPercent", c.getDiscountPercent()); item.put("finalPrice", c.getFinalPrice());
             item.put("coverUrl", nn(c.getCoverUrl(), ""));
-            item.put("students", enrollments.countByTenantIdAndCourseId(teacher.getTenantId(), c.getId()));
+            item.put("students", enrollments.countStudying(teacher.getTenantId(), c.getId()));
             item.put("description", nn(c.getDescription(), ""));
             return item;
         }).toList();
@@ -100,7 +100,7 @@ public class PublicController {
         result.put("description", nn(c.getDescription(), "")); result.put("gradeLevel", nn(c.getGradeLevel(), "")); result.put("grade", nn(c.getGrade(), ""));
         result.put("price", c.getPrice()); result.put("discountPercent", c.getDiscountPercent()); result.put("finalPrice", c.getFinalPrice());
         result.put("coverUrl", nn(c.getCoverUrl(), "")); result.put("schedule", nn(c.getSchedule(), ""));
-        result.put("studentCount", enrollments.countByTenantIdAndCourseId(c.getTenantId(), c.getId())); result.put("curriculum", curriculum);
+        result.put("studentCount", enrollments.countStudying(c.getTenantId(), c.getId())); result.put("curriculum", curriculum);
         result.put("teacher", teacher == null ? null : Map.of("id", teacher.getId(), "name", teacher.getFullName(), "title", nn(teacher.getTitle(), "مدرس"), "photoUrl", nn(teacher.getPhotoUrl(), ""), "subjects", nn(teacher.getSubjects(), "")));
         // Checkout needs to know which tenant the course lives in, since a teacher page is its own tenant.
         result.put("tenantSlug", tenants.findById(c.getTenantId()).map(t -> t.getSlug()).orElse(null));

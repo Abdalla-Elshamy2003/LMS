@@ -55,6 +55,27 @@ public class EnrollmentController {
         return service.selfEnroll(studentId, req.courseId());
     }
 
+    /** Courses students picked and haven't paid for yet, on the courses this person teaches or manages. */
+    @GetMapping("/pending")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT')")
+    public List<EnrollmentService.PendingRequest> pending(@AuthenticationPrincipal UserPrincipal actor) {
+        return service.pending(actor);
+    }
+
+    @PostMapping("/{id}/activate")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT')")
+    public Map<String, Object> activate(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id) {
+        service.activate(actor, id);
+        return Map.of("id", id, "status", "ACTIVE");
+    }
+
+    @DeleteMapping("/{id}/request")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT')")
+    public Map<String, Object> reject(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id) {
+        service.reject(actor, id);
+        return Map.of("id", id, "status", "REJECTED");
+    }
+
     @GetMapping("/course/{courseId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT')")
     public List<Map<String, Object>> byCourse(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long courseId) {

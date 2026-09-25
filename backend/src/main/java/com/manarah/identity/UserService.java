@@ -113,11 +113,11 @@ public class UserService {
         List<Long> tenantIds = academies.visibleTenantIds(TenantContext.require());
         return users.findByTenantIdInAndRole(tenantIds, Role.TEACHER).stream().map(u -> {
             var taught = courses.findByTenantIdAndTeacherId(u.getTenantId(), u.getId());
-            long total = taught.stream().mapToLong(c -> enrollments.countByTenantIdAndCourseId(c.getTenantId(), c.getId())).sum();
+            long total = taught.stream().mapToLong(c -> enrollments.countStudying(c.getTenantId(), c.getId())).sum();
             var courseList = taught.stream().map(c -> Map.<String, Object>of(
                     "id", c.getId(), "title", c.getTitle(), "subject", c.getSubject() == null ? "" : c.getSubject(),
                     "schedule", c.getSchedule() == null ? "" : c.getSchedule(),
-                    "students", enrollments.countByTenantIdAndCourseId(c.getTenantId(), c.getId()))).toList();
+                    "students", enrollments.countStudying(c.getTenantId(), c.getId()))).toList();
             var academy = academies.findByTenantId(u.getTenantId()).orElse(null);
             return new TeacherDetail(u.getId(), u.getFullName(), u.getEmail(), u.getPhone(), u.getPhotoUrl(),
                     u.getSubjects(), u.getBio(), u.getSchedule(), u.getTitle(), total, courseList,

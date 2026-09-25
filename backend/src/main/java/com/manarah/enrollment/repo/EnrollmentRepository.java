@@ -12,5 +12,13 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     Optional<Enrollment> findByTenantIdAndStudentIdAndCourseId(Long tenantId, Long studentId, Long courseId);
     boolean existsByTenantIdAndStudentIdAndCourseId(Long tenantId, Long studentId, Long courseId);
     long countByTenantIdAndCourseId(Long tenantId, Long courseId);
+    long countByTenantIdAndCourseIdAndStatusIn(Long tenantId, Long courseId, java.util.Collection<String> statuses);
+
+    /** Students actually studying a course — not the ones still waiting to pay for it. */
+    java.util.Set<String> STUDYING = java.util.Set.of("ACTIVE", "COMPLETED");
+
+    default long countStudying(Long tenantId, Long courseId) {
+        return countByTenantIdAndCourseIdAndStatusIn(tenantId, courseId, STUDYING);
+    }
     long countByTenantId(Long tenantId);
 }

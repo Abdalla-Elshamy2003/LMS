@@ -19,6 +19,14 @@ public final class DomainEvents {
         Long studentId();
     }
 
+    /** A course was just published: the students of its school year hear about it. */
+    public record CourseOffered(Long tenantId, Long courseId) {
+    }
+
+    /** A lesson that is already open was just added to a course: the students studying it hear about it. */
+    public record LessonAdded(Long tenantId, Long courseId, Long lessonId) {
+    }
+
     /** A student account was just created through self-registration, checkout or code redemption. */
     public record StudentRegistered(Long tenantId, Long studentId) {
     }

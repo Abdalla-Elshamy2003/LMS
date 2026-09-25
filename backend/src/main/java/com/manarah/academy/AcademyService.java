@@ -221,7 +221,13 @@ public class AcademyService {
     }
     private void replaceAccess(TeacherAcademy a, Long studentId, Set<Long> ids) {
         var current = enrollments.findByTenantIdAndStudentId(a.getTenantId(), studentId);
-        for (var e : current) { e.setStatus(ids.remove(e.getCourseId()) ? "ACTIVE" : "INACTIVE"); enrollments.save(e); }
+        // Ticking a course the student is waiting to pay for opens it; leaving it unticked leaves the request waiting
+        // rather than cancelling it — the editor only shows the courses the student already has open.
+        for (var e : current) {
+            if (ids.remove(e.getCourseId())) e.setStatus("ACTIVE");
+            else if (!com.manarah.enrollment.CourseRequests.WAITING.equals(e.getStatus())) e.setStatus("INACTIVE");
+            enrollments.save(e);
+        }
         for (Long courseId : ids) { var e = new Enrollment(); e.setTenantId(a.getTenantId()); e.setStudentId(studentId); e.setCourseId(courseId); enrollments.save(e); }
     }
     @Transactional

@@ -5,8 +5,6 @@ import com.manarah.common.exception.ApiExceptions.ConflictException;
 import com.manarah.common.exception.ApiExceptions.NotFoundException;
 import com.manarah.course.domain.Course;
 import com.manarah.course.repo.CourseRepository;
-import com.manarah.enrollment.domain.Enrollment;
-import com.manarah.enrollment.repo.EnrollmentRepository;
 import com.manarah.identity.domain.Role;
 import com.manarah.identity.domain.User;
 import com.manarah.identity.repo.UserRepository;
@@ -57,7 +55,6 @@ public class RegistrationService {
     private final StudentRepository students;
     private final GuardianRepository guardians;
     private final StudentGuardianRepository links;
-    private final EnrollmentRepository enrollments;
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
     private final com.manarah.payment.CourseAccessCodeService accessCodes;
@@ -68,17 +65,20 @@ public class RegistrationService {
     private final com.manarah.academy.LinkedStudentAccounts linked;
     private final com.manarah.security.auth.LoginAttemptLimiter loginAttempts;
     private final com.manarah.academy.BundleSubscriptionService packages;
+    private final com.manarah.enrollment.CourseRequests requests;
 
     public RegistrationService(TenantRepository tenants, BranchRepository branches, CourseRepository courses,
                                StudentRepository students, GuardianRepository guardians,
-                               StudentGuardianRepository links, EnrollmentRepository enrollments,
+                               StudentGuardianRepository links,
                                UserRepository users, PasswordEncoder passwordEncoder, JwtService jwtService,
                                CourseCheckoutService checkout, com.manarah.academy.AcademyAccess academyAccess,
                                com.manarah.payment.CourseAccessCodeService accessCodes, ApplicationEventPublisher events,
                                com.manarah.academy.LinkedStudentAccounts linked,
                                com.manarah.security.auth.LoginAttemptLimiter loginAttempts,
-                               com.manarah.academy.BundleSubscriptionService packages) {
+                               com.manarah.academy.BundleSubscriptionService packages,
+                               com.manarah.enrollment.CourseRequests requests) {
         this.packages = packages;
+        this.requests = requests;
         this.events = events;
         this.linked = linked;
         this.loginAttempts = loginAttempts;
@@ -90,7 +90,6 @@ public class RegistrationService {
         this.students = students;
         this.guardians = guardians;
         this.links = links;
-        this.enrollments = enrollments;
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -126,24 +125,25 @@ public class RegistrationService {
                                  boolean liveGateway, String courseTitle, String message) {
     }
 
+    /**
+     * Signing up with a teacher, usually from a course on their page. The course's year becomes the student's year
+     * when they didn't pick one, so "تانية ثانوي" on the course is "تانية ثانوي" on the account; the course itself is
+     * asked for right away (free: open; paid: on the dashboard waiting for payment — see CourseRequests).
+     */
     @Transactional
     public RegistrationResult register(RegisterCommand cmd) {
+        // Every student belongs to a teacher; without one the account would land in head office with nothing to study.
+        if (cmd.tenantSlug() == null || cmd.tenantSlug().isBlank()) throw new BadRequestException("اختار المدرس اللي عايز تسجّل معاه");
         Tenant t = resolveTenant(cmd.tenantSlug());
         Long tenantId = t.getId();
         Course course = cmd.courseId() == null ? null : requireCourse(tenantId, cmd.courseId());
+        String grade = (cmd.grade() == null || cmd.grade().isBlank()) && course != null && course.getGrade() != null
+                && !course.getGrade().isBlank() ? course.getGrade().trim() : cmd.grade();
 
         Account acc = createAccount(tenantId, cmd.fullName(), cmd.email(), cmd.password(), cmd.phone(),
-                cmd.grade(), cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone());
+                grade, cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone());
 
-        if (course != null) {
-            Enrollment e = new Enrollment();
-            e.setTenantId(tenantId);
-            e.setStudentId(acc.student.getId());
-            e.setCourseId(course.getId());
-            // A free course opens immediately; a paid one stays a trial until checkout completes.
-            e.setStatus(isFree(course) ? "ACTIVE" : "TRIAL");
-            enrollments.save(e);
-        }
+        if (course != null) requests.request(tenantId, acc.student.getId(), course);
 
         String token = linked.tokenFor(acc.user);
         return new RegistrationResult(token, "Bearer", jwtService.getAccessTokenTtlMinutes(),
@@ -336,8 +336,8 @@ public class RegistrationService {
     }
 
     private Course requireCourse(Long tenantId, Long courseId) {
-        return courses.findByTenantIdAndId(tenantId, courseId)
-                .orElseThrow(() -> new BadRequestException("الكورس المحدد غير متاح لهذه المؤسسة"));
+        return courses.findByTenantIdAndId(tenantId, courseId).filter(c -> "ACTIVE".equals(c.getStatus()))
+                .orElseThrow(() -> new BadRequestException("الكورس ده مش متاح عند المدرس دلوقتي. اختار كورس تاني."));
     }
 
     private Tenant resolveTenant(String slug) {
@@ -349,10 +349,5 @@ public class RegistrationService {
 
     private static String nn(String v, String fallback) {
         return (v == null || v.isBlank()) ? fallback : v;
-    }
-
-    private static boolean isFree(Course c) {
-        BigDecimal price = c.getFinalPrice() != null ? c.getFinalPrice() : c.getPrice();
-        return price == null || price.signum() <= 0;
     }
 }
