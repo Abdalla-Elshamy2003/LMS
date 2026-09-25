@@ -38,6 +38,10 @@ public class LessonMaterial extends BaseEntity {
     @Column(name = "duration_sec")
     private Integer durationSec;
 
+    /** A video uploaded straight to object storage ({@code com.manarah.video.VideoAsset}); played through it, not {@link #fileKey}. */
+    @Column(name = "video_asset_id")
+    private Long videoAssetId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 }

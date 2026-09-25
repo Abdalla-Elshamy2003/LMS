@@ -16,7 +16,7 @@ class VideoPlaybackPolicyTest {
         var actor=new UserPrincipal(5L,1L,null,"Student","student@example.com",Role.STUDENT);
         var material=new LessonMaterial(); material.setId(3L); material.setTenantId(1L); material.setLessonId(2L); material.setType("VIDEO"); material.setFileKey("t1/materials/test.mp4");
         when(repo.findById(3L)).thenReturn(Optional.of(material)); when(learning.lessonCourse(actor,2L)).thenReturn(1L);
-        var controller=new VideoPlaybackController(repo,learning,mock(FileStorage.class),mock(JwtService.class),mock(VideoWatchService.class),"",true,true);
+        var controller=new VideoPlaybackController(repo,learning,mock(FileStorage.class),mock(JwtService.class),mock(VideoWatchService.class),mock(com.manarah.video.VideoAssetRepository.class),mock(com.manarah.video.VideoStore.class),"",true,true);
         var request=new org.springframework.mock.web.MockHttpServletRequest();
         assertThatThrownBy(()->controller.session(actor,3L,request)).isInstanceOf(ForbiddenException.class);
         material.setFileKey(null); material.setUrl("https://example.com/video.mp4");

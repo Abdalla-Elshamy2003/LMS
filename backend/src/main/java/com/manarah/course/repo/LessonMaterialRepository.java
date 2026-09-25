@@ -11,4 +11,5 @@ public interface LessonMaterialRepository extends JpaRepository<LessonMaterial, 
     List<LessonMaterial> findByTenantIdAndType(Long tenantId, String type);
     Optional<LessonMaterial> findByTenantIdAndFileKey(Long tenantId, String fileKey);
     void deleteByTenantIdAndLessonId(Long tenantId, Long lessonId);
+    List<LessonMaterial> findByVideoAssetId(Long videoAssetId);
 }

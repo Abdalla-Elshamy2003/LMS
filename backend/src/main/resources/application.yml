@@ -107,6 +107,22 @@ manarah:
     max-concurrent-sessions: ${MANARAH_VIDEO_MAX_SESSIONS:1}
     # Reject stream requests that lack the browser's <video> fetch metadata (download managers, curl, scripts).
     require-browser-fetch: ${MANARAH_VIDEO_REQUIRE_BROWSER_FETCH:true}
+    # Where uploaded lesson videos live: 'local' (the server's disk) or 'r2' (Cloudflare R2, uploaded straight from
+    # the browser). Separate from manarah.storage so switching videos to R2 never strands the other files.
+    storage: ${MANARAH_VIDEO_STORAGE:local}
+    max-bytes: ${MANARAH_VIDEO_MAX_BYTES:4294967296}
+    r2:
+      # https://<ACCOUNT_ID>.r2.cloudflarestorage.com — from Cloudflare > R2 > API tokens.
+      endpoint: ${MANARAH_R2_ENDPOINT:}
+      bucket: ${MANARAH_R2_BUCKET:}
+      access-key: ${MANARAH_R2_ACCESS_KEY_ID:}
+      secret-key: ${MANARAH_R2_SECRET_ACCESS_KEY:}
+    transcode:
+      # FFmpeg -> HLS (360p/720p/1080p, AES-128). Needs real CPU: turn it on where the server has it.
+      enabled: ${MANARAH_VIDEO_TRANSCODE:false}
+      ffmpeg: ${MANARAH_FFMPEG:ffmpeg}
+      ffprobe: ${MANARAH_FFPROBE:ffprobe}
+      work-dir: ${MANARAH_VIDEO_WORK_DIR:${java.io.tmpdir}}
   whatsapp:
     # Real WhatsApp delivery via Meta's Cloud API. Leave 'enabled: false' (or the
     # token/phone-number-id blank) to keep the safe stub behavior (logs only, never

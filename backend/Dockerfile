@@ -30,9 +30,10 @@ RUN groupadd --system manarah && useradd --system --gid manarah --home /app mana
     && mkdir -p /app/data/files \
     && chown -R manarah:manarah /app
 
-# curl is used by the container HEALTHCHECK below; gosu drops root privileges in the entrypoint.
+# curl is used by the container HEALTHCHECK below; gosu drops root privileges in the entrypoint; ffmpeg turns
+# uploaded lesson videos into HLS when manarah.video.transcode.enabled is on.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl gosu \
+    && apt-get install -y --no-install-recommends curl gosu ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build --chown=manarah:manarah /build/target/app.jar app.jar
