@@ -217,7 +217,8 @@ function CardModal({ student, centerName, onClose }) {
       <div className="flex justify-center"><CenterCard student={student} centerName={centerName} /></div>
       <p className="mt-4 text-center text-xs leading-6 text-ink-500">
         الطالب يقدر يفتح صفحة الكارت من الموبايل ويشوف حضوره ويحجز الكتب.
-        <br /><a href={cardUrl(student.token)} target="_blank" rel="noreferrer" className="font-bold text-brand-700">افتح صفحة الكارت</a>
+        {/* ?view: the center previewing the page must not mark the student present — only a scan at the door does. */}
+        <br /><a href={`${cardUrl(student.token)}?view=1`} target="_blank" rel="noreferrer" className="font-bold text-brand-700">افتح صفحة الكارت</a>
       </p>
       <Link to={`/app/center/cards?ids=${student.id}`} className="btn-primary mt-4 w-full justify-center"><Printer size={16} /> اطبع الكارت</Link>
     </Modal>

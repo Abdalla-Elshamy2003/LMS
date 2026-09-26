@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   BadgeCheck, BookMarked, CalendarClock, CheckCircle2, Clock, Copy, MapPin, Phone, Repeat2, Ticket, Undo2, Wallet, XCircle,
@@ -20,7 +20,10 @@ import { beep, fmtClock, fmtDay, money, num } from './centerUtils'
  */
 export default function CenterPass() {
   const { token } = useParams()
+  const [params] = useSearchParams()
   const { user, loading } = useAuth()
+  // The center's own "open the card page" link carries ?view: looking at a card is not the student arriving.
+  const preview = params.has('view')
   const [pass, setPass] = useState(null)
   const [error, setError] = useState('')
   const load = () => publicApi.get(`/center-pass/${token}`).then((r) => setPass(r.data))
@@ -45,7 +48,10 @@ export default function CenterPass() {
       </header>
 
       <main className="relative mx-auto -mt-20 max-w-3xl space-y-5 px-4 pb-12">
-        {!loading && user?.role === 'CENTER_ADMIN' && <DeskScan token={token} onRecorded={load} />}
+        {!loading && user?.role === 'CENTER_ADMIN' && !preview && <DeskScan token={token} onRecorded={load} />}
+        {!loading && user?.role === 'CENTER_ADMIN' && preview && (
+          <p className="card p-4 text-sm font-bold text-ink-600">معاينة الكارت — الحضور بيتسجل بس لما الكارت يتمسح عند الباب.</p>
+        )}
         {error && <p role="alert" className="card p-6 text-center font-bold text-rose-700">{error}</p>}
         {!pass && !error && <div className="card grid place-items-center p-12"><Spinner className="h-8 w-8" /></div>}
         {pass && <PassBody pass={pass} token={token} reload={load} />}
