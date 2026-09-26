@@ -179,3 +179,13 @@ video::-internal-media-controls-download-button { display: none; }
 video::-webkit-media-controls-enclosure { overflow: hidden; }
 @media print { video, iframe[allow*="encrypted-media"] { visibility: hidden !important; } }
 @media (prefers-reduced-motion: reduce) { .exam-hall .animate-pulse { animation: none; } }
+
+/* Center card printing: only the cards reach the paper — no sidebar, header or page padding. */
+@media print {
+  @page { size: A4; margin: 8mm; }
+  body.printing-cards { background: #fff; }
+  body.printing-cards aside, body.printing-cards header { display: none !important; }
+  body.printing-cards main { padding: 0 !important; }
+  body.printing-cards .lg\:pr-64, body.printing-cards .lg\:pr-20 { padding-right: 0 !important; }
+  body.printing-cards .center-card { break-inside: avoid; box-shadow: none; }
+}

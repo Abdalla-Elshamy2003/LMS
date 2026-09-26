@@ -41,7 +41,12 @@ export default function Layout() {
   const [collapsed, toggleCollapsed] = useSidebarCollapsed()
   const [academy, setAcademy] = useState(null)
   const scopedAcademy = JSON.parse(sessionStorage.getItem('manarah_academy') || 'null')
-  useEffect(() => { api.get('/academy-context').then(r => setAcademy(r.data)).catch(() => {}) }, [])
+  const isCenter = user?.role === 'CENTER_ADMIN'
+  // A center's sidebar carries the center's own name, the same way a teacher's space carries the teacher's.
+  useEffect(() => {
+    if (isCenter) api.get('/center/me').then(r => setAcademy({ name: r.data.name, center: true })).catch(() => {})
+    else api.get('/academy-context').then(r => setAcademy(r.data)).catch(() => {})
+  }, [isCenter])
 
   const sections = useMemo(() => buildNavigation(user?.role), [user?.role])
   const current = currentItem(sections, location.pathname)
@@ -53,7 +58,7 @@ export default function Layout() {
       {academy?.name || scopedAcademy?.name
         ? <p className="truncate text-lg font-extrabold text-white leading-none">{academy?.name || scopedAcademy?.name}</p>
         : <Wordmark onDark className="block text-2xl" />}
-      <p className="text-[11px] text-brand-200 mt-1">{academy?.name ? 'منصة المستر التعليمية' : 'نظام إدارة التعليم'}</p>
+      <p className="text-[11px] text-brand-200 mt-1">{academy?.center ? 'لوحة إدارة السنتر' : academy?.name ? 'منصة المستر التعليمية' : 'نظام إدارة التعليم'}</p>
     </div>
   )
 
@@ -99,8 +104,8 @@ export default function Layout() {
               <h1 className="text-lg font-extrabold text-ink-800 truncate">{current?.label || 'الرئيسية'}</h1>
               <p className="text-xs text-ink-400 truncate">أهلاً {user?.fullName} · {user?.roleArabic}</p>
             </div>
-            <GlobalSearch />
-            <NotificationBell />
+            {!isCenter && <GlobalSearch />}
+            {!isCenter && <NotificationBell />}
             <NavLink to="/app/profile" aria-label="فتح الملف الشخصي" className="flex items-center gap-2.5 rounded-2xl bg-white px-2 py-1.5 shadow-soft border border-ink-100 transition hover:border-brand-200">
               <Avatar name={user?.fullName} size={34} />
               <div className="hidden pl-2 sm:block">

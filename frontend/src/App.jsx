@@ -62,6 +62,17 @@ const Bundles = lazy(() => import('./pages/Bundles'))
 const ControlCenter = lazy(() => import('./pages/ControlCenter'))
 const MyPackage = lazy(() => import('./pages/MyPackage'))
 const Assistants = lazy(() => import('./pages/Assistants'))
+const CenterPass = lazy(() => import('./features/center/CenterPass'))
+const CenterScan = lazy(() => import('./features/center/CenterScan'))
+const CenterAttendance = lazy(() => import('./features/center/CenterAttendance'))
+const CenterTeachers = lazy(() => import('./features/center/CenterTeachers'))
+const CenterStudents = lazy(() => import('./features/center/CenterStudents'))
+const CenterCards = lazy(() => import('./features/center/CenterCards'))
+const CenterAccounts = lazy(() => import('./features/center/CenterAccounts'))
+const CenterBooks = lazy(() => import('./features/center/CenterBooks'))
+const CenterSettings = lazy(() => import('./features/center/CenterSettings'))
+const CentersAdmin = lazy(() => import('./features/center/CentersAdmin'))
+const AdminsAdmin = lazy(() => import('./features/center/AdminsAdmin'))
 
 function Protected({ children }) {
   const { user, loading } = useAuth()
@@ -103,6 +114,8 @@ export default function App() {
       <Route path="/student/verify/:token" element={standalone(<StudentVerifyPage />)} />
       <Route path="/app/checkin/:token" element={standalone(<CheckIn />)} />
       <Route path="/app/gate/:token" element={standalone(<GateScan />)} />
+      {/* A center student's card: public like the one above; a signed-in center that opens it records attendance. */}
+      <Route path="/c/:token" element={standalone(<CenterPass />)} />
       <Route path="/app" element={<Protected><Layout /></Protected>}>
         <Route index element={<Dashboard />} />
         <Route path="students" element={<Students />} />
@@ -140,6 +153,16 @@ export default function App() {
         <Route path="assistants" element={<Assistants />} />
         <Route path="rules" element={<Rules />} />
         <Route path="audit" element={<Audit />} />
+        <Route path="centers" element={<CentersAdmin />} />
+        <Route path="admins" element={<AdminsAdmin />} />
+        <Route path="center/scan" element={<CenterScan />} />
+        <Route path="center/attendance" element={<CenterAttendance />} />
+        <Route path="center/teachers" element={<CenterTeachers />} />
+        <Route path="center/students" element={<CenterStudents />} />
+        <Route path="center/cards" element={<CenterCards />} />
+        <Route path="center/accounts" element={<CenterAccounts />} />
+        <Route path="center/books" element={<CenterBooks />} />
+        <Route path="center/settings" element={<CenterSettings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

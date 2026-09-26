@@ -1,5 +1,5 @@
 import {
-  Award, BarChart3, Bell, BookOpen, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, CreditCard, DoorOpen,
+  Award, BarChart3, Bell, BookMarked, BookOpen, Building2, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, CreditCard, DoorOpen,
   FileQuestion, GraduationCap, HeartHandshake, Inbox, Layers, LayoutDashboard, LogOut, Megaphone, MessagesSquare,
   ScanLine, ShieldCheck, SlidersHorizontal, Trophy, UserCog, UserRound, Users, Wallet,
 } from 'lucide-react'
@@ -18,6 +18,16 @@ const ITEMS = {
   academy: { to: '/app/academy', label: 'صفحة المستر وحسابات الطلاب', icon: UserRound, roles: [...ADMIN_ROLES, 'TEACHER', 'ASSISTANT'] },
   bundles: { to: '/app/bundles', label: 'باقات المدرسين', icon: Layers, roles: ADMIN_ROLES },
   control: { to: '/app/control', label: 'لوحة التحكم الكاملة', icon: ShieldCheck, roles: ADMIN_ROLES },
+  centers: { to: '/app/centers', label: 'السناتر', icon: Building2, roles: ADMIN_ROLES },
+  admins: { to: '/app/admins', label: 'الأدمنز', icon: UserCog, roles: ['SUPER_ADMIN'] },
+  centerScan: { to: '/app/center/scan', label: 'مسح الكارتات', icon: ScanLine, roles: ['CENTER_ADMIN'] },
+  centerAttendance: { to: '/app/center/attendance', label: 'الحضور والغياب', icon: CalendarCheck, roles: ['CENTER_ADMIN'] },
+  centerTeachers: { to: '/app/center/teachers', label: 'المدرسين والمجموعات', icon: GraduationCap, roles: ['CENTER_ADMIN'] },
+  centerStudents: { to: '/app/center/students', label: 'الطلاب', icon: Users, roles: ['CENTER_ADMIN'] },
+  centerCards: { to: '/app/center/cards', label: 'طباعة الكارتات', icon: CreditCard, roles: ['CENTER_ADMIN'] },
+  centerAccounts: { to: '/app/center/accounts', label: 'الحسابات', icon: Wallet, roles: ['CENTER_ADMIN'] },
+  centerBooks: { to: '/app/center/books', label: 'الكتب والحجوزات', icon: BookMarked, roles: ['CENTER_ADMIN'] },
+  centerSettings: { to: '/app/center/settings', label: 'إعدادات السنتر', icon: SlidersHorizontal, roles: ['CENTER_ADMIN'] },
   myPackage: { to: '/app/my-package', label: 'باقتي', icon: Layers, roles: ['STUDENT'] },
   assistants: { to: '/app/assistants', label: 'المساعدون (إنشاء حساب)', icon: UserCog, roles: ['TEACHER'] },
   family: { to: '/app/family', label: 'متابعة الأبناء', icon: HeartHandshake, roles: ['PARENT'] },
@@ -54,6 +64,7 @@ const ACCOUNT = { id: 'account', title: 'الحساب', items: ['profile', 'logo
 const LAYOUTS = {
   admin: [
     { id: 'main', title: 'الرئيسية', items: ['control', 'dashboard', 'reports'] },
+    { id: 'platform', title: 'السناتر والأدمنز', items: ['centers', 'admins'] },
     { id: 'academic', title: 'الإدارة الأكاديمية', items: ['academy', 'bundles', 'students', 'staff', 'courses', 'learning', 'schedule'] },
     { id: 'assessment', title: 'المحتوى والتقييم', items: ['exams', 'homework', 'certificates', 'leaderboard'] },
     { id: 'operations', title: 'العمليات', items: ['attendance', 'gateLog', 'cardScanner', 'cards'] },
@@ -85,6 +96,14 @@ const LAYOUTS = {
     { id: 'communication', title: 'التواصل', items: ['notifications', 'support', 'community'] },
     ACCOUNT,
   ],
+  // A center sees only its own desk: none of the platform's course, exam or community screens.
+  center: [
+    { id: 'today', title: 'اليوم', items: ['dashboard', 'centerScan', 'centerAttendance'] },
+    { id: 'center', title: 'السنتر', items: ['centerTeachers', 'centerStudents', 'centerCards'] },
+    { id: 'money', title: 'الفلوس والكتب', items: ['centerAccounts', 'centerBooks'] },
+    { id: 'settings', title: 'الإعدادات', items: ['centerSettings'] },
+    ACCOUNT,
+  ],
 }
 
 const LAYOUT_BY_ROLE = {
@@ -93,6 +112,7 @@ const LAYOUT_BY_ROLE = {
   TEACHER: 'teacher',
   ASSISTANT: 'teacher',
   CONTENT_MANAGER: 'teacher',
+  CENTER_ADMIN: 'center',
 }
 
 /** Roles without their own layout (admins, accountant, support) share the admin one; item roles trim it to what they may see. */

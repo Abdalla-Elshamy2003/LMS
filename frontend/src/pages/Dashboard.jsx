@@ -15,6 +15,7 @@ import StudentCatalog from '../features/student-catalog/StudentCatalog'
 import PendingRequests from '../features/student-catalog/PendingRequests'
 import SubscriptionPlans from '../features/subscriptions/SubscriptionPlans'
 import { SchedulePreview } from './Schedule'
+import CenterHome from '../features/center/CenterHome'
 
 const HW_STATUS = {
   PENDING: { label: 'لم يُسلَّم بعد', c: 'bg-ink-100 text-ink-500' },
@@ -68,6 +69,7 @@ export default function Dashboard() {
   if (user.role === 'PARENT') return <ParentDashboard user={user} data={data} />
   if (['TEACHER', 'ASSISTANT'].includes(user.role)) return <TeacherDashboard data={data} />
   if (user.role === 'CONTENT_MANAGER') return <LearningHub />
+  if (user.role === 'CENTER_ADMIN') return <CenterHome />
   if (!ADMIN.includes(user.role)) return <WelcomeCard user={user} />
 
   const k = data.kpis

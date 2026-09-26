@@ -12,8 +12,8 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem('manarah_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   const academy = JSON.parse(sessionStorage.getItem('manarah_academy') || 'null')
-  // Head-office screens (control center, packages) and a student's own endpoints never run inside a teacher's space.
-  if (academy && !/^\/(academies|auth|users\/me|public|admin|bundles|me)(\/|$)/.test(config.url)) config.headers['X-Academy-Id'] = academy.id
+  // Head-office screens (control center, packages), a student's own endpoints and a center's dashboard never run inside a teacher's space.
+  if (academy && !/^\/(academies|auth|users\/me|public|admin|bundles|me|center)(\/|$)/.test(config.url)) config.headers['X-Academy-Id'] = academy.id
   return config
 })
 

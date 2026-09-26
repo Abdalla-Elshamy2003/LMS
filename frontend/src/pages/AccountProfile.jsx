@@ -16,6 +16,7 @@ const roleLinks = {
   PARENT: [['/app/family', 'متابعة الأبناء', GraduationCap], ['/app/schedule', 'جداول الأبناء', CalendarDays], ['/app/notifications', 'الإشعارات', Bell], ['/app/support', 'التواصل', LifeBuoy]],
   ASSISTANT: [['/app/assistant', 'مكتب اليوم والمهام', GraduationCap], ['/app/learning', 'استوديو المحتوى', BookOpen], ['/app/schedule', 'جدولي', CalendarDays], ['/app/support', 'تواصل الطلاب', LifeBuoy]],
   TEACHER: [['/app/learning', 'استوديو المحتوى', BookOpen], ['/app/schedule', 'جدولي', CalendarDays], ['/app/notifications', 'الإشعارات', Bell], ['/app/support', 'تواصل الطلاب', LifeBuoy]],
+  CENTER_ADMIN: [['/app', 'لوحة السنتر', ShieldCheck], ['/app/center/scan', 'مسح الكارتات', QrCode], ['/app/center/students', 'الطلاب', GraduationCap], ['/app/center/attendance', 'الحضور والغياب', CalendarDays]],
 }
 
 export default function AccountProfile() {

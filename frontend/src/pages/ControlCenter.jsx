@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  BarChart3, BookOpen, Eye, EyeOff, ExternalLink, GraduationCap, KeyRound, Layers, LayoutDashboard, LogIn, Plus, Search,
-  ShieldCheck, Sparkles, UserCheck, UserX, Users, Wallet, Wand2, Wrench,
+  BarChart3, BookOpen, Building2, Eye, EyeOff, ExternalLink, GraduationCap, KeyRound, Layers, LayoutDashboard, LogIn, Plus, Search,
+  ShieldCheck, Sparkles, UserCheck, UserCog, UserX, Users, Wallet, Wand2, Wrench,
 } from 'lucide-react'
 import api from '../lib/api'
 import { apiErrorMessage } from '../lib/apiError'
@@ -11,6 +11,9 @@ import { fmtDate } from '../lib/format'
 import { EmptyState, Modal, PageLoader, Spinner } from '../components/ui'
 import Bundles from './Bundles'
 import PaymentsAdmin from '../features/payments/PaymentsAdmin'
+import CentersAdmin from '../features/center/CentersAdmin'
+import AdminsAdmin from '../features/center/AdminsAdmin'
+import { useAuth } from '../lib/auth'
 
 const TABS = [
   ['overview', 'نظرة عامة', LayoutDashboard],
@@ -19,6 +22,8 @@ const TABS = [
   ['students', 'الطلاب', Users],
   ['courses', 'الكورسات والأسعار', BookOpen],
   ['packages', 'الباقات وأسعارها', Layers],
+  ['centers', 'السناتر', Building2],
+  ['admins', 'الأدمنز', UserCog],
   ['tools', 'أدوات وإعدادات', Wrench],
 ]
 
@@ -28,6 +33,9 @@ const TABS = [
  * the detailed screens that already exist (reports, audit, payments...).
  */
 export default function ControlCenter() {
+  const { user } = useAuth()
+  // Only a super admin manages the other admins; the tab isn't shown to anyone else.
+  const tabs = TABS.filter(([key]) => key !== 'admins' || user?.role === 'SUPER_ADMIN')
   const [tab, setTab] = useState(() => new URLSearchParams(location.search).get('tab') || 'overview')
   const [flash, setFlash] = useState({ ok: '', error: '' })
   const say = (ok) => setFlash({ ok, error: '' })
@@ -42,7 +50,7 @@ export default function ControlCenter() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-        {TABS.map(([key, label, Icon]) => (
+        {tabs.map(([key, label, Icon]) => (
           <button key={key} type="button" onClick={() => { setTab(key); setFlash({ ok: '', error: '' }) }}
             className={`flex shrink-0 items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold transition ${tab === key ? 'bg-brand-600 text-white shadow-glow' : 'border border-ink-100 bg-white text-ink-600 hover:bg-brand-50'}`}>
             <Icon size={16} /> {label}
@@ -60,6 +68,8 @@ export default function ControlCenter() {
       {tab === 'packages' && <Bundles />}
       {tab === 'payments' && <PaymentsAdmin />}
       {tab === 'tools' && <Tools say={say} fail={fail} />}
+      {tab === 'centers' && <CentersAdmin embedded />}
+      {tab === 'admins' && user?.role === 'SUPER_ADMIN' && <AdminsAdmin embedded />}
     </div>
   )
 }
