@@ -30,11 +30,30 @@ public class SecurityConfig {
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter,
                           PublicEndpointRateLimitFilter publicEndpointRateLimitFilter,
-                          @Value("${manarah.security.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173}") String allowedOrigins) {
+                          @Value("${manarah.security.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173}") String allowedOrigins,
+                          @Value("${manarah.public-app-url:}") String publicAppUrl) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.publicEndpointRateLimitFilter = publicEndpointRateLimitFilter;
-        this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim).filter(s -> !s.isBlank()).toList();
+        List<String> origins = new java.util.ArrayList<>(Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim).filter(s -> !s.isBlank()).toList());
+        // The site's own public address is always an allowed origin. Behind the proxy the backend sees plain http on an
+        // internal host, so a browser POST from https://<site> counts as cross-origin; without this, moving to a new
+        // domain (droos.com.co) silently rejected every login and form with 403 until the list was edited by hand.
+        String own = originOf(publicAppUrl);
+        if (own != null && !origins.contains(own)) origins.add(own);
+        this.allowedOrigins = List.copyOf(origins);
+    }
+
+    /** "https://droos.com.co/anything" → "https://droos.com.co"; null when blank or not an absolute http(s) URL. */
+    public static String originOf(String url) {
+        if (url == null || url.isBlank()) return null;
+        try {
+            java.net.URI u = java.net.URI.create(url.trim());
+            if (u.getScheme() == null || u.getHost() == null || !u.getScheme().toLowerCase().startsWith("http")) return null;
+            return u.getScheme().toLowerCase() + "://" + u.getHost().toLowerCase() + (u.getPort() == -1 ? "" : ":" + u.getPort());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     @Bean

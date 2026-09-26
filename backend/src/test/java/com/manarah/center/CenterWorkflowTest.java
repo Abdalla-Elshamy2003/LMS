@@ -30,7 +30,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {
         "manarah.security.jwt.secret=dGVzdC1vbmx5LW1hbmFyYWgtand0LXNlY3JldC0zMi1ieXRlcy1taW4=",
         "manarah.demo.seed-enabled=true",
-        "manarah.demo.password=manarah123"
+        "manarah.demo.password=manarah123",
+        "manarah.public-app-url=https://droos.example/",
+        "manarah.security.cors.allowed-origins=https://old-host.example"
 }) @AutoConfigureMockMvc
 class CenterWorkflowTest {
     static final String RUN = "center-test-" + UUID.randomUUID();
@@ -193,6 +195,19 @@ class CenterWorkflowTest {
         call(put("/api/admin/centers/" + centerId + "/active"), admin, Map.of("active", true), 200);
         call(put("/api/admin/centers/" + centerId + "/credentials"), admin, Map.of("username", "nour.center", "password", "NewCenter123!"), 200);
         login("nour.center", "NewCenter123!");
+    }
+
+    /** Behind the proxy a browser POST from the site's own https address is "cross-origin" to the backend; it must pass. */
+    @Test void theSitesOwnAddressMaySignInFromTheBrowser() throws Exception {
+        String body = json.writeValueAsString(Map.of("email", "admin@manarah.io", "password", "manarah123"));
+        mvc.perform(post("/api/auth/login").header("Origin", "https://droos.example").header("X-Forwarded-For", "10.7.0.1")
+                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
+        mvc.perform(post("/api/auth/login").header("Origin", "https://old-host.example").header("X-Forwarded-For", "10.7.0.2")
+                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
+        mvc.perform(post("/api/auth/login").header("Origin", "https://evil.example").header("X-Forwarded-For", "10.7.0.3")
+                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isForbidden());
+        assertThat(com.manarah.security.SecurityConfig.originOf("https://Droos.com.co/app")).isEqualTo("https://droos.com.co");
+        assertThat(com.manarah.security.SecurityConfig.originOf("")).isNull();
     }
 
     @Test void adminsLiveInTheDatabaseAndAddEachOther() throws Exception {
