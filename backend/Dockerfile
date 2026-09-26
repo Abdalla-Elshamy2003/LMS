@@ -2,7 +2,7 @@
 
 # ---------- Build stage ----------
 # Pinned to the exact toolchain used in local development (Temurin 21 + Maven 3.9.9).
-FROM maven:3.9.9-eclipse-temurin-21 AS build
+FROM maven:3.9.15-eclipse-temurin-26 AS build
 WORKDIR /build
 
 # Resolve dependencies first so they're cached across rebuilds that only touch source.
