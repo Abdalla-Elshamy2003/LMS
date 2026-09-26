@@ -29,12 +29,13 @@ public class AcademyService {
     private final PasswordEncoder passwords;
     private final com.manarah.audit.AuditService audit;
     private final LinkedStudentAccounts linked;
+    private final com.manarah.identity.LoginCredentials logins;
     public AcademyService(TeacherAcademyRepository academies, TenantRepository tenants, BranchRepository branches,
             UserRepository users, StudentRepository students, CourseRepository courses, EnrollmentRepository enrollments, PasswordEncoder passwords,
-            com.manarah.audit.AuditService audit, LinkedStudentAccounts linked) {
+            com.manarah.audit.AuditService audit, LinkedStudentAccounts linked, com.manarah.identity.LoginCredentials logins) {
         this.academies = academies; this.tenants = tenants; this.branches = branches; this.users = users;
         this.students = students; this.courses = courses; this.enrollments = enrollments; this.passwords = passwords;
-        this.audit = audit; this.linked = linked;
+        this.audit = audit; this.linked = linked; this.logins = logins;
     }
     /** Status for a student removed from an academy — see {@link #removeStudent}. */
     private static final String ARCHIVED = "ARCHIVED";
@@ -103,11 +104,7 @@ public class AcademyService {
         return s.trim();
     }
     private void credentials(User u, String username, String password) {
-        String name = required(username, 50).toLowerCase(Locale.ROOT);
-        if (!name.matches("[a-z0-9][a-z0-9._-]{2,49}")) throw new BadRequestException("اسم المستخدم من 3 إلى 50 حرفاً إنجليزياً أو رقماً أو . أو _ أو -");
-        var existing = users.findByUsernameIgnoreCase(name);
-        if (existing.isPresent() && !Objects.equals(existing.get().getId(), u.getId())) throw new ConflictException("اسم المستخدم مستخدم بالفعل");
-        u.setUsername(name); u.setPasswordHash(passwords.encode(PasswordPolicy.requireStrong(password))); u.setStatus("ACTIVE");
+        logins.assign(u, username, password);
     }
     @Transactional
     public TeacherAcademy create(UserPrincipal actor, CreateAcademy req) {

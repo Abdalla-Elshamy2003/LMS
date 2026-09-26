@@ -14,14 +14,19 @@ import java.util.List;
 public class AcademyAccess {
     private final TeacherAcademyRepository academies;
     private final LearningService learning;
-    public AcademyAccess(TeacherAcademyRepository academies, LearningService learning) { this.academies = academies; this.learning = learning; }
+    private final com.manarah.center.CenterScope centers;
+    public AcademyAccess(TeacherAcademyRepository academies, LearningService learning, com.manarah.center.CenterScope centers) {
+        this.academies = academies; this.learning = learning; this.centers = centers;
+    }
 
     /** @see TeacherAcademyRepository#visibleTenantIds */
     public List<Long> visibleTenantIds(Long tenantId) {
         return academies.visibleTenantIds(tenantId);
     }
-    /** A published teacher page accepts students on its own; an unpublished one is still invite-only. */
+    /** A published teacher page accepts students on its own; an unpublished one is still invite-only. A center's
+     *  tenant never takes platform sign-ups: its students are names on the center's list, not accounts. */
     public void rejectSelfEnrollment(Long tenantId) {
+        if (centers.isCenterTenant(tenantId)) throw new ForbiddenException("التسجيل هنا مش متاح. كلّم السنتر.");
         var academy = academies.findByTenantId(tenantId);
         if (academy.isPresent() && !academy.get().isPublished())
             throw new ForbiddenException("حسابك والكورسات المتاحة لك يحددها المدرس أو الإدارة. تواصل معهم للاشتراك.");

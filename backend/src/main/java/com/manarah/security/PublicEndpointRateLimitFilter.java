@@ -50,7 +50,10 @@ public class PublicEndpointRateLimitFilter extends OncePerRequestFilter {
             new Rule("POST", "/api/public/redeem-code", 10, Duration.ofMinutes(15)),
             new Rule("POST", "/api/public/contact", 5, Duration.ofMinutes(15)),
             // Student QR verification: a real scan is one request; this only stops token guessing/scraping.
-            new Rule("GET", "/api/public/students/verify/", true, 60, Duration.ofMinutes(5))
+            new Rule("GET", "/api/public/students/verify/", true, 60, Duration.ofMinutes(5)),
+            // A center student's card page and its book reservations: same idea, the token is the key.
+            new Rule("GET", "/api/public/center-pass/", true, 60, Duration.ofMinutes(5)),
+            new Rule("POST", "/api/public/center-pass/", true, 20, Duration.ofMinutes(15))
     );
 
     private final StringRedisTemplate redis;
@@ -76,7 +79,8 @@ public class PublicEndpointRateLimitFilter extends OncePerRequestFilter {
     }
 
     private boolean allow(Rule rule, String ip) {
-        String key = KEY_PREFIX + rule.path() + ":" + ip;
+        // The method is part of the key: a page view and a reservation on the same path prefix count separately.
+        String key = KEY_PREFIX + rule.method() + ":" + rule.path() + ":" + ip;
         try {
             Long count = redis.opsForValue().increment(key);
             if (count != null && count == 1L) {

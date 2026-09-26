@@ -17,7 +17,9 @@ public enum Role {
     PARENT("ولي أمر"),
     ACCOUNTANT("محاسب"),
     SUPPORT("خدمة العملاء"),
-    CONTENT_MANAGER("مدير المحتوى");
+    CONTENT_MANAGER("مدير المحتوى"),
+    /** Runs one tutoring center (سنتر) in its own tenant; neither admin nor staff, so it only reaches /api/center. */
+    CENTER_ADMIN("مدير سنتر");
 
     private final String arabicName;
 
