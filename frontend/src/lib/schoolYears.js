@@ -29,7 +29,8 @@ function normalize(raw) {
 export function yearKey(raw) {
   const s = normalize(raw)
   if (!s) return ''
-  let stage = s.includes('ثانوي') ? 'secondary' : s.includes('اعدادي') ? 'preparatory'
+  // The Egyptian baccalaureate ("تانية بكالوريا") is the new name for the secondary years.
+  let stage = s.includes('ثانوي') || s.includes('كالوريا') ? 'secondary' : s.includes('اعدادي') ? 'preparatory'
     : s.includes('ابتدائي') ? 'primary' : s.includes('روضه') || s.includes('kg') ? 'kg' : null
   let number = null
   for (const token of s.split(' ')) {

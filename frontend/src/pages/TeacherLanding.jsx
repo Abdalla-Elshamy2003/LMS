@@ -29,6 +29,7 @@ const lessons = [
 export default function TeacherLanding() {
   const { slug } = useParams()
   const [data, setData] = useState(null), [error, setError] = useState(''), [menu, setMenu] = useState(false), [lesson, setLesson] = useState(null)
+  const [poster, setPoster] = useState(null)
   // A signed-in student joins this teacher with the account they already have (or, if they already study with
   // them, just goes in) — no second registration, no second password.
   const { user, joinTeacher, switchTeacher } = useAuth()
@@ -54,8 +55,16 @@ export default function TeacherLanding() {
     window.addEventListener('keydown', close)
     return () => { window.removeEventListener('keydown', close); document.body.style.overflow = overflow; previous?.focus() }
   }, [lesson])
+  useEffect(() => {
+    if (!poster) return
+    const close = e => { if (e.key === 'Escape') setPoster(null) }
+    window.addEventListener('keydown', close)
+    return () => window.removeEventListener('keydown', close)
+  }, [poster])
   if (!data) return <div className="teacher-site tl-loading" dir="rtl"><GraduationCap size={40}/><p>{error || 'بنجهّز لك مساحة التعلّم…'}</p>{error && <Link to="/login" className="tl-button">دخول الإدارة</Link>}</div>
   const p = data.profile, demo = p.demoContent
+  // The teacher's promotional posters: the first one fronts the page, all of them get their own section.
+  const posters = data.gallery || [], heroPoster = posters[0]
   // Courses and published videos share one slider — whichever the teacher adds shows up here.
   const videoCards = (data.videos || []).map((v, i) => ({
     id: `video-${i}`, title: v.title, description: v.description, coverUrl: v.poster,
@@ -82,7 +91,7 @@ export default function TeacherLanding() {
     <div className="tl-announcement"><Sparkles size={14}/><span>خطوة جديدة، فهم أعمق، وثقة أكبر. يلا نبدأ!</span><span className="tl-mini-dot"/> العام الدراسي ٢٠٢٦ / ٢٠٢٧</div>
     <header className="tl-header"><div className="tl-container tl-nav">
       <Link to={slug ? `/t/${slug}` : '/'} className="tl-brand"><img src="/images/logo.png" alt="" className="tl-logo" /><span><strong>{p.name}</strong><small>{p.tagline}</small></span></Link>
-      <nav className={menu ? 'tl-links open' : 'tl-links'} aria-label="القائمة الرئيسية"><a href="#home" onClick={() => setMenu(false)}>الرئيسية</a><a href="#about" onClick={() => setMenu(false)}>عن المستر</a><a href="#courses" onClick={() => setMenu(false)}>الكورسات</a>{demo && <a href="#lessons" onClick={() => setMenu(false)}>جرّب الشرح</a>}<a href="#faq" onClick={() => setMenu(false)}>الأسئلة الشائعة</a></nav>
+      <nav className={menu ? 'tl-links open' : 'tl-links'} aria-label="القائمة الرئيسية"><a href="#home" onClick={() => setMenu(false)}>الرئيسية</a><a href="#about" onClick={() => setMenu(false)}>عن المستر</a><a href="#courses" onClick={() => setMenu(false)}>الكورسات</a>{posters.length > 0 && <a href="#gallery" onClick={() => setMenu(false)}>إعلانات المستر</a>}{demo && <a href="#lessons" onClick={() => setMenu(false)}>جرّب الشرح</a>}<a href="#faq" onClick={() => setMenu(false)}>الأسئلة الشائعة</a></nav>
       {asStudent
         ? <button type="button" onClick={() => enter()} disabled={joining || !mine} className="tl-button small">{seat ? 'ادخل على كورساتك' : 'انضم للمستر ده بحسابك'} <ArrowUpLeft size={16}/></button>
         : <Link to={login} className="tl-button small">دخول الطالب <ArrowUpLeft size={16}/></Link>}<button className="tl-menu" aria-label="فتح القائمة" aria-expanded={menu} onClick={() => setMenu(!menu)}>{menu ? <X/> : <Menu/>}</button>
@@ -95,9 +104,9 @@ export default function TeacherLanding() {
           <div className="tl-trust"><span><Check size={16}/> شرح خطوة بخطوة</span><span><Check size={16}/> تدريب على كل فكرة</span><span><Check size={16}/> تعلّم على راحتك</span></div>
         </motion.div>
         <motion.div {...reveal} className="tl-portrait-wrap"><div className="tl-orbit"/><span className="tl-formula f1" aria-hidden="true">𝑥² + 𝑦²</span><span className="tl-formula f2" aria-hidden="true">π</span><span className="tl-formula f3" aria-hidden="true">√𝑥</span>
-          <div className="tl-portrait"><img src={p.photoUrl} alt={`مستر ${p.name}، ${p.tagline}`} fetchPriority="high"/></div>
-          <motion.div className="tl-float-note" animate={reduced ? {} : { y: [0, -9, 0] }} transition={{ duration: 5, repeat: Infinity }}><span className="tl-note-icon"><Target size={24}/></span><div><strong>نفهمها.. نحلّها!</strong><small>كل فكرة بتقرّبك لهدفك</small></div><Sparkles size={18}/></motion.div>
-          <div className="tl-portrait-label"><span>معاك خطوة بخطوة</span><strong>مستر {p.name}</strong></div>
+          <div className={heroPoster ? 'tl-portrait poster' : 'tl-portrait'}><img src={heroPoster || p.photoUrl} alt={`مستر ${p.name}، ${p.tagline}`} fetchPriority="high"/></div>
+          {!heroPoster && <><motion.div className="tl-float-note" animate={reduced ? {} : { y: [0, -9, 0] }} transition={{ duration: 5, repeat: Infinity }}><span className="tl-note-icon"><Target size={24}/></span><div><strong>نفهمها.. نحلّها!</strong><small>كل فكرة بتقرّبك لهدفك</small></div><Sparkles size={18}/></motion.div>
+          <div className="tl-portrait-label"><span>معاك خطوة بخطوة</span><strong>مستر {p.name}</strong></div></>}
         </motion.div>
       </div><div className="tl-container tl-method-strip"><span><BookOpen/> شرح يبسّط الصعب</span><i/><span><PenTool/> تطبيق يثبّت الفكرة</span><i/><span><Target/> مراجعة تربط المنهج</span><a href="#courses">ابدأ رحلتك <ArrowUpLeft size={17}/></a></div></section>
 
@@ -128,6 +137,10 @@ export default function TeacherLanding() {
         {demo && <p className="tl-demo-note">الكروت المعلّمة «نموذج تجريبي» أمثلة للعرض وأسعارها توضيحية. الاشتراك وإتاحة الكورسات الفعلية عن طريق المستر.</p>}
       </section>
 
+      {posters.length > 0 && <section id="gallery" className="tl-section tl-container"><motion.div {...reveal} className="tl-section-head"><div><span className="tl-kicker">إعلانات المستر</span><h2>قبل ما تبدأ.. اتفرّج<span>.</span></h2></div><p>كل إعلانات المستر في مكان واحد.<br/> دوس على أي صورة عشان تكبّرها.</p></motion.div>
+        <div className="tl-gallery">{posters.map((src, i) => <motion.button {...reveal} type="button" key={src} className="tl-poster" onClick={() => setPoster(src)} aria-label={`تكبير إعلان ${i + 1}`}><img src={src} alt={`إعلان مستر ${p.name} ${i + 1}`} loading="lazy"/></motion.button>)}</div>
+      </section>}
+
       <section id="about" className="tl-about-section"><div className="tl-container tl-about-grid"><motion.div {...reveal} className="tl-about-visual"><div className="tl-about-photo"><img src={data.coverUrl || p.photoUrl} alt={`مستر ${p.name}`} loading="lazy"/></div><div className="tl-about-note"><PenTool size={22}/><span>الفهم الأول.<br/><strong>الدرجات بتيجي بعده.</strong></span></div></motion.div><motion.div {...reveal}><span className="tl-kicker">اعرف مسترك</span><h2>أهلاً، أنا<br/><span>مستر {p.name}</span></h2><p className="tl-description">{p.aboutText}</p><div className="tl-about-features">{['نبسّط الفكرة قبل ما نحفظ القانون', 'نحل مع بعض، وبعدها تجرّب بنفسك', 'نربط الدروس ببعض في كل مراجعة'].map(t => <p key={t}><span><Check size={16}/></span>{t}</p>)}</div><a className="tl-text-link" href="#courses">خلّينا نبدأ رحلتك سوا <ArrowLeft size={18}/></a></motion.div></div></section>
 
       {demo && <section id="lessons" className="tl-section tl-container"><motion.div {...reveal} className="tl-section-head"><div><span className="tl-kicker">فكرة بسيطة تعمل فرق</span><h2>جرّب تفهمها معانا<span>.</span></h2></div><p>أمثلة تعليمية قصيرة للمعاينة.<br/>افتح أي كارت وجرّب تحل بنفسك.</p></motion.div><div className="tl-lessons">{lessons.map((l, i) => <motion.button {...reveal} key={l.title} onClick={() => setLesson(l)} className="tl-lesson"><div className={`tl-lesson-preview lesson-${i}`}><span dir="ltr">{l.formula}</span><i><ArrowUpLeft size={22}/></i></div><div className="tl-lesson-info"><small>{l.tag} · قراءة قصيرة</small><h3>{l.title}</h3><span>افتح المثال <ArrowLeft size={16}/></span></div></motion.button>)}</div></section>}
@@ -138,6 +151,7 @@ export default function TeacherLanding() {
     </main>
     <footer className="tl-container tl-footer"><Link to={slug ? `/t/${slug}` : '/'} className="tl-brand"><img src="/images/logo.png" alt="" className="tl-logo" /><span><strong>{p.name}</strong><small>{p.tagline}</small></span></Link><p>مساحتك للفهم، والتطبيق، والثقة.</p><span>© {new Date().getFullYear()} · مستر {p.name}</span></footer>
     {joinError && <div role="alert" className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-2xl bg-rose-600 px-5 py-3 text-center text-sm font-bold text-white shadow-lg" onClick={() => setJoinError('')}>{joinError}</div>}
+    {poster && <div className="tl-modal" onClick={() => setPoster(null)}><div className="tl-poster-view" role="dialog" aria-modal="true" aria-label="إعلان المستر" onClick={e => e.stopPropagation()}><button autoFocus aria-label="إغلاق" className="tl-modal-close" onClick={() => setPoster(null)}><X/></button><img src={poster} alt={`إعلان مستر ${p.name}`}/></div></div>}
     {lesson && <div className="tl-modal" onClick={() => setLesson(null)}><div ref={dialog} className="tl-modal-card" role="dialog" aria-modal="true" aria-labelledby="lesson-title" onClick={e => e.stopPropagation()}><button autoFocus aria-label="إغلاق المثال" className="tl-modal-close" onClick={() => setLesson(null)}><X/></button><span className="tl-kicker">{lesson.url ? `درس بالفيديو${lesson.category ? ` · ${lesson.category}` : ''}` : `مثال تعليمي للمعاينة · ${lesson.tag}`}</span><h2 id="lesson-title">{lesson.title}</h2>
       {lesson.url
         ? <div className="tl-modal-video">{embedUrl(lesson.url)
@@ -193,6 +207,8 @@ function Slider({ items, plans, subject, cta, login, reveal, onPreview, enroll, 
         {items.map((c, i) => {
           const sample = String(c.id).startsWith('demo')
           const cover = c.coverUrl || covers[i % covers.length]
+          // A course's own cover is the teacher's designed artwork (it already names the year): show it whole.
+          const art = !!c.coverUrl && !c.isVideo
           const paid = Number(c.finalPrice ?? c.price) > 0
           const real = !sample && !c.isVideo
           // A paid course comes with its year's subscription: show what the year costs, and for how long.
@@ -208,18 +224,18 @@ function Slider({ items, plans, subject, cta, login, reveal, onPreview, enroll, 
                   transform animation on either of those would fight the other two. */}
               <div className="tl-bob">
               <div className="tl-course">
-                <Link to={coverTo} onClick={coverClick} className="tl-cover" aria-label={c.isVideo ? `معاينة ${c.title}` : `اشترك في ${c.title}`}>
+                <Link to={coverTo} onClick={coverClick} className={art ? 'tl-cover art' : 'tl-cover'} aria-label={c.isVideo ? `معاينة ${c.title}` : `اشترك في ${c.title}`}>
                   <img src={cover} alt={c.title} loading="lazy" />
-                  <span className="tl-cover-veil" />
+                  {!art && <span className="tl-cover-veil" />}
                   <div className="tl-cover-top">
-                    {(c.year || c.grade) && <span className="tl-cover-year">{c.year || c.grade}</span>}
+                    {!art && (c.year || c.grade) ? <span className="tl-cover-year">{c.year || c.grade}</span> : <span />}
                     {c.discountPercent > 0 && <span className="tl-cover-flag">خصم {c.discountPercent}%</span>}
                   </div>
-                  <span className="tl-cover-play" aria-hidden="true"><span><Play size={20} /></span></span>
+                  {!art && <span className="tl-cover-play" aria-hidden="true"><span><Play size={20} /></span></span>}
                 </Link>
                 <div className="tl-course-body">
                   <div className="tl-course-meta">
-                    <span>{c.isVideo ? 'درس بالفيديو' : subject}</span>
+                    <span>{c.isVideo ? 'درس بالفيديو' : art && c.year ? `${subject} · ${c.year}` : subject}</span>
                     {sample && <span>نموذج تجريبي</span>}
                   </div>
                   <h3>{c.title}</h3>

@@ -79,7 +79,7 @@
 .tl-slide .tl-course-footer{margin-top:auto}
 
 /* Cover art: the portrait fills the panel, formulas sit on top of it. */
-.tl-cover{position:relative;height:210px;overflow:hidden;background:#dce9ee}
+.tl-cover{position:relative;aspect-ratio:4/3;overflow:hidden;background:#dce9ee}
 .tl-cover>img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .8s cubic-bezier(.22,.61,.36,1)}
 .tl-course:hover .tl-cover>img{transform:scale(1.07)}
 .tl-cover-veil{position:absolute;inset:auto 0 0 0;height:58%;background:linear-gradient(to top,#0e2c3ccc,transparent)}
@@ -168,3 +168,22 @@ a.tl-cover{display:block;cursor:pointer}
 
 /* The teacher's prices by school year: one subscription opens the whole year. */
 .tl-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin-bottom:28px}.tl-plan{background:#fff;border:1px solid #d9e6ea;border-radius:15px;padding:18px 20px;display:flex;flex-direction:column;gap:6px}.tl-plan>span{font-size:11px;font-weight:800;color:#598074}.tl-plan>strong{font-size:22px;font-weight:900;color:var(--navy)}.tl-plan>strong small{font-size:11px;font-weight:700;color:#7a868a}.tl-plan>del{font-size:11px;color:#899295}.tl-plan>p{font-size:11px;line-height:1.9;color:#73818a}.tl-plan>a,.tl-plan>button{align-self:flex-start;display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12px;font-weight:800;color:var(--blue)}.tl-price small{font-size:10px;color:#7a868a}
+/* The teacher's own course artwork: whole, undimmed, with only a subtle zoom on hover */
+.tl-cover.art{background:#0b2e47}
+.tl-course:hover .tl-cover.art>img{transform:scale(1.03)}
+.tl-slide .tl-course p{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+/* A promotional poster in the hero instead of the arched portrait: its own shape, nothing cropped */
+.tl-portrait.poster{aspect-ratio:1122/1402;border-radius:26px;border-width:7px;transform:rotate(-1.5deg);background:#0b2e47;max-width:470px;margin-inline:auto}
+.tl-portrait.poster img{object-fit:cover}
+.tl-portrait-wrap:hover .tl-portrait.poster{transform:rotate(-1.5deg) scale(1.01)}
+.tl-portrait-wrap:hover .tl-portrait.poster img{transform:none}
+/* The poster wall */
+.tl-gallery{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+.tl-poster{display:block;padding:0;border:6px solid #fff;border-radius:18px;overflow:hidden;background:#0b2e47;box-shadow:0 14px 34px #15394c1a;cursor:zoom-in;transition:transform .3s,box-shadow .3s}
+.tl-poster:hover{transform:translateY(-6px) rotate(-.6deg);box-shadow:0 22px 44px #15394c2a}
+.tl-poster img{display:block;width:100%;aspect-ratio:1122/1402;object-fit:cover}
+.tl-poster-view{position:relative;max-width:min(92vw,560px)}
+.tl-poster-view img{display:block;width:100%;max-height:88vh;object-fit:contain;border-radius:16px;box-shadow:0 30px 70px #0008}
+.tl-poster-view .tl-modal-close{left:10px;top:10px;z-index:2;width:38px;height:38px;border-radius:50%;background:#fffffff0;display:grid;place-items:center;color:#14354b}
+@media(max-width:1050px){.tl-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.tl-gallery{gap:12px}.tl-poster{border-width:4px;border-radius:14px}.tl-portrait.poster{max-width:340px}}

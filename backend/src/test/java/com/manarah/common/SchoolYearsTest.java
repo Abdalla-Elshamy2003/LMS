@@ -19,6 +19,15 @@ class SchoolYearsTest {
         assertThat(SchoolYears.key("تالتة إعدادي")).isEqualTo("preparatory-3");
         assertThat(SchoolYears.key("الصف السادس الابتدائي")).isEqualTo("primary-6");
         assertThat(SchoolYears.key("روضة أولى")).isEqualTo("kg-1");
+        assertThat(SchoolYears.key("الثانية بكالوريا")).isEqualTo("secondary-2");
+        assertThat(SchoolYears.key("تالتة باكالوريا")).isEqualTo("secondary-3");
+        assertThat(SchoolYears.same("الثالثة بكالوريا", "الصف الثالث الثانوي")).isTrue();
+    }
+
+    @Test void yearsSortTheWaySchoolGoes() {
+        var keys = new java.util.ArrayList<>(java.util.List.of("secondary-2", "preparatory-1", "مراجعة", "primary-6", "secondary-1", "kg-2"));
+        keys.sort(SchoolYears.KEY_ORDER);
+        assertThat(keys).containsExactly("kg-2", "primary-6", "preparatory-1", "secondary-1", "secondary-2", "مراجعة");
     }
 
     @Test void differentYearsAndBlanksNeverMatch() {

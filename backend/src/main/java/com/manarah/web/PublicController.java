@@ -39,12 +39,15 @@ public class PublicController {
     private final RegistrationService registrationService;
     private final FileSessionCookie fileSessionCookie;
     private final com.manarah.academy.TeacherAcademyRepository academies;
+    private final com.manarah.subscription.PlanAccess planAccess;
 
     public PublicController(TenantRepository tenants, UserRepository users, CourseRepository courses,
                            StudentRepository students, CourseModuleRepository modules, LessonRepository lessons,
                            EnrollmentRepository enrollments, RegistrationService registrationService,
-                           FileSessionCookie fileSessionCookie, com.manarah.academy.TeacherAcademyRepository academies) {
+                           FileSessionCookie fileSessionCookie, com.manarah.academy.TeacherAcademyRepository academies,
+                           com.manarah.subscription.PlanAccess planAccess) {
         this.academies = academies;
+        this.planAccess = planAccess;
         this.tenants = tenants;
         this.users = users;
         this.courses = courses;
@@ -100,6 +103,9 @@ public class PublicController {
         result.put("description", nn(c.getDescription(), "")); result.put("gradeLevel", nn(c.getGradeLevel(), "")); result.put("grade", nn(c.getGrade(), ""));
         result.put("price", c.getPrice()); result.put("discountPercent", c.getDiscountPercent()); result.put("finalPrice", c.getFinalPrice());
         result.put("coverUrl", nn(c.getCoverUrl(), "")); result.put("schedule", nn(c.getSchedule(), ""));
+        // What a student actually pays: the year's subscription, not the course's own price. No price yet = null.
+        result.put("paid", !com.manarah.enrollment.CourseRequests.isFree(c));
+        result.put("plan", yearPlan(c));
         result.put("studentCount", enrollments.countStudying(c.getTenantId(), c.getId())); result.put("curriculum", curriculum);
         result.put("teacher", teacher == null ? null : Map.of("id", teacher.getId(), "name", teacher.getFullName(), "title", nn(teacher.getTitle(), "مدرس"), "photoUrl", nn(teacher.getPhotoUrl(), ""), "subjects", nn(teacher.getSubjects(), "")));
         // Checkout needs to know which tenant the course lives in, since a teacher page is its own tenant.
@@ -112,6 +118,16 @@ public class PublicController {
                 "note", nn(a.getPaymentNote(), "")))
                 .orElse(Map.of("instapayNumber", "", "vodafoneCashNumber", "", "note", "")));
         return result;
+    }
+
+    private Map<String, Object> yearPlan(com.manarah.course.domain.Course c) {
+        return planAccess.findPlanFor(c, null).filter(p -> p.isActive()).map(p -> {
+            Map<String, Object> plan = new LinkedHashMap<>();
+            plan.put("year", p.getYearLabel()); plan.put("subject", nn(p.getSubject(), ""));
+            plan.put("price", p.getPrice()); plan.put("finalPrice", p.finalPrice());
+            plan.put("discountPercent", p.getDiscountPercent()); plan.put("months", p.getMonths());
+            return plan;
+        }).orElse(null);
     }
 
     /** An academy tenant is public only while its page is published; the main tenant always is. */

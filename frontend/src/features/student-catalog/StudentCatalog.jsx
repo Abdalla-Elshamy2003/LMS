@@ -296,15 +296,16 @@ function CourseCard({ c, plan, owned, badge, focused, children }) {
   return (
     <div id={`course-${c.id}`}
       className={`card flex flex-col overflow-hidden transition ${focused ? 'ring-2 ring-brand-500 ring-offset-2' : ''}`}>
-      <div className="relative h-32 overflow-hidden bg-gradient-to-br from-brand-600 to-brand-900">
-        {c.coverUrl && <img src={c.coverUrl} alt="" loading="lazy" className="h-full w-full object-cover" />}
+      {/* A cover is the teacher's designed artwork: shown whole (4:3), and it already names the year. */}
+      <div className={`relative overflow-hidden bg-gradient-to-br from-brand-600 to-brand-900 ${c.coverUrl ? 'aspect-[4/3]' : 'h-32'}`}>
+        {c.coverUrl && <img src={c.coverUrl} alt={c.title} loading="lazy" className="h-full w-full object-cover" />}
         <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
-          {c.year ? <span className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-ink-700">{c.year}</span> : <span />}
+          {c.year && !c.coverUrl ? <span className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-ink-700">{c.year}</span> : <span />}
           {badge}
         </div>
       </div>
       <div className="flex flex-1 flex-col p-4">
-        <p className="text-xs text-ink-400">{c.subject}</p>
+        <p className="text-xs text-ink-400">{c.subject}{c.coverUrl && c.year ? ` · ${c.year}` : ''}</p>
         <p className="mt-1 font-extrabold leading-snug text-ink-800">{c.title}</p>
         {c.description && <p className="mt-1.5 line-clamp-2 text-xs leading-6 text-ink-500">{c.description}</p>}
         {owned ? null : price > 0 ? (

@@ -30,12 +30,14 @@ public class AcademyService {
     private final com.manarah.audit.AuditService audit;
     private final LinkedStudentAccounts linked;
     private final com.manarah.identity.LoginCredentials logins;
+    private final com.manarah.media.PublicImageRepository publicImages;
     public AcademyService(TeacherAcademyRepository academies, TenantRepository tenants, BranchRepository branches,
             UserRepository users, StudentRepository students, CourseRepository courses, EnrollmentRepository enrollments, PasswordEncoder passwords,
-            com.manarah.audit.AuditService audit, LinkedStudentAccounts linked, com.manarah.identity.LoginCredentials logins) {
+            com.manarah.audit.AuditService audit, LinkedStudentAccounts linked, com.manarah.identity.LoginCredentials logins,
+            com.manarah.media.PublicImageRepository publicImages) {
         this.academies = academies; this.tenants = tenants; this.branches = branches; this.users = users;
         this.students = students; this.courses = courses; this.enrollments = enrollments; this.passwords = passwords;
-        this.audit = audit; this.linked = linked; this.logins = logins;
+        this.audit = audit; this.linked = linked; this.logins = logins; this.publicImages = publicImages;
     }
     /** Status for a student removed from an academy — see {@link #removeStudent}. */
     private static final String ARCHIVED = "ARCHIVED";
@@ -47,17 +49,29 @@ public class AcademyService {
             this(name, slug, username, password, null);
         }
     }
+    /** {@code videos} and {@code gallery} left null keep what the page already has. */
     public record Content(String name, String tagline, String headline, String description, String aboutText,
                           String subject, String phone, boolean demoContent, boolean published, List<Video> videos,
-                          String instapayNumber, String vodafoneCashNumber, String paymentNote) {
+                          String instapayNumber, String vodafoneCashNumber, String paymentNote, List<String> gallery) {
         public Content(String name, String tagline, String headline, String description, String aboutText,
                        String subject, String phone, boolean demoContent, boolean published, List<Video> videos) {
-            this(name, tagline, headline, description, aboutText, subject, phone, demoContent, published, videos, "", "", "");
+            this(name, tagline, headline, description, aboutText, subject, phone, demoContent, published, videos, "", "", "", null);
+        }
+        public Content(String name, String tagline, String headline, String description, String aboutText,
+                       String subject, String phone, boolean demoContent, boolean published, List<Video> videos,
+                       String instapayNumber, String vodafoneCashNumber, String paymentNote) {
+            this(name, tagline, headline, description, aboutText, subject, phone, demoContent, published, videos,
+                    instapayNumber, vodafoneCashNumber, paymentNote, null);
         }
     }
     public record Video(String title, String description, String url, String poster, String category) {}
     public record Account(String fullName, String username, String password, List<Long> courseIds) {}
-    public record Credentials(String username, String password) {}
+    /** {@code email}, when given, is a second way for the teacher to sign in, next to the username. */
+    public record Credentials(String username, String password, String email) {
+        public Credentials(String username, String password) { this(username, password, null); }
+    }
+    /** How many promotional posters a teacher page can show. */
+    public static final int GALLERY_LIMIT = 8;
 
     public List<TeacherAcademy> list(UserPrincipal actor) {
         var own = academies.findByTenantId(actor.getTenantId());
@@ -163,6 +177,14 @@ public class AcademyService {
             try { a.setVideosJson(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(videos)); }
             catch (com.fasterxml.jackson.core.JsonProcessingException e) { throw new IllegalStateException(e); }
         }
+        if (req.gallery() != null) {
+            // Saving can reorder or drop posters, never bring in one from elsewhere: new ones arrive through
+            // addGalleryImage, which stores them under this page's own tenant.
+            var current = a.getGallery();
+            var kept = req.gallery().stream().distinct().toList();
+            if (!current.containsAll(kept)) throw new BadRequestException("ارفع الصورة الدعائية من صفحة المستر نفسها");
+            a.setGallery(kept);
+        }
         var t = tenants.findById(a.getTenantId()).orElseThrow(); t.setName(a.getName());
         var u = users.findById(a.getTeacherId()).orElseThrow(); u.setFullName(a.getName()); u.setSubjects(a.getSubject()); u.setBio(a.getAboutText()); u.setTitle(a.getTagline());
         u.setPhotoUrl(a.getPhotoUrl()); return academies.save(a);
@@ -181,8 +203,30 @@ public class AcademyService {
     public void teacherCredentials(UserPrincipal actor, Long id, Credentials req) {
         var a = manage(actor, id);
         if (!actor.isAdmin()) throw new ForbiddenException("تعديل حساب المدرس متاح للإدارة فقط");
-        var u = users.findById(a.getTeacherId()).orElseThrow(); credentials(u, req.username(), req.password()); users.save(u);
+        var u = users.findById(a.getTeacherId()).orElseThrow(); credentials(u, req.username(), req.password());
+        if (req.email() != null && !req.email().isBlank()) {
+            String email = required(req.email(), 120).toLowerCase(Locale.ROOT);
+            if (!EMAIL.matcher(email).matches()) throw new BadRequestException("البريد الإلكتروني غير صالح");
+            // Login looks an address up across every academy, so it must not open anyone else's account.
+            if (!email.equalsIgnoreCase(u.getEmail()) && users.existsByEmailIgnoreCase(email)) throw new ConflictException("البريد الإلكتروني مستخدم بالفعل");
+            u.setEmail(email);
+        }
+        users.save(u);
         audit.record(actor, "TEACHER_CREDENTIALS_CHANGED", "TeacherAcademy", id, null, "credentials rotated");
+    }
+
+    /** Adds one promotional poster to the teacher page, stored in the database under the page's own tenant. */
+    @Transactional
+    public TeacherAcademy addGalleryImage(UserPrincipal actor, Long id, com.manarah.media.PublicImage image) {
+        var a = manage(actor, id);
+        var gallery = new ArrayList<>(a.getGallery());
+        if (gallery.size() >= GALLERY_LIMIT) throw new BadRequestException("الحد الأقصى " + GALLERY_LIMIT + " صور دعائية — احذف صورة الأول");
+        image.setTenantId(a.getTenantId()); image.setCreatedBy(actor.getId());
+        publicImages.save(image);
+        gallery.add("/api/public/images/" + image.getId());
+        a.setGallery(gallery);
+        audit.record(actor, "ACADEMY_GALLERY_IMAGE_ADDED", "TeacherAcademy", id, null, "image=" + image.getId());
+        return academies.save(a);
     }
     public List<Map<String,Object>> accounts(UserPrincipal actor, Long id) {
         var a = manage(actor, id);

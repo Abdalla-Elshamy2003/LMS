@@ -110,7 +110,7 @@ public class StudentCatalogService {
                 .thenComparing(CatalogCourse::id, Comparator.reverseOrder())).toList();
 
         // The years this teacher teaches, one spelling each, for the "سنتك الدراسية" picker.
-        Map<String, String> years = new TreeMap<>();
+        Map<String, String> years = new TreeMap<>(SchoolYears.KEY_ORDER);
         all.stream().filter(c -> "ACTIVE".equals(c.getStatus()) && !blank(c.getGrade()))
                 .forEach(c -> years.putIfAbsent(SchoolYears.key(c.getGrade()), c.getGrade().trim()));
 

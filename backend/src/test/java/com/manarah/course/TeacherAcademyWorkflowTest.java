@@ -91,4 +91,52 @@ class TeacherAcademyWorkflowTest {
         mvc.perform(put("/api/academies/" + aid).header("Authorization", "Bearer " + teacher).contentType(MediaType.APPLICATION_JSON).content(body(content))).andExpect(status().isOk());
         mvc.perform(get("/api/public/academies/test-math")).andExpect(status().isOk()).andExpect(jsonPath("$.profile.headline").value("عنوان جديد محفوظ")).andExpect(jsonPath("$.profile.photoData").doesNotExist());
     }
+
+    @Test void teacherEmailLoginGalleryAndBaccalaureateYears() throws Exception {
+        String admin = login("admin@manarah.io", "manarah123");
+        var a = postJson("/api/academies", admin, Map.of("name", "مستر الجاليري", "slug", "test-gallery", "username", "test.gallery", "password", "TestPass123!"));
+        long aid = a.path("id").asLong();
+        // An email next to the username: either one signs the teacher in; a taken address is refused.
+        mvc.perform(put("/api/academies/" + aid + "/credentials").header("Authorization", "Bearer " + admin).contentType(MediaType.APPLICATION_JSON)
+            .content(body(Map.of("username", "test.gallery", "password", "NewPass1234!", "email", "Gallery.Teacher@Example.com")))).andExpect(status().isOk());
+        String teacher = login("gallery.teacher@example.com", "NewPass1234!");
+        login("test.gallery", "NewPass1234!");
+        mvc.perform(put("/api/academies/" + aid + "/credentials").header("Authorization", "Bearer " + admin).contentType(MediaType.APPLICATION_JSON)
+            .content(body(Map.of("username", "test.gallery", "password", "NewPass1234!", "email", "admin@manarah.io")))).andExpect(status().isConflict());
+        mvc.perform(put("/api/academies/" + aid + "/credentials").header("Authorization", "Bearer " + admin).contentType(MediaType.APPLICATION_JSON)
+            .content(body(Map.of("username", "test.gallery", "password", "NewPass1234!", "email", "not-an-email")))).andExpect(status().isBadRequest());
+
+        // Posters are stored in the database under the page's tenant and listed on the public page in order.
+        byte[] png = Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jWZkAAAAASUVORK5CYII=");
+        String first = null, second = null;
+        for (int i = 0; i < 2; i++) {
+            var page = json.readTree(mvc.perform(multipart("/api/academies/" + aid + "/gallery").file(new MockMultipartFile("file", "poster.png", "image/png", png))
+                .header("Authorization", "Bearer " + admin)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+            if (i == 0) first = page.path("gallery").path(0).asText(); else second = page.path("gallery").path(1).asText();
+        }
+        assertThat(first).matches("/api/public/images/\\d+");
+        mvc.perform(get(first)).andExpect(status().isOk()).andExpect(content().bytes(png));
+        mvc.perform(multipart("/api/academies/" + aid + "/gallery").file(new MockMultipartFile("file", "x.png", "image/png", "not an image".getBytes()))
+            .header("Authorization", "Bearer " + admin)).andExpect(status().isBadRequest());
+        // Saving the page can reorder or drop posters, but never pull in an image from outside the page.
+        var content = json.convertValue(a, new com.fasterxml.jackson.core.type.TypeReference<Map<String,Object>>(){});
+        content.put("gallery", List.of(second, first));
+        mvc.perform(put("/api/academies/" + aid).header("Authorization", "Bearer " + teacher).contentType(MediaType.APPLICATION_JSON).content(body(content))).andExpect(status().isOk());
+        mvc.perform(get("/api/public/academies/test-gallery")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.gallery[0]").value(second)).andExpect(jsonPath("$.gallery[1]").value(first));
+        String outsider = json.readTree(mvc.perform(multipart("/api/images").file(new MockMultipartFile("file", "o.png", "image/png", png))
+            .header("Authorization", "Bearer " + admin)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("url").asText();
+        content.put("gallery", List.of(second, outsider));
+        mvc.perform(put("/api/academies/" + aid).header("Authorization", "Bearer " + teacher).contentType(MediaType.APPLICATION_JSON).content(body(content))).andExpect(status().isBadRequest());
+        content.remove("gallery"); // left out = unchanged
+        mvc.perform(put("/api/academies/" + aid).header("Authorization", "Bearer " + teacher).contentType(MediaType.APPLICATION_JSON).content(body(content))).andExpect(status().isOk());
+        mvc.perform(get("/api/public/academies/test-gallery")).andExpect(jsonPath("$.gallery.length()").value(2));
+
+        // A baccalaureate course is a secondary-year course; its public page names the year's plan.
+        long bac = postJson("/api/courses", teacher, Map.of("title", "رياضيات الثانية بكالوريا", "price", 1, "grade", "الثانية بكالوريا", "gradeLevel", "ثانوي")).path("summary").path("id").asLong();
+        mvc.perform(get("/api/public/courses/" + bac)).andExpect(status().isOk()).andExpect(jsonPath("$.paid").value(true)).andExpect(jsonPath("$.plan").doesNotExist());
+        mvc.perform(put("/api/plans").header("Authorization", "Bearer " + teacher).contentType(MediaType.APPLICATION_JSON)
+            .content(body(Map.of("year", "الصف الثاني الثانوي", "price", 200, "months", 1)))).andExpect(status().isOk());
+        mvc.perform(get("/api/public/courses/" + bac)).andExpect(status().isOk()).andExpect(jsonPath("$.plan.finalPrice").value(200)).andExpect(jsonPath("$.plan.months").value(1));
+    }
 }

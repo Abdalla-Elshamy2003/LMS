@@ -23,7 +23,8 @@ public final class SchoolYears {
     public static String key(String raw) {
         String s = normalize(raw);
         if (s.isEmpty()) return "";
-        String stage = s.contains("ثانوي") ? "secondary" : s.contains("اعدادي") ? "preparatory"
+        // The Egyptian baccalaureate ("تانية بكالوريا") is the new name for the secondary years.
+        String stage = s.contains("ثانوي") || s.contains("كالوريا") ? "secondary" : s.contains("اعدادي") ? "preparatory"
                 : s.contains("ابتدائي") ? "primary" : s.contains("روضه") || s.contains("kg") ? "kg" : null;
         Integer number = null;
         for (String token : s.split(" ")) {
@@ -41,6 +42,19 @@ public final class SchoolYears {
         if ("secondary".equals(stage) && number == null && s.contains("عامه")) number = 3;
         if (stage != null && number != null) return stage + "-" + number;
         return s.replaceAll("(^| )الصف( |$)", " ").trim();
+    }
+
+    private static final java.util.List<String> STAGES = java.util.List.of("kg", "primary", "preparatory", "secondary");
+
+    /** Orders {@link #key keys} the way school goes: KG, primary, preparatory, secondary, then anything unrecognised. */
+    public static final java.util.Comparator<String> KEY_ORDER = java.util.Comparator
+            .comparingInt(SchoolYears::rank).thenComparing(java.util.Comparator.naturalOrder());
+
+    private static int rank(String key) {
+        int dash = key.lastIndexOf('-');
+        int stage = dash < 0 ? -1 : STAGES.indexOf(key.substring(0, dash));
+        if (stage < 0 || !key.substring(dash + 1).matches("[1-6]")) return Integer.MAX_VALUE;
+        return stage * 10 + Integer.parseInt(key.substring(dash + 1));
     }
 
     /** "للصف الثاني الثانوي" / "لـتانية ثانوي": "for <year>" the way it's written in Arabic. */

@@ -78,6 +78,7 @@ export default function AcademySettings() {
   const [credentials, setCredentials] = useState({
     username: "",
     password: "",
+    email: "",
   });
   const [teachers, setTeachers] = useState([]);
   const [busy, setBusy] = useState(false),
@@ -103,7 +104,7 @@ export default function AcademySettings() {
     setForm(a ? { ...a } : null);
     setAccount(blankAccount);
     setEditing(null);
-    setCredentials({ username: "", password: "" });
+    setCredentials({ username: "", password: "", email: "" });
     if (a) {
       let live = true;
       Promise.all([
@@ -186,6 +187,27 @@ export default function AcademySettings() {
       if (slot === "photo") setForm((f) => ({ ...f, photoUrl: data.url }));
     }, "تم رفع الصورة وحفظها");
   };
+  // Promotional posters: added one at a time (stored in the database), reordered or removed with the page save.
+  const addPoster = (file) => {
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      setError("اختر صورة أصغر من 3 ميجابايت");
+      return;
+    }
+    run(async () => {
+      const body = new FormData();
+      body.append("file", file);
+      const { data } = await api.post(`/academies/${selected}/gallery`, body);
+      setItems((v) => v.map((x) => (x.id === data.id ? { ...x, gallery: data.gallery } : x)));
+      setForm((f) => ({ ...f, gallery: data.gallery }));
+    }, "تم رفع الصورة الدعائية");
+  };
+  const saveGallery = (gallery, message) =>
+    run(async () => {
+      const { data } = await api.put(`/academies/${selected}`, { ...form, gallery });
+      setItems((v) => v.map((x) => (x.id === data.id ? data : x)));
+      setForm((f) => ({ ...f, gallery: data.gallery || gallery }));
+    }, message);
   const submitAccount = (e) => {
     e.preventDefault();
     run(
@@ -553,6 +575,50 @@ export default function AcademySettings() {
                     />
                   </label>
                 </div>
+                <div className="card p-5">
+                  <h3 className="font-extrabold text-sm">الصور الدعائية</h3>
+                  <p className="text-xs text-ink-400 mt-2 leading-6">
+                    بوسترات المستر. الأولى تظهر في مقدمة الصفحة، وكلها تظهر في
+                    قسم «إعلانات المستر».
+                  </p>
+                  {(form.gallery || []).length > 0 && (
+                    <ul className="mt-3 grid grid-cols-2 gap-2">
+                      {(form.gallery || []).map((src, i) => (
+                        <li key={src} className="relative overflow-hidden rounded-xl border border-ink-100">
+                          <img src={src} alt={`صورة دعائية ${i + 1}`} className="aspect-[4/5] w-full object-cover" />
+                          {i === 0 && <span className="absolute right-1.5 top-1.5 chip bg-white/90 text-brand-700 text-[10px]">الرئيسية</span>}
+                          <div className="absolute inset-x-1.5 bottom-1.5 flex justify-between gap-1">
+                            {i > 0 ? (
+                              <button type="button" disabled={busy} className="rounded-lg bg-white/90 px-2 py-1 text-[10px] font-bold text-ink-700"
+                                onClick={() => { const g = [...form.gallery]; g.splice(i, 1); saveGallery([src, ...g], "تم تعيين الصورة الرئيسية"); }}>
+                                اجعلها الأولى
+                              </button>
+                            ) : <span />}
+                            <button type="button" disabled={busy} aria-label={`حذف الصورة ${i + 1}`} className="rounded-lg bg-white/90 p-1 text-rose-600"
+                              onClick={() => saveGallery(form.gallery.filter((x) => x !== src), "تم حذف الصورة")}>
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {(form.gallery || []).length < 8 && (
+                    <label className="btn-secondary w-full mt-3 cursor-pointer">
+                      <ImagePlus size={18} /> رفع صورة دعائية
+                      <input
+                        disabled={busy}
+                        type="file"
+                        accept="image/png,image/jpeg"
+                        className="sr-only"
+                        onChange={(e) => {
+                          addPoster(e.target.files[0]);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
                 <p className="text-xs text-ink-400 leading-6 px-2">
                   الصور تُحفظ فور رفعها. باقي النصوص والإعدادات تُنشر عند الضغط
                   على حفظ التغييرات.
@@ -734,7 +800,7 @@ export default function AcademySettings() {
                     `/academies/${selected}/credentials`,
                     credentials,
                   );
-                  setCredentials({ username: "", password: "" });
+                  setCredentials({ username: "", password: "", email: "" });
                 }, "تم تفعيل حساب المدرس وحفظ بيانات الدخول الجديدة");
               }}
             >
@@ -758,6 +824,23 @@ export default function AcademySettings() {
                     setCredentials((f) => ({ ...f, username: e.target.value }))
                   }
                 />
+              </label>
+              <label className="block text-sm">
+                البريد الإلكتروني (اختياري)
+                <input
+                  type="email"
+                  autoComplete="off"
+                  dir="ltr"
+                  className="input mt-2"
+                  placeholder="teacher@example.com"
+                  value={credentials.email}
+                  onChange={(e) =>
+                    setCredentials((f) => ({ ...f, email: e.target.value }))
+                  }
+                />
+                <small className="block mt-1 text-xs text-ink-400">
+                  المستر يقدر يدخل بالإيميل ده أو باسم المستخدم.
+                </small>
               </label>
               <label className="block text-sm">
                 كلمة مرور جديدة

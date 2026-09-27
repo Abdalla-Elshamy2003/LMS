@@ -68,19 +68,27 @@ export default function Courses() {
             return (
               <motion.div variants={fadeUp} key={c.id} className="card overflow-hidden">
                 <Link to={courseHref(c, user.role)} className="block hover:shadow-glow transition-shadow">
-                  <div className={`relative h-28 bg-gradient-to-br ${GRADIENTS[i % GRADIENTS.length]} p-5`}>
-                    {c.coverUrl && <img src={c.coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />}
-                    <div className="absolute inset-0 bg-grid opacity-30" />
-                    <BookOpen className="relative text-white/90" size={26} />
-                    <span className="absolute bottom-4 left-5 chip bg-white/20 text-white backdrop-blur">{c.subject}</span>
+                  <div className={`relative bg-gradient-to-br ${GRADIENTS[i % GRADIENTS.length]} p-5 ${c.coverUrl ? 'aspect-[4/3]' : 'h-28'}`}>
+                    {c.coverUrl
+                      ? <img src={c.coverUrl} alt={c.title} className="absolute inset-0 h-full w-full object-cover" />
+                      : <>
+                          <div className="absolute inset-0 bg-grid opacity-30" />
+                          <BookOpen className="relative text-white/90" size={26} />
+                          <span className="absolute bottom-4 left-5 chip bg-white/20 text-white backdrop-blur">{c.subject}</span>
+                        </>}
                     {c.discountPercent > 0 && <span className="absolute bottom-4 right-5 chip bg-rose-500 text-white">خصم {c.discountPercent}%</span>}
                   </div>
                   <div className="p-5 pb-3">
                     <p className="font-extrabold text-ink-800 leading-snug">{c.title}</p>
-                    <p className="mt-1 text-xs text-ink-400">{c.teacherName || 'بدون مدرس'}{c.schedule ? ` · ${c.schedule}` : ''}</p>
+                    <p className="mt-1 text-xs text-ink-400">{c.grade ? `${c.grade} · ` : ''}{c.teacherName || 'بدون مدرس'}{c.schedule ? ` · ${c.schedule}` : ''}</p>
                     <div className="mt-4 flex items-center justify-between">
                       <span className="inline-flex items-center gap-1.5 text-sm text-ink-500"><Users2 size={15} /> {c.studentCount} طالب</span>
-                      {c.discountPercent > 0 ? (
+                      {/* A paid course of a school year is sold with that year's subscription, priced in «خطط الاشتراك». */}
+                      {c.grade && Number(c.finalPrice ?? c.price) > 0 ? (
+                        <span className="chip bg-brand-50 text-brand-700">ضمن اشتراك السنة</span>
+                      ) : Number(c.finalPrice ?? c.price) <= 0 ? (
+                        <span className="font-bold text-emerald-600">مجاني</span>
+                      ) : c.discountPercent > 0 ? (
                         <span className="flex items-baseline gap-1.5">
                           <span className="text-xs text-ink-400 line-through">{fmtMoney(c.price)}</span>
                           <span className="font-bold text-rose-600">{fmtMoney(c.finalPrice)}</span>

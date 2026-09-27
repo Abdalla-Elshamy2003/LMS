@@ -1,6 +1,5 @@
 package com.manarah.media;
 
-import com.manarah.common.exception.ApiExceptions.BadRequestException;
 import com.manarah.common.exception.ApiExceptions.NotFoundException;
 import com.manarah.common.tenant.TenantContext;
 import com.manarah.security.UserPrincipal;
@@ -18,12 +17,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.imageio.ImageIO;
 import java.time.Duration;
 import java.util.Base64;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Cover images for courses and video lessons. Teachers and content staff upload; anyone can view,
@@ -33,9 +29,6 @@ import java.util.Set;
 @RestController
 @Tag(name = "Images")
 public class ImageController {
-
-    private static final long MAX_BYTES = 3L * 1024 * 1024;
-    private static final long MAX_PIXELS = 20_000_000L;
 
     private final PublicImageRepository images;
 
@@ -47,22 +40,7 @@ public class ImageController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
     @Transactional
     public Map<String, Object> upload(@AuthenticationPrincipal UserPrincipal actor, @RequestParam MultipartFile file) throws Exception {
-        if (file.isEmpty() || file.getSize() > MAX_BYTES) throw new BadRequestException("اختر صورة أصغر من 3 ميجابايت");
-        String type;
-        try (var input = ImageIO.createImageInputStream(file.getInputStream())) {
-            var readers = ImageIO.getImageReaders(input);
-            if (!readers.hasNext()) throw new BadRequestException("ملف الصورة غير صالح");
-            var reader = readers.next();
-            try {
-                reader.setInput(input);
-                if ((long) reader.getWidth(0) * reader.getHeight(0) > MAX_PIXELS) throw new BadRequestException("أبعاد الصورة كبيرة جداً");
-                String format = reader.getFormatName().toLowerCase(Locale.ROOT);
-                if (!Set.of("png", "jpeg", "jpg").contains(format)) throw new BadRequestException("الصورة يجب أن تكون PNG أو JPG");
-                type = format.equals("png") ? "image/png" : "image/jpeg";
-            } finally {
-                reader.dispose();
-            }
-        }
+        String type = ImageFiles.validatedType(file);
         var image = new PublicImage();
         image.setTenantId(TenantContext.require());
         image.setContentType(type);

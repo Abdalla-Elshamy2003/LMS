@@ -10,7 +10,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.http.*;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
-import javax.imageio.ImageIO;
 
 @RestController @RequestMapping("/api")
 public class AcademyController {
@@ -85,25 +84,19 @@ public class AcademyController {
     public Object upload(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @PathVariable String slot, @RequestParam MultipartFile file) throws Exception {
         var a = service.manage(actor, id);
         if (!Set.of("photo", "cover").contains(slot)) throw new BadRequestException("مكان الصورة غير صالح");
-        if (file.isEmpty() || file.getSize() > 3 * 1024 * 1024) throw new BadRequestException("اختر صورة أصغر من 3 ميجابايت");
-        String type = Objects.toString(file.getContentType(), "");
-        if (!Set.of("image/png", "image/jpeg").contains(type)) throw new BadRequestException("الصورة يجب أن تكون PNG أو JPG");
-        try (var input = ImageIO.createImageInputStream(file.getInputStream())) {
-            var readers = ImageIO.getImageReaders(input);
-            if (!readers.hasNext()) throw new BadRequestException("ملف الصورة غير صالح");
-            var reader = readers.next();
-            try {
-                reader.setInput(input);
-                if ((long)reader.getWidth(0) * reader.getHeight(0) > 20_000_000) throw new BadRequestException("أبعاد الصورة كبيرة جداً");
-                String format = reader.getFormatName().toLowerCase(Locale.ROOT);
-                if (!Set.of("png", "jpeg", "jpg").contains(format)) throw new BadRequestException("صيغة الصورة غير صالحة");
-                type = format.equals("png") ? "image/png" : "image/jpeg";
-            } finally { reader.dispose(); }
-        }
+        String type = com.manarah.media.ImageFiles.validatedType(file);
         String data = "data:" + type + ";base64," + Base64.getEncoder().encodeToString(file.getBytes());
         if (slot.equals("photo")) { a.setPhotoData(data); a.setPhotoUrl("/api/public/academies/" + a.getSlug() + "/images/photo?v=" + System.currentTimeMillis()); }
         else a.setCoverData(data);
         academies.save(a); return Map.of("url", slot.equals("photo") ? a.getPhotoUrl() : "/api/public/academies/" + a.getSlug() + "/images/cover?v=" + System.currentTimeMillis());
+    }
+    /** Adds a promotional poster; reordering and removing go through the page save ({@code gallery}). */
+    @PostMapping("/academies/{id}/gallery")
+    public Object addGalleryImage(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @RequestParam MultipartFile file) throws Exception {
+        var image = new com.manarah.media.PublicImage();
+        image.setContentType(com.manarah.media.ImageFiles.validatedType(file));
+        image.setData(Base64.getEncoder().encodeToString(file.getBytes()));
+        return service.addGalleryImage(actor, id, image);
     }
     private TeacherAcademy published(String slug) {
         return (slug.equals("default") ? academies.findByDefaultHomeTrue() : academies.findBySlug(slug))
@@ -129,6 +122,7 @@ public class AcademyController {
             // landing page shows them in the same slider as the courses, so publishing either one
             // is enough to make it appear publicly.
             "videos", a.getVideos(),
+            "gallery", a.getGallery(),
             // What the teacher charges per year and subject, for how many months — only the ones with a price set.
             "plans", plans.findByTenantId(a.getTenantId()).stream().filter(p -> p.isActive() && p.getPrice() != null)
                 .map(p -> Map.<String,Object>of("id", p.getId(), "year", p.getYearLabel(), "yearKey", p.getYearKey(), "subject", p.getSubject(),

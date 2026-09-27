@@ -32,9 +32,21 @@ public class TeacherAcademy {
     private boolean published = true;
     private boolean defaultHome;
     @JsonIgnore @Column(columnDefinition = "TEXT") private String videosJson = "[]";
+    /** Promotional posters, as /api/public/images/{id} URLs in display order. */
+    @JsonIgnore @Column(columnDefinition = "TEXT") private String galleryJson = "[]";
 
     public java.util.List<AcademyService.Video> getVideos() {
         try { return new com.fasterxml.jackson.databind.ObjectMapper().readValue(videosJson, new com.fasterxml.jackson.core.type.TypeReference<java.util.List<AcademyService.Video>>() {}); }
         catch (com.fasterxml.jackson.core.JsonProcessingException e) { throw new IllegalStateException("Invalid stored video playlist", e); }
+    }
+
+    public java.util.List<String> getGallery() {
+        try { return new com.fasterxml.jackson.databind.ObjectMapper().readValue(galleryJson, new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() {}); }
+        catch (com.fasterxml.jackson.core.JsonProcessingException e) { throw new IllegalStateException("Invalid stored gallery", e); }
+    }
+
+    public void setGallery(java.util.List<String> gallery) {
+        try { galleryJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(gallery); }
+        catch (com.fasterxml.jackson.core.JsonProcessingException e) { throw new IllegalStateException(e); }
     }
 }

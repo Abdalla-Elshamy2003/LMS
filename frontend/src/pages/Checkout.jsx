@@ -8,6 +8,7 @@ import { Spinner, PageLoader } from '../components/ui'
 import MarketingNav from '../components/marketing/MarketingNav'
 import MarketingFooter from '../components/marketing/MarketingFooter'
 import { apiErrorMessage } from '../lib/apiError'
+import { perMonths } from '../lib/subscriptions'
 
 /** No live payment gateway: the teacher confirms InstaPay/Vodafone Cash transfers manually and
  *  hands the student a one-time code. This page shows where to send the money, then lets the
@@ -73,6 +74,8 @@ export default function Checkout() {
   }
 
   const payment = course?.payment || {}
+  // Older backends don't say; any course they return with a price is still sold by the year.
+  const yearly = !!course && (course.paid ?? Number(course.finalPrice ?? course.price) > 0) && !!(course.plan || course.grade)
   const hasPaymentInfo = payment.instapayNumber || payment.vodafoneCashNumber
 
   return (
@@ -84,14 +87,19 @@ export default function Checkout() {
           <div className="grid gap-8 lg:grid-cols-5">
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="lg:col-span-2 space-y-5">
               <div className="card sticky top-28 overflow-hidden">
-                {course.coverUrl && <img src={course.coverUrl} alt={course.title} className="h-32 w-full object-cover" />}
+                {course.coverUrl && <img src={course.coverUrl} alt={course.title} className="aspect-[4/3] w-full object-cover" />}
                 <div className="p-6">
                   <span className="chip bg-brand-50 text-brand-700">{course.subject}</span>
                   <h2 className="mt-3 text-lg font-black text-ink-800">{course.title}</h2>
                   {course.teacher && <p className="mt-1 text-sm text-ink-400">مع {course.teacher.name}</p>}
                   <div className="mt-5 flex items-center justify-between border-t border-ink-100 pt-4">
-                    <span className="text-sm font-semibold text-ink-500">السعر</span>
-                    {course.discountPercent > 0 ? (
+                    <span className="text-sm font-semibold text-ink-500">{yearly ? `اشتراك ${course.plan?.year || course.grade || 'السنة'}` : 'السعر'}</span>
+                    {/* A paid course is sold with its year: the year's price, or the teacher's word until one is set. */}
+                    {yearly ? (
+                      course.plan?.finalPrice != null
+                        ? <span className="text-left"><span className="text-2xl font-black text-brand-600">{Number(course.plan.finalPrice).toLocaleString('ar-EG')} ج.م</span><span className="block text-xs font-semibold text-ink-400">{perMonths(course.plan.months)}</span></span>
+                        : <span className="text-base font-black text-brand-600">السعر عند المستر</span>
+                    ) : course.discountPercent > 0 ? (
                       <span className="flex items-baseline gap-2">
                         <span className="text-sm text-ink-400 line-through">{Number(course.price).toLocaleString('ar-EG')} ج.م</span>
                         <span className="text-2xl font-black text-rose-600">{Number(course.finalPrice).toLocaleString('ar-EG')} ج.م</span>
@@ -100,7 +108,7 @@ export default function Checkout() {
                       <span className="text-2xl font-black text-brand-600">{Number(course.price).toLocaleString('ar-EG')} ج.م</span>
                     )}
                   </div>
-                  {course.discountPercent > 0 && <span className="mt-2 inline-block chip bg-rose-50 text-rose-700">خصم {course.discountPercent}% لفترة محدودة</span>}
+                  {!yearly && course.discountPercent > 0 && <span className="mt-2 inline-block chip bg-rose-50 text-rose-700">خصم {course.discountPercent}% لفترة محدودة</span>}
                   <div className="mt-4 flex items-center gap-2 text-xs text-ink-400">
                     <ShieldCheck size={14} className="text-emerald-500" /> بياناتك محمية بالكامل
                   </div>
