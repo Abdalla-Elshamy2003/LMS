@@ -64,4 +64,16 @@ public class User extends BaseEntity {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
+
+    /** Set while head office has blocked this account on the whole platform; see {@link com.manarah.identity.AccountBlocks}. */
+    @Column(name = "blocked_at")
+    private Instant blockedAt;
+
+    /** Why — shown to the blocked person when they try to sign in. */
+    @Column(name = "blocked_reason", columnDefinition = "TEXT")
+    private String blockedReason;
+
+    /** Who blocked them, as a name for the admin screens. */
+    @Column(name = "blocked_by")
+    private String blockedBy;
 }

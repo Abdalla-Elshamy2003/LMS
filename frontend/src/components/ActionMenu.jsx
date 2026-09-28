@@ -16,7 +16,11 @@ export default function ActionMenu({ items, label = 'خيارات' }) {
   const shown = items.filter(i => i && !i.hidden)
 
   const close = (refocus = true) => { setPos(null); if (refocus) button.current?.focus() }
-  const toggle = () => {
+  // The menu may sit on a card that is itself a link; its clicks must never also open the card. (React events bubble
+  // through the portal to the card too, so the items stop them as well.)
+  const hold = (e) => { e.preventDefault(); e.stopPropagation() }
+  const toggle = (e) => {
+    hold(e)
     if (open) return close()
     const r = button.current.getBoundingClientRect()
     const up = r.bottom + 60 + shown.length * 42 > window.innerHeight
@@ -61,7 +65,7 @@ export default function ActionMenu({ items, label = 'خيارات' }) {
           style={{ position: 'fixed', left: pos.left, width: WIDTH, ...(pos.up ? { bottom: pos.bottom } : { top: pos.top }) }}
           className="z-[70] rounded-2xl border border-ink-100 bg-white p-1.5 shadow-xl">
           {shown.map(({ label: text, icon: Icon, onClick, danger, disabled }) => (
-            <button key={text} type="button" role="menuitem" disabled={disabled} onClick={() => { close(false); onClick() }}
+            <button key={text} type="button" role="menuitem" disabled={disabled} onClick={(e) => { hold(e); close(false); onClick() }}
               className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-right text-sm font-bold outline-none transition disabled:opacity-40 ${danger ? 'text-rose-600 hover:bg-rose-50 focus:bg-rose-50' : 'text-ink-700 hover:bg-brand-50 focus:bg-brand-50'}`}>
               {Icon && <Icon size={16} />} {text}
             </button>

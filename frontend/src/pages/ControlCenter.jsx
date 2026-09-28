@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { DeleteCourseModal, DeleteTeacherModal } from './TeacherStudio'
 import ActionMenu from '../components/ActionMenu'
+import { BlockDialog } from './BlocksPage'
 import api from '../lib/api'
 import { apiErrorMessage } from '../lib/apiError'
 import { fmtDate } from '../lib/format'
@@ -172,7 +173,8 @@ function Teachers({ say, fail, owner }) {
                 <tr key={t.academyId} className="border-b border-ink-50">
                   <td className="p-4"><div className="flex items-center gap-3">
                     <span className="h-10 w-10 overflow-hidden rounded-xl bg-ink-100">{t.photoUrl && <img src={t.photoUrl} alt="" className="h-full w-full object-cover object-top" />}</span>
-                    <span><Link to={`/app/control/teachers/${t.academyId}`} className="block font-bold text-ink-800 hover:text-brand-700">{t.name}</Link><small className="text-xs text-ink-400">{t.subject} · <span dir="ltr">/t/{t.slug}</span></small></span>
+                    <span><Link to={`/app/control/teachers/${t.academyId}`} className="block font-bold text-ink-800 hover:text-brand-700">{t.name}</Link><small className="text-xs text-ink-400">{t.subject} · <span dir="ltr">/t/{t.slug}</span></small>
+                      {t.blockedReason && <Link to="/app/blocks" title={t.blockedReason} className="chip mt-1 bg-rose-50 text-rose-700">محظور</Link>}</span>
                   </div></td>
                   <td dir="ltr" className="text-right text-xs text-ink-500">{t.username}</td>
                   <td className="font-bold">{t.students.toLocaleString('ar-EG')}</td>
@@ -230,10 +232,15 @@ function Students({ say, fail }) {
   const load = (query = q) => api.get('/admin/students', { params: { q: query || undefined } }).then(r => setRows(r.data)).catch(e => { setRows([]); fail(e, 'تعذّر تحميل الطلاب') })
   useEffect(() => { const t = setTimeout(() => load(q), 300); return () => clearTimeout(t) }, [q])
 
-  const toggle = async (s) => {
-    const active = s.status !== 'ACTIVE'
-    try { await api.put(`/admin/students/${s.userId}/active`, { active }); await load(); say(active ? `اترجّع دخول ${s.fullName}` : `اتوقف دخول ${s.fullName} عند كل المدرسين`) }
+  const [blocking, setBlocking] = useState(null)
+  // An account stopped the old way (no reason) can still be turned back on; stopping now always goes through a block.
+  const reactivate = async (s) => {
+    try { await api.put(`/admin/students/${s.userId}/active`, { active: true }); await load(); say(`اترجّع دخول ${s.fullName}`) }
     catch (e) { fail(e, 'تعذّر تغيير حالة الطالب') }
+  }
+  const unblock = async (s) => {
+    try { await api.delete(`/admin/students/${s.userId}/block`); await load(); say(`اتفك الحظر عن ${s.fullName}`) }
+    catch (e) { fail(e, 'تعذّر فك الحظر') }
   }
 
   return (
@@ -248,11 +255,19 @@ function Students({ say, fail }) {
                 <tr key={s.userId} className="border-b border-ink-50 align-top">
                   <td className="p-4"><b className="block text-ink-800">{s.fullName}</b><small className="text-xs text-ink-400">{s.phone || '—'} · منذ {fmtDate(s.joinedAt)}</small></td>
                   <td dir="ltr" className="pt-4 text-right text-xs text-ink-500">{s.login || s.email || '—'}</td>
-                  <td className="pt-3"><div className="flex max-w-xs flex-wrap gap-1">{s.teachers.map(t => <span key={t.studentId} className={`chip ${t.status === 'ARCHIVED' ? 'bg-ink-100 text-ink-400 line-through' : 'bg-brand-50 text-brand-700'}`}>{t.subject || t.teacher}</span>)}</div></td>
+                  <td className="pt-3"><div className="flex max-w-xs flex-wrap gap-1">{s.teachers.map(t => <span key={t.studentId} title={t.blockedReason ? `محظور عند ${t.teacher}: ${t.blockedReason}` : undefined} className={`chip ${t.blockedReason ? 'bg-rose-50 text-rose-700' : t.status === 'ARCHIVED' ? 'bg-ink-100 text-ink-400 line-through' : 'bg-brand-50 text-brand-700'}`}>{t.subject || t.teacher}</span>)}</div></td>
                   <td className="pt-3">{s.packages.length ? s.packages.map(p => <span key={p} className="chip bg-amber-50 text-amber-700">{p}</span>) : <span className="text-xs text-ink-300">—</span>}</td>
-                  <td className="pt-3"><span className={`chip ${s.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{s.status === 'ACTIVE' ? 'نشط' : 'موقوف'}</span></td>
+                  <td className="pt-3">
+                    {s.blockedReason
+                      ? <span className="chip bg-rose-50 text-rose-700" title={s.blockedReason}>محظور</span>
+                      : <span className={`chip ${s.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{s.status === 'ACTIVE' ? 'نشط' : 'موقوف'}</span>}
+                  </td>
                   <td className="pt-2.5"><div className="flex flex-wrap justify-end gap-1.5 pl-3">
-                    <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs" onClick={() => toggle(s)}>{s.status === 'ACTIVE' ? <><UserX size={14} /> إيقاف</> : <><UserCheck size={14} /> تفعيل</>}</button>
+                    {s.status !== 'ACTIVE'
+                      ? <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs" onClick={() => reactivate(s)}><UserCheck size={14} /> تفعيل</button>
+                      : s.blockedReason
+                        ? <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs" onClick={() => unblock(s)}><UserCheck size={14} /> فك الحظر</button>
+                        : <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs text-rose-600" onClick={() => setBlocking({ name: s.fullName, url: `/admin/students/${s.userId}/block`, message: 'platform', note: 'مش هيقدر يفتح أي مدرس من مدرسينه، وهيشوف السبب لما يحاول يدخل.' })}><UserX size={14} /> حظر</button>}
                     <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs" onClick={() => setReset(s)}><KeyRound size={14} /> كلمة مرور</button>
                   </div></td>
                 </tr>
@@ -262,6 +277,7 @@ function Students({ say, fail }) {
         </div>
       )}
       <ResetPasswordModal student={reset} onClose={() => setReset(null)} onSaved={(msg) => { setReset(null); say(msg) }} fail={fail} />
+      <BlockDialog target={blocking} onClose={() => setBlocking(null)} onDone={async (msg) => { setBlocking(null); await load(); say(msg) }} fail={fail} />
     </div>
   )
 }

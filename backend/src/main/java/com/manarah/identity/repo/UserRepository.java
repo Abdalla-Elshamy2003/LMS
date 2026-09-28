@@ -21,6 +21,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /** The rows a student got in other teacher spaces, linked to the account they sign in with. */
     List<User> findByPrimaryUserId(Long primaryUserId);
+    List<User> findByBlockedAtIsNotNull();
 
     Optional<User> findByTenantIdAndId(Long tenantId, Long id);
 

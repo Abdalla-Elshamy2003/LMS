@@ -76,6 +76,20 @@ public class CourseController {
         return service.create(actor, req);
     }
 
+    /** Edits a course's details or shows/hides it — its teacher, or staff who manage it. Assistants don't. */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    public CourseSummary update(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @RequestBody EditCourseRequest req) {
+        return service.summary(service.edit(actor, learning.access(actor, id, true), req));
+    }
+
+    /** Deletes a course (see {@link CourseService#retire}) — its teacher, or staff who manage it. */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
+    public void delete(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id) {
+        service.retire(actor, learning.access(actor, id, true));
+    }
+
     @PostMapping("/{id}/modules")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
     public ModuleView addModule(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @Valid @RequestBody CreateModuleRequest req) {

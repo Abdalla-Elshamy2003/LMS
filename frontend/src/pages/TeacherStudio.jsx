@@ -397,11 +397,12 @@ function CourseCard({ course, creating, academy, teacherSubject, onChange, onRem
 }
 
 /** Deleting a course: says how many students lose it, and points at hiding for anyone who wants them to keep it. */
-export function DeleteCourseModal({ open, course, onClose, onDeleted, fail }) {
+export function DeleteCourseModal({ open, course, onClose, onDeleted, fail, url }) {
   const [busy, setBusy] = useState(false)
   const remove = async () => {
     setBusy(true)
-    try { await api.delete(`/admin/courses/${course.id}`); onDeleted() }
+    // Head office deletes through its own endpoint; a teacher (or head office in its own school) through the course's.
+    try { await api.delete(url || `/admin/courses/${course.id}`); onDeleted() }
     catch (e) { fail(e, 'تعذّر حذف الكورس'); onClose() }
     finally { setBusy(false) }
   }

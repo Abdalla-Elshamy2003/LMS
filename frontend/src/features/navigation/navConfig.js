@@ -1,7 +1,7 @@
 import {
   Award, BarChart3, Bell, BookMarked, BookOpen, Building2, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, CreditCard, DoorOpen,
   FileQuestion, GraduationCap, HeartHandshake, Inbox, Layers, LayoutDashboard, LogOut, Megaphone, MessagesSquare,
-  ScanLine, ShieldCheck, SlidersHorizontal, Trophy, UserCog, UserRound, Users, Wallet,
+  ScanLine, ShieldCheck, SlidersHorizontal, Trophy, UserCog, UserRound, UserX, Users, Wallet,
 } from 'lucide-react'
 import { ADMIN_ROLES } from '../../lib/roles'
 
@@ -18,6 +18,7 @@ const ITEMS = {
   academy: { to: '/app/academy', label: 'صفحة المستر وحسابات الطلاب', icon: UserRound, roles: [...ADMIN_ROLES, 'TEACHER', 'ASSISTANT'] },
   bundles: { to: '/app/bundles', label: 'باقات المدرسين', icon: Layers, roles: ADMIN_ROLES },
   control: { to: '/app/control', label: 'لوحة التحكم الكاملة', icon: ShieldCheck, roles: ADMIN_ROLES },
+  blocks: { to: '/app/blocks', label: 'الحظر وإيقاف الحسابات', icon: UserX, roles: [...ADMIN_ROLES, 'TEACHER'] },
   centers: { to: '/app/centers', label: 'السناتر', icon: Building2, roles: ADMIN_ROLES },
   admins: { to: '/app/admins', label: 'الأدمنز', icon: UserCog, roles: ['SUPER_ADMIN'] },
   centerScan: { to: '/app/center/scan', label: 'مسح الكارتات', icon: ScanLine, roles: ['CENTER_ADMIN'] },
@@ -64,7 +65,7 @@ const ACCOUNT = { id: 'account', title: 'الحساب', items: ['profile', 'logo
 /** What each kind of user sees, grouped by task. Only items the role may see are rendered; empty sections vanish. */
 const LAYOUTS = {
   admin: [
-    { id: 'main', title: 'الرئيسية', items: ['control', 'dashboard', 'reports'] },
+    { id: 'main', title: 'الرئيسية', items: ['control', 'blocks', 'dashboard', 'reports'] },
     { id: 'platform', title: 'السناتر والأدمنز', items: ['centers', 'admins'] },
     { id: 'academic', title: 'الإدارة الأكاديمية', items: ['academy', 'subscriptions', 'bundles', 'students', 'staff', 'courses', 'learning', 'schedule'] },
     { id: 'assessment', title: 'المحتوى والتقييم', items: ['exams', 'homework', 'certificates', 'leaderboard'] },
@@ -78,7 +79,7 @@ const LAYOUTS = {
     { id: 'overview', title: 'نظرة عامة', items: ['dashboard', 'assistantDesk', 'reports', 'schedule'] },
     { id: 'teaching', title: 'التدريس', items: ['academy', 'subscriptions', 'assistants', 'courses', 'learning', 'students'] },
     { id: 'assessment', title: 'التقييم', items: ['exams', 'homework', 'certificates'] },
-    { id: 'students', title: 'متابعة الطلاب', items: ['attendance', 'gateLog', 'cardScanner', 'leaderboard'] },
+    { id: 'students', title: 'متابعة الطلاب', items: ['attendance', 'gateLog', 'cardScanner', 'blocks', 'leaderboard'] },
     { id: 'communication', title: 'التواصل', items: ['notifications', 'support', 'community'] },
     ACCOUNT,
   ],

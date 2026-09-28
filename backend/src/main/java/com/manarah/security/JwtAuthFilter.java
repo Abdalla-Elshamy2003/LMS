@@ -23,13 +23,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final com.manarah.academy.TeacherAcademyRepository academies;
     private final com.manarah.identity.repo.UserRepository users;
     private final com.manarah.student.repo.StudentRepository students;
+    private final com.manarah.identity.AccountBlocks blocks;
+    private final com.fasterxml.jackson.databind.ObjectMapper json;
 
     public JwtAuthFilter(JwtService jwtService, com.manarah.academy.TeacherAcademyRepository academies, com.manarah.identity.repo.UserRepository users,
-                         com.manarah.student.repo.StudentRepository students) {
+                         com.manarah.student.repo.StudentRepository students, com.manarah.identity.AccountBlocks blocks,
+                         com.fasterxml.jackson.databind.ObjectMapper json) {
         this.jwtService = jwtService;
         this.academies = academies;
         this.users = users;
         this.students = students;
+        this.blocks = blocks;
+        this.json = json;
     }
 
     @Override
@@ -45,6 +50,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             // accepted only for read-only file requests; bearer tokens are never put in URLs.
             token = cookie(request, FileSessionCookie.COOKIE_NAME);
         }
+        String blocked = null;
         if (token != null) {
             try {
                 UserPrincipal tokenPrincipal = jwtService.parse(token);
@@ -64,6 +70,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             .map(s -> "ARCHIVED".equals(s.getStatus())).orElse(false)
                         && !users.findByPrimaryUserId(currentUser.getId()).isEmpty())
                     throw new IllegalArgumentException("Removed from this teacher");
+                // A block takes effect on the very next request, not at the next sign-in. Asked only once the token is
+                // known to be current, so a stale one never learns the reason.
+                blocked = blocks.reason(currentUser, versionOwner);
+                if (blocked != null) throw new IllegalStateException("Blocked");
                 // Role, tenant and branch are authoritative database state, not stale JWT claims.
                 UserPrincipal principal = UserPrincipal.from(currentUser);
                 String scope = request.getHeader("X-Academy-Id");
@@ -85,6 +95,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 SecurityContextHolder.clearContext();
                 TenantContext.clear();
             }
+        }
+        if (blocked != null) {
+            // Written here, not through sendError, so the body (and its Arabic reason) reaches the app intact.
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setCharacterEncoding("UTF-8");
+            response.setContentType("application/json;charset=UTF-8");
+            json.writeValue(response.getWriter(), com.manarah.common.exception.GlobalExceptionHandler.ErrorResponse.of(
+                    org.springframework.http.HttpStatus.FORBIDDEN, blocked,
+                    java.util.Map.of("code", com.manarah.common.exception.ApiExceptions.AccountBlockedException.CODE)));
+            return;
         }
         try {
             chain.doFilter(request, response);

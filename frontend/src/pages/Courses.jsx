@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { BookOpen, Plus, Users2 } from 'lucide-react'
+import { BookOpen, Eye, EyeOff, Pencil, Plus, Save, Trash2, Users2 } from 'lucide-react'
 import api from '../lib/api'
-import { Modal, PageLoader, EmptyState, stagger, fadeUp } from '../components/ui'
+import { apiErrorMessage } from '../lib/apiError'
+import { ADMIN_ROLES } from '../lib/roles'
+import ActionMenu from '../components/ActionMenu'
+import { DeleteCourseModal } from './TeacherStudio'
+import { Modal, PageLoader, EmptyState, Spinner, stagger, fadeUp } from '../components/ui'
 import { fmtMoney, GRADES } from '../lib/format'
 import { useAuth } from '../lib/auth'
 import { courseHref } from '../lib/courseNavigation'
@@ -18,6 +22,12 @@ export default function Courses() {
   const [teachers, setTeachers] = useState([])
   const [showNew, setShowNew] = useState(false)
   const canManage = ['SUPER_ADMIN', 'BRANCH_ADMIN', 'ACADEMIC_MANAGER', 'TEACHER', 'ASSISTANT', 'CONTENT_MANAGER'].includes(user.role)
+  // Editing, hiding and deleting a course is the teacher's (and head office's), not their assistants'.
+  const canEdit = [...ADMIN_ROLES, 'TEACHER', 'CONTENT_MANAGER'].includes(user.role)
+  const navigate = useNavigate()
+  const [editing, setEditing] = useState(null)
+  const [removing, setRemoving] = useState(null)
+  const [flash, setFlash] = useState({ ok: '', error: '' })
   const isStudent = user.role === 'STUDENT'
   const isParent = user.role === 'PARENT'
   const [childrenCourseIds, setChildrenCourseIds] = useState(null)
@@ -43,7 +53,26 @@ export default function Courses() {
   if (isStudent) return <StudentCatalog />
 
   if (!courses || (isParent && !childrenCourseIds)) return <PageLoader />
-  const scoped = isParent ? courses.filter((c) => childrenCourseIds.has(c.id)) : user.role === 'TEACHER' ? courses.filter(c => c.teacherId === user.id) : courses
+
+  // Head office changes a teacher's course through its own endpoints (and edits it on the teacher's page); the teacher,
+  // or head office in its own school, through the course's.
+  const viaAdmin = (c) => ADMIN_ROLES.includes(user.role) && c.academyId
+  const courseUrl = (c) => viaAdmin(c) ? `/admin/courses/${c.id}` : `/courses/${c.id}`
+  const setVisible = async (c, visible) => {
+    try {
+      await api.put(courseUrl(c), { status: visible ? 'ACTIVE' : 'HIDDEN' })
+      await load(); setFlash({ ok: visible ? `${c.title} بقى ظاهر في الموقع` : `${c.title} اتخفى من الموقع`, error: '' })
+    } catch (e) { setFlash({ ok: '', error: apiErrorMessage(e, 'تعذّر تغيير ظهور الكورس') }) }
+  }
+  const courseActions = (c) => [
+    { label: 'تعديل', icon: Pencil, onClick: () => viaAdmin(c) ? navigate(`/app/control/teachers/${c.academyId}`) : setEditing(c) },
+    c.status === 'ACTIVE'
+      ? { label: 'إخفاء من الموقع', icon: EyeOff, onClick: () => setVisible(c, false) }
+      : { label: 'إظهار في الموقع', icon: Eye, onClick: () => setVisible(c, true) },
+    { label: 'حذف', icon: Trash2, danger: true, onClick: () => setRemoving(c) },
+  ]
+
+  const scoped =isParent ? courses.filter((c) => childrenCourseIds.has(c.id)) : user.role === 'TEACHER' ? courses.filter(c => c.teacherId === user.id) : courses
   const subjects = [...new Set(scoped.map((c) => c.subject).filter(Boolean))]
   const filtered = scoped.filter((c) => (!subject || c.subject === subject) && (!teacherId || String(c.teacherId) === teacherId))
 
@@ -61,12 +90,22 @@ export default function Courses() {
         <p className="text-sm text-ink-400">{filtered.length} كورس</p>
         {canManage && <button onClick={() => setShowNew(true)} className="btn-primary mr-auto"><Plus size={18} /> كورس جديد</button>}
       </div>
+      {flash.error && <div role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">{flash.error}</div>}
+      {flash.ok && <div role="status" className="rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">{flash.ok}</div>}
 
       {filtered.length === 0 ? <div className="card"><EmptyState icon={BookOpen} title="لا توجد كورسات" /></div> : (
         <motion.div variants={stagger} initial="hidden" animate="show" className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((c, i) => {
             return (
-              <motion.div variants={fadeUp} key={c.id} className="card overflow-hidden">
+              <motion.div variants={fadeUp} key={c.id} className="card relative overflow-hidden">
+                {canEdit && (
+                  <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5">
+                    {c.status === 'HIDDEN' && <span className="chip bg-white/90 text-ink-600 shadow-sm"><EyeOff size={13} /> مخفي من الموقع</span>}
+                    <span className="rounded-xl bg-white/90 shadow-sm">
+                      <ActionMenu label={`خيارات ${c.title}`} items={courseActions(c)} />
+                    </span>
+                  </div>
+                )}
                 <Link to={courseHref(c, user.role)} className="block hover:shadow-glow transition-shadow">
                   <div className={`relative bg-gradient-to-br ${GRADIENTS[i % GRADIENTS.length]} p-5 ${c.coverUrl ? 'aspect-[4/3]' : 'h-28'}`}>
                     {c.coverUrl
@@ -106,7 +145,69 @@ export default function Courses() {
       )}
 
       <NewCourse open={showNew} onClose={() => setShowNew(false)} teachers={teachers} onSaved={() => { setShowNew(false); load() }} />
+      <EditCourse course={editing} onClose={() => setEditing(null)}
+        onSaved={async (title) => { setEditing(null); await load(); setFlash({ ok: `اتحفظ كورس ${title}`, error: '' }) }} />
+      <DeleteCourseModal open={!!removing} course={removing && { ...removing, students: removing.studentCount }} url={removing && courseUrl(removing)}
+        onClose={() => setRemoving(null)} fail={(e, fallback) => setFlash({ ok: '', error: apiErrorMessage(e, fallback) })}
+        onDeleted={async () => { const title = removing.title; setRemoving(null); await load(); setFlash({ ok: `اتحذف كورس ${title}`, error: '' }) }} />
     </div>
+  )
+}
+
+/** A teacher editing one of their courses from the courses page. */
+function EditCourse({ course, onClose, onSaved }) {
+  const [form, setForm] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    if (!course) { setForm(null); return }
+    setError('')
+    const s = course
+    setForm({ title: s.title || '', subject: s.subject || '', gradeLevel: s.gradeLevel || '', grade: s.grade || '', price: s.price ?? 0,
+      discountPercent: s.discountPercent ?? 0, coverUrl: s.coverUrl || '', description: '' })
+    // The list has no descriptions; the course itself does.
+    api.get(`/courses/${course.id}`).then(r => setForm(f => f && ({ ...f, description: r.data.description || '' }))).catch(() => {})
+  }, [course])
+  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
+  const save = async (e) => {
+    e.preventDefault()
+    if (!form.title.trim()) return setError('اكتب اسم الكورس')
+    setBusy(true); setError('')
+    try {
+      const { data } = await api.put(`/courses/${course.id}`, { ...form, price: Number(form.price) || 0, discountPercent: Number(form.discountPercent) || 0 })
+      onSaved(data.title)
+    } catch (err) { setError(apiErrorMessage(err, 'تعذّر حفظ الكورس')) }
+    finally { setBusy(false) }
+  }
+  return (
+    <Modal open={!!course} onClose={onClose} title={`تعديل ${course?.title || 'الكورس'}`} wide>
+      {form && (
+        <form onSubmit={save} className="space-y-4">
+          {error && <p role="alert" className="rounded-2xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</p>}
+          <div><label className="label">اسم الكورس *</label><input className="input" value={form.title} onChange={set('title')} maxLength={200} /></div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div><label className="label">السنة الدراسية</label>
+              <input className="input" list="course-edit-years" value={form.grade} onChange={set('grade')} maxLength={80} />
+              <datalist id="course-edit-years">{GRADES.map(g => <option key={g} value={g} />)}</datalist></div>
+            <div><label className="label">المرحلة</label>
+              <select className="input" value={form.gradeLevel} onChange={set('gradeLevel')}>
+                <option value="">—</option>{['ابتدائي', 'إعدادي', 'ثانوي'].map(g => <option key={g} value={g}>{g}</option>)}
+              </select></div>
+            <div><label className="label">المادة</label><input className="input" value={form.subject} onChange={set('subject')} maxLength={100} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="label">السعر (ج.م)</label><input type="number" min="0" className="input" value={form.price} onChange={set('price')} /></div>
+            <div><label className="label">الخصم %</label><input type="number" min="0" max="100" className="input" value={form.discountPercent} onChange={set('discountPercent')} /></div>
+          </div>
+          <div><label className="label">وصف الكورس</label><textarea rows={3} className="input" value={form.description} onChange={set('description')} maxLength={5000} /></div>
+          <div><label className="label">صورة الكورس</label><ImageUpload value={form.coverUrl} label="رفع صورة الكورس" onChange={(url) => setForm(f => ({ ...f, coverUrl: url }))} /></div>
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-ghost" onClick={onClose}>إلغاء</button>
+            <button type="submit" disabled={busy} className="btn-primary">{busy ? <Spinner className="h-4 w-4" /> : <><Save size={16} /> حفظ</>}</button>
+          </div>
+        </form>
+      )}
+    </Modal>
   )
 }
 

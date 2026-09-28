@@ -86,4 +86,16 @@ public class Student extends BaseEntity {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
+
+    /** Set while this teacher has blocked the student in their space; see {@link com.manarah.identity.AccountBlocks}. */
+    @Column(name = "blocked_at")
+    private Instant blockedAt;
+
+    /** Why — shown to the student when they try to open this teacher. */
+    @Column(name = "blocked_reason", columnDefinition = "TEXT")
+    private String blockedReason;
+
+    /** Who blocked them (the teacher, or head office lifting/setting it), as a name. */
+    @Column(name = "blocked_by")
+    private String blockedBy;
 }

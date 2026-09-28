@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { BLOCKED_NOTICE_KEY, isAccountBlocked } from './apiError'
 
 const api = axios.create({ baseURL: '/api' })
 
@@ -20,6 +21,15 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
+    // Blocked while signed in (head office or the teacher just did it): the session ends and the sign-in page says
+    // why. Matched on the code, since other 403s (a role not allowed, another teacher's space) must not sign anyone out.
+    if (isAccountBlocked(err) && !err.config.url.includes('/auth/login')) {
+      try { sessionStorage.setItem(BLOCKED_NOTICE_KEY, err.response.data.message || '') } catch { /* the page still signs out */ }
+      localStorage.removeItem('manarah_token')
+      sessionStorage.removeItem('manarah_academy')
+      if (location.pathname.startsWith('/app')) location.href = '/login'
+      return Promise.reject(err)
+    }
     if (err.response && err.response.status === 401 && !err.config.url.includes('/auth/login')) {
       localStorage.removeItem('manarah_token')
       // Only the signed-in app is bounced to login on an expired session. The startup /auth/me check is

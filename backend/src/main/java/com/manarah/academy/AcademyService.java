@@ -94,7 +94,7 @@ public class AcademyService {
 
     /** {@link #manage} minus assistants: the teacher's own decisions (who their assistants are, what the page says
      *  about money) are not delegated to the people they delegate to. */
-    private TeacherAcademy manageAsOwner(UserPrincipal actor, Long id) {
+    TeacherAcademy manageAsOwner(UserPrincipal actor, Long id) {
         if (actor.getRole() == Role.ASSISTANT) throw new ForbiddenException("هذا الإجراء متاح للمدرس والإدارة فقط");
         return manage(actor, id);
     }

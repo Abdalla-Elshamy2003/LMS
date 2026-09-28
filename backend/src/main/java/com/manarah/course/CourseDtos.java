@@ -17,6 +17,11 @@ public class CourseDtos {
     public record SetDiscountRequest(Integer discountPercent) {
     }
 
+    /** A course's details as head office or its teacher edits them. On an edit, a null field stays as it is. */
+    public record EditCourseRequest(String title, String subject, String gradeLevel, String grade, String description,
+                                    BigDecimal price, Integer discountPercent, String coverUrl, String status) {
+    }
+
     /** videoAssetId: a video uploaded to the video store (played through the protected player, never by fileKey/url). */
     public record MaterialView(Long id, String type, String title, String description, String url, String fileKey,
                                Long sizeBytes, Integer durationSec, Instant createdAt, Long videoAssetId) {

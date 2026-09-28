@@ -22,14 +22,16 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     public record ErrorResponse(String timestamp, int status, String error, String message, Object details) {
-        static ErrorResponse of(HttpStatus status, String message, Object details) {
+        public static ErrorResponse of(HttpStatus status, String message, Object details) {
             return new ErrorResponse(Instant.now().toString(), status.value(), status.getReasonPhrase(), message, details);
         }
     }
 
     @ExceptionHandler(ApiExceptions.ApiException.class)
     public ResponseEntity<ErrorResponse> handleApi(ApiExceptions.ApiException ex) {
-        return ResponseEntity.status(ex.getStatus()).body(ErrorResponse.of(ex.getStatus(), ex.getMessage(), null));
+        // A block carries a code, so the app can tell it from any other 403 and show the reason on the sign-in page.
+        Object details = ex instanceof ApiExceptions.AccountBlockedException ? Map.of("code", ApiExceptions.AccountBlockedException.CODE) : null;
+        return ResponseEntity.status(ex.getStatus()).body(ErrorResponse.of(ex.getStatus(), ex.getMessage(), details));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

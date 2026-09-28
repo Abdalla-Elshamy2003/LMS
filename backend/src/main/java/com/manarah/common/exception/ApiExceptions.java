@@ -55,6 +55,15 @@ public class ApiExceptions {
         }
     }
 
+    /** The person is blocked (by head office or by their teacher); the message says why. Sent with code ACCOUNT_BLOCKED. */
+    public static class AccountBlockedException extends ApiException {
+        public static final String CODE = "ACCOUNT_BLOCKED";
+
+        public AccountBlockedException(String message) {
+            super(HttpStatus.FORBIDDEN, message);
+        }
+    }
+
     public static class TooManyRequestsException extends ApiException {
         public TooManyRequestsException(String message) {
             super(HttpStatus.TOO_MANY_REQUESTS, message);

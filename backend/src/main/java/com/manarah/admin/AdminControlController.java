@@ -12,13 +12,36 @@ public class AdminControlController {
     private final AdminControlService service;
     private final AdminTeacherService teachers;
     private final DemoPackageSeeder demo;
-    public AdminControlController(AdminControlService service, AdminTeacherService teachers, DemoPackageSeeder demo) {
-        this.service = service; this.teachers = teachers; this.demo = demo;
+    private final com.manarah.academy.BlockService blocks;
+    public AdminControlController(AdminControlService service, AdminTeacherService teachers, DemoPackageSeeder demo,
+                                  com.manarah.academy.BlockService blocks) {
+        this.service = service; this.teachers = teachers; this.demo = demo; this.blocks = blocks;
     }
 
     public record PublishBody(Boolean published) {}
     public record ActiveBody(Boolean active) {}
     public record PasswordBody(String password) {}
+    public record BlockBody(String reason) {}
+
+    // ---- Blocking: a teacher or a student on the whole platform, with the reason they are shown ----
+
+    @GetMapping("/blocks")
+    public Object blocks(@AuthenticationPrincipal UserPrincipal actor) { return blocks.overview(actor); }
+    @PutMapping("/teachers/{academyId}/block")
+    public void blockTeacher(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long academyId, @RequestBody BlockBody body) {
+        blocks.blockTeacher(actor, academyId, body.reason());
+    }
+    @DeleteMapping("/teachers/{academyId}/block")
+    public void unblockTeacher(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long academyId) { blocks.unblockTeacher(actor, academyId); }
+    @PutMapping("/students/{userId}/block")
+    public void blockStudent(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long userId, @RequestBody BlockBody body) {
+        blocks.blockStudent(actor, userId, body.reason());
+    }
+    @DeleteMapping("/students/{userId}/block")
+    public void unblockStudent(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long userId) { blocks.unblockStudent(actor, userId); }
+    /** Lifts a teacher's own block on one of their students. */
+    @DeleteMapping("/seats/{studentId}/block")
+    public void liftSeat(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long studentId) { blocks.liftSeat(actor, studentId); }
 
     @GetMapping("/overview")
     public Object overview(@AuthenticationPrincipal UserPrincipal actor) { return service.overview(actor); }
@@ -52,7 +75,7 @@ public class AdminControlController {
     }
     @PostMapping("/teachers/{academyId}/courses")
     public AdminTeacherService.CourseView addCourse(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long academyId,
-                                                    @RequestBody AdminTeacherService.CourseForm body) {
+                                                    @RequestBody com.manarah.course.CourseDtos.EditCourseRequest body) {
         return teachers.addCourse(actor, academyId, body);
     }
 
@@ -70,7 +93,7 @@ public class AdminControlController {
     @GetMapping("/courses")
     public Object courses(@AuthenticationPrincipal UserPrincipal actor, @RequestParam(required = false) String q) { return service.courses(actor, q); }
     @PutMapping("/courses/{courseId}")
-    public Object updateCourse(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long courseId, @RequestBody AdminTeacherService.CourseForm body) {
+    public Object updateCourse(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long courseId, @RequestBody com.manarah.course.CourseDtos.EditCourseRequest body) {
         return service.updateCourse(actor, courseId, body);
     }
     @DeleteMapping("/courses/{courseId}")

@@ -1,5 +1,6 @@
 package com.manarah.security.auth;
 
+import com.manarah.common.exception.ApiExceptions.AccountBlockedException;
 import com.manarah.common.exception.ApiExceptions.UnauthorizedException;
 import com.manarah.identity.domain.User;
 import com.manarah.identity.repo.UserRepository;
@@ -20,10 +21,13 @@ public class AuthService {
     private final JwtService jwtService;
     private final LoginAttemptLimiter loginAttempts;
     private final com.manarah.academy.LinkedStudentAccounts linkedAccounts;
+    private final com.manarah.identity.AccountBlocks blocks;
     private final String dummyPasswordHash;
 
     public AuthService(UserRepository users, PasswordEncoder passwordEncoder, JwtService jwtService,
-                       LoginAttemptLimiter loginAttempts, com.manarah.academy.LinkedStudentAccounts linkedAccounts) {
+                       LoginAttemptLimiter loginAttempts, com.manarah.academy.LinkedStudentAccounts linkedAccounts,
+                       com.manarah.identity.AccountBlocks blocks) {
+        this.blocks = blocks;
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -42,9 +46,15 @@ public class AuthService {
             throw new UnauthorizedException("بيانات الدخول غير صحيحة");
         }
         loginAttempts.succeeded(identifier);
-        user.setLastLoginAt(Instant.now());
-        // A student lands in their own teacher space — or, if that teacher removed them, in one they still have.
+        // The password was right, so this is the person themselves: they are told why they are blocked, if they are.
+        String blocked = blocks.accountReason(user);
+        if (blocked != null) throw new AccountBlockedException(blocked);
+        // A student lands in their own teacher space — or, if that teacher removed or blocked them, in one they still
+        // have. Blocked by the only teacher they have, they are told so.
         User landing = linkedAccounts.landing(user);
+        blocked = blocks.reason(landing, user);
+        if (blocked != null) throw new AccountBlockedException(blocked);
+        user.setLastLoginAt(Instant.now());
         String token = linkedAccounts.tokenFor(landing);
         return new AuthDtos.TokenResponse(token, "Bearer",
                 jwtService.getAccessTokenTtlMinutes(), toProfile(landing));

@@ -9,7 +9,7 @@ import { useAuth } from '../lib/auth'
 import api from '../lib/api'
 import { Spinner } from '../components/ui'
 import { BrandMark, Wordmark } from '../components/Brand'
-import { apiErrorMessage } from '../lib/apiError'
+import { apiErrorMessage, BLOCKED_NOTICE_KEY, isAccountBlocked } from '../lib/apiError'
 
 export default function Login() {
   const { user, login, joinTeacher } = useAuth()
@@ -18,6 +18,12 @@ export default function Login() {
   const [username, setUsername] = useState(''), [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [busy, setBusy] = useState(false), [error, setError] = useState('')
+  // Why the person is blocked: from a sign-in attempt, or left by the app when a block ended their session.
+  const [blocked, setBlocked] = useState(() => {
+    try { return sessionStorage.getItem(BLOCKED_NOTICE_KEY) || '' } catch { return '' }
+  })
+  // Read once above, cleared here: an initializer may run twice, and must not lose the notice the first time.
+  useEffect(() => { try { sessionStorage.removeItem(BLOCKED_NOTICE_KEY) } catch { /* nothing to clear */ } }, [])
 
   const slug = params.get('academy') || 'default'
   // Signing in from a course on a teacher's page: that course is added to the account right after.
@@ -39,7 +45,7 @@ export default function Login() {
 
   const submit = async e => {
     e.preventDefault()
-    setBusy(true); setError('')
+    setBusy(true); setError(''); setBlocked('')
     try {
       const account = await login(username.trim(), password)
       if (account.role === 'STUDENT' && course && params.get('academy'))
@@ -51,7 +57,8 @@ export default function Login() {
         sessionStorage.setItem('manarah_academy', JSON.stringify({ id: profile.id, name: profile.name, slug: profile.slug }))
       nav(destination)
     } catch (e) {
-      setError(apiErrorMessage(e, 'تعذّر تسجيل الدخول. راجع اسم المستخدم وكلمة المرور.'))
+      if (isAccountBlocked(e)) setBlocked(apiErrorMessage(e, 'حسابك موقوف.'))
+      else setError(apiErrorMessage(e, 'تعذّر تسجيل الدخول. راجع اسم المستخدم وكلمة المرور.'))
     } finally {
       setBusy(false)
     }
@@ -88,6 +95,16 @@ export default function Login() {
           <p className="mt-2 text-sm leading-7 text-ink-500">ادخل ببيانات حسابك — طالب، مدرس، سنتر، أو إدارة.</p>
 
           <form onSubmit={submit} className="mt-8 space-y-5">
+            {blocked && (
+              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} role="alert"
+                className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700"><LockKeyhole size={20} /></span>
+                <div>
+                  <p className="font-extrabold">الحساب ده موقوف</p>
+                  <p className="mt-1 whitespace-pre-line text-sm leading-7">{blocked}</p>
+                </div>
+              </motion.div>
+            )}
             {error && (
               <motion.p initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} role="alert"
                 className="rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm leading-6 text-rose-700">

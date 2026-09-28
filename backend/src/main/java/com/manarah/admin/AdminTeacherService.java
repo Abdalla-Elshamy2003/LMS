@@ -3,6 +3,7 @@ package com.manarah.admin;
 import com.manarah.academy.*;
 import com.manarah.common.exception.ApiExceptions.*;
 import com.manarah.course.CourseDtos.CreateCourseRequest;
+import com.manarah.course.CourseDtos.EditCourseRequest;
 import com.manarah.course.CourseService;
 import com.manarah.course.domain.Course;
 import com.manarah.course.repo.CourseRepository;
@@ -11,9 +12,7 @@ import com.manarah.identity.domain.Role;
 import com.manarah.identity.domain.User;
 import com.manarah.identity.repo.UserRepository;
 import com.manarah.org.repo.TenantRepository;
-import com.manarah.payment.repo.CourseAccessCodeRepository;
 import com.manarah.security.UserPrincipal;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +32,6 @@ import java.util.*;
 public class AdminTeacherService {
     private static final String ARCHIVED = "ARCHIVED";
     private static final String FREED_PREFIX = "deleted-";
-    private static final Set<String> VISIBLE = Set.of("ACTIVE", "HIDDEN");
 
     private final BundleService bundleService;
     private final AcademyService academyService;
@@ -44,31 +42,24 @@ public class AdminTeacherService {
     private final UserRepository users;
     private final CourseRepository courses;
     private final EnrollmentRepository enrollments;
-    private final CourseAccessCodeRepository codes;
     private final com.manarah.student.repo.StudentRepository students;
     private final com.manarah.audit.AuditService audit;
-    private final ApplicationEventPublisher events;
 
     public AdminTeacherService(BundleService bundleService, AcademyService academyService, CourseService courseService,
                                TeacherAcademyRepository academies, TeacherBundleMemberRepository bundleMembers, TenantRepository tenants,
                                UserRepository users, CourseRepository courses, EnrollmentRepository enrollments,
-                               CourseAccessCodeRepository codes, com.manarah.student.repo.StudentRepository students,
-                               com.manarah.audit.AuditService audit, ApplicationEventPublisher events) {
+                               com.manarah.student.repo.StudentRepository students, com.manarah.audit.AuditService audit) {
         this.bundleService = bundleService; this.academyService = academyService; this.courseService = courseService;
         this.academies = academies; this.bundleMembers = bundleMembers; this.tenants = tenants; this.users = users;
-        this.courses = courses; this.enrollments = enrollments; this.codes = codes; this.students = students;
-        this.audit = audit; this.events = events;
+        this.courses = courses; this.enrollments = enrollments; this.students = students;
+        this.audit = audit;
     }
-
-    /** One course as the teacher page edits it. Every field is optional on an edit: null leaves it as it is. */
-    public record CourseForm(String title, String subject, String gradeLevel, String grade, String description, BigDecimal price,
-                             Integer discountPercent, String coverUrl, String status) {}
 
     /** The teacher page. On create, {@code slug}, {@code username} and {@code password} are required; on an edit
      *  the link stays, a blank password keeps the current one, and {@code courses} is ignored (courses have their own calls). */
     public record TeacherForm(String name, String slug, String subject, String tagline, String headline, String description,
                               String aboutText, String phone, Boolean published, String username, String password, String email,
-                              List<CourseForm> courses) {}
+                              List<EditCourseRequest> courses) {}
 
     public record CourseView(Long id, String title, String subject, String gradeLevel, String grade, String description,
                              BigDecimal price, Integer discountPercent, BigDecimal finalPrice, String coverUrl, String status,
@@ -94,9 +85,9 @@ public class AdminTeacherService {
         academyService.save(actor, a.getId(), content(a, req, name, subject));
         if (!blank(req.email())) academyService.teacherCredentials(actor, a.getId(),
                 new AcademyService.Credentials(req.username(), req.password(), req.email()));
-        List<CourseForm> list = req.courses() == null ? List.of() : req.courses();
+        List<EditCourseRequest> list = req.courses() == null ? List.of() : req.courses();
         if (list.size() > 60) throw new BadRequestException("أضف ٦٠ كورس بحد أقصى مرة واحدة");
-        for (CourseForm c : list) addCourse(a, c, subject);
+        for (EditCourseRequest c : list) addCourse(a, c, subject);
         audit.record(actor, "TEACHER_CREATED_WITH_COURSES", "TeacherAcademy", a.getId(), null, a.getSlug() + " courses=" + list.size());
         return view(academies.findById(a.getId()).orElseThrow());
     }
@@ -137,7 +128,7 @@ public class AdminTeacherService {
                 if (u.getEmail() != null && !u.getEmail().startsWith(FREED_PREFIX)) u.setEmail(FREED_PREFIX + u.getId() + "-" + u.getEmail());
                 users.save(u);
             }
-        for (Course c : courses.findByTenantId(a.getTenantId())) retire(c);
+        for (Course c : courses.findByTenantId(a.getTenantId())) courseService.retire(actor, c);
         bundleMembers.deleteAll(bundleMembers.findByAcademyId(a.getId()));
         audit.record(actor, "ACADEMY_DELETED", "TeacherAcademy", a.getId(), slug, null);
     }
@@ -145,64 +136,37 @@ public class AdminTeacherService {
     // ---- Courses ----------------------------------------------------------------------------------------------
 
     @Transactional
-    public CourseView addCourse(UserPrincipal actor, Long academyId, CourseForm req) {
+    public CourseView addCourse(UserPrincipal actor, Long academyId, EditCourseRequest req) {
         var a = managed(actor, academyId);
         Course c = addCourse(a, req, a.getSubject());
         audit.record(actor, "COURSE_CREATED_BY_ADMIN", "Course", c.getId(), null, c.getTitle());
         return view(c);
     }
 
-    /** Edits any of the course's details; fields left null stay as they are. */
+    /** Edits any of the course's details; fields left null stay as they are (see {@link CourseService#edit}). */
     @Transactional
-    public CourseView updateCourse(UserPrincipal actor, Long courseId, CourseForm req) {
-        Course c = managedCourse(actor, courseId);
-        String before = c.getTitle() + "/" + c.getPrice() + "/" + c.getStatus();
-        boolean wasActive = "ACTIVE".equals(c.getStatus());
-        if (req.title() != null) c.setTitle(required(req.title(), 200, "اكتب اسم الكورس"));
-        if (req.subject() != null) c.setSubject(optional(req.subject(), 100));
-        if (req.gradeLevel() != null) c.setGradeLevel(optional(req.gradeLevel(), 60));
-        if (req.grade() != null) c.setGrade(optional(req.grade(), 80));
-        if (req.description() != null) c.setDescription(optional(req.description(), 5000));
-        if (req.price() != null) c.setPrice(price(req.price()));
-        if (req.discountPercent() != null) c.setDiscountPercent(discount(req.discountPercent()));
-        if (req.coverUrl() != null) c.setCoverUrl(CourseService.coverUrl(req.coverUrl()));
-        if (req.status() != null) c.setStatus(status(req.status()));
-        courses.save(c);
-        if (!wasActive && "ACTIVE".equals(c.getStatus()))
-            events.publishEvent(new com.manarah.common.events.DomainEvents.CourseOffered(c.getTenantId(), c.getId()));
-        audit.record(actor, "COURSE_UPDATED_BY_ADMIN", "Course", c.getId(), before, c.getTitle() + "/" + c.getPrice() + "/" + c.getStatus());
-        return view(c);
+    public CourseView updateCourse(UserPrincipal actor, Long courseId, EditCourseRequest req) {
+        return view(courseService.edit(actor, managedCourse(actor, courseId), req));
     }
 
     /** The course is gone from every list and closed to its students; its payments and history stay. */
     @Transactional
     public void deleteCourse(UserPrincipal actor, Long courseId) {
-        Course c = managedCourse(actor, courseId);
-        retire(c);
-        audit.record(actor, "COURSE_DELETED", "Course", c.getId(), c.getTitle(), null);
+        courseService.retire(actor, managedCourse(actor, courseId));
     }
 
     // ---- Helpers ----------------------------------------------------------------------------------------------
 
-    private Course addCourse(TeacherAcademy a, CourseForm req, String teacherSubject) {
+    private Course addCourse(TeacherAcademy a, EditCourseRequest req, String teacherSubject) {
         Long branchId = users.findById(a.getTeacherId()).map(User::getBranchId).orElseThrow();
         String subject = blank(req.subject()) ? teacherSubject : optional(req.subject(), 100);
         var create = new CreateCourseRequest(required(req.title(), 200, "اكتب اسم كل كورس"), subject, optional(req.gradeLevel(), 60),
-                optional(req.description(), 5000), price(req.price() == null ? BigDecimal.ZERO : req.price()), a.getTeacherId(),
+                optional(req.description(), 5000), CourseService.validPrice(req.price() == null ? BigDecimal.ZERO : req.price()), a.getTeacherId(),
                 branchId, req.coverUrl(), null, optional(req.grade(), 80));
         Course c = courseService.createIn(a.getTenantId(), branchId, a.getTeacherId(), create,
-                req.status() == null ? "ACTIVE" : status(req.status()));
-        if (req.discountPercent() != null && req.discountPercent() > 0) { c.setDiscountPercent(discount(req.discountPercent())); courses.save(c); }
+                req.status() == null ? "ACTIVE" : CourseService.visibleStatus(req.status()));
+        if (req.discountPercent() != null && req.discountPercent() > 0) { c.setDiscountPercent(CourseService.validDiscount(req.discountPercent())); courses.save(c); }
         return c;
-    }
-
-    private void retire(Course c) {
-        c.setStatus(Course.DELETED);
-        courses.save(c);
-        // A code nobody has used yet would otherwise still open the deleted course.
-        codes.findByTenantIdAndCourseIdOrderByCreatedAtDesc(c.getTenantId(), c.getId()).stream()
-                .filter(code -> "UNUSED".equals(code.getStatus()))
-                .forEach(code -> { code.setStatus("REVOKED"); codes.save(code); });
     }
 
     /** What the page says is the teacher's; blanks get a sensible line built from the name and subject. The payment
@@ -257,21 +221,6 @@ public class AdminTeacherService {
         return new CourseView(c.getId(), c.getTitle(), Objects.toString(c.getSubject(), ""), Objects.toString(c.getGradeLevel(), ""),
                 Objects.toString(c.getGrade(), ""), Objects.toString(c.getDescription(), ""), c.getPrice(), c.getDiscountPercent(),
                 c.getFinalPrice(), Objects.toString(c.getCoverUrl(), ""), c.getStatus(), enrollments.countStudying(c.getTenantId(), c.getId()));
-    }
-
-    private static String status(String raw) {
-        if (!VISIBLE.contains(raw)) throw new BadRequestException("الحالة غير صحيحة");
-        return raw;
-    }
-
-    private static BigDecimal price(BigDecimal p) {
-        if (p.signum() < 0 || p.compareTo(new BigDecimal("1000000")) > 0) throw new BadRequestException("السعر غير صحيح");
-        return p;
-    }
-
-    private static Integer discount(Integer pct) {
-        if (pct < 0 || pct > 100) throw new BadRequestException("نسبة الخصم يجب أن تكون بين 0 و100");
-        return pct == 0 ? null : pct;
     }
 
     private static boolean blank(String s) { return s == null || s.isBlank(); }

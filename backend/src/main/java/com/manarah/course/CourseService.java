@@ -31,6 +31,8 @@ public class CourseService {
     private final LessonCheckpointAnswerRepository checkpointAnswers;
     private final com.manarah.academy.TeacherScope teacherScope;
     private final org.springframework.context.ApplicationEventPublisher events;
+    private final com.manarah.payment.repo.CourseAccessCodeRepository codes;
+    private final com.manarah.audit.AuditService audit;
 
     public CourseService(CourseRepository courses, CourseModuleRepository modules, LessonRepository lessons,
                          LessonMaterialRepository materials, EnrollmentRepository enrollments, UserRepository users,
@@ -38,7 +40,10 @@ public class CourseService {
                          VideoWatchSessionRepository watchSessions, LessonCheckpointRepository checkpoints,
                          LessonCheckpointAnswerRepository checkpointAnswers,
                          com.manarah.academy.TeacherScope teacherScope,
-                         org.springframework.context.ApplicationEventPublisher events) {
+                         org.springframework.context.ApplicationEventPublisher events,
+                         com.manarah.payment.repo.CourseAccessCodeRepository codes, com.manarah.audit.AuditService audit) {
+        this.codes = codes;
+        this.audit = audit;
         this.teacherScope = teacherScope;
         this.events = events;
         this.progress = progress;
@@ -133,6 +138,84 @@ public class CourseService {
         courses.save(c);
         if ("ACTIVE".equals(c.getStatus())) events.publishEvent(new com.manarah.common.events.DomainEvents.CourseOffered(tenantId, c.getId()));
         return c;
+    }
+
+    /**
+     * Edits any of a course's details — its teacher from their courses page, head office from anywhere. The caller has
+     * already checked the actor may change this course. Offering a hidden course again tells its students.
+     */
+    @Transactional
+    public Course edit(UserPrincipal actor, Course c, EditCourseRequest req) {
+        String before = c.getTitle() + "/" + c.getPrice() + "/" + c.getStatus();
+        boolean wasActive = "ACTIVE".equals(c.getStatus());
+        if (req.title() != null) c.setTitle(requiredText(req.title(), 200, "اكتب اسم الكورس"));
+        if (req.subject() != null) c.setSubject(optionalText(req.subject(), 100));
+        if (req.gradeLevel() != null) c.setGradeLevel(optionalText(req.gradeLevel(), 60));
+        if (req.grade() != null) c.setGrade(optionalText(req.grade(), 80));
+        if (req.description() != null) c.setDescription(optionalText(req.description(), 5000));
+        if (req.price() != null) c.setPrice(validPrice(req.price()));
+        if (req.discountPercent() != null) c.setDiscountPercent(validDiscount(req.discountPercent()));
+        if (req.coverUrl() != null) c.setCoverUrl(coverUrl(req.coverUrl()));
+        if (req.status() != null) c.setStatus(visibleStatus(req.status()));
+        courses.save(c);
+        if (!wasActive && "ACTIVE".equals(c.getStatus()))
+            events.publishEvent(new com.manarah.common.events.DomainEvents.CourseOffered(c.getTenantId(), c.getId()));
+        audit.record(actor, "COURSE_UPDATED", "Course", c.getId(), before, c.getTitle() + "/" + c.getPrice() + "/" + c.getStatus());
+        return c;
+    }
+
+    /**
+     * Deletes a course: it drops out of every listing and closes to its students (see {@link Course#DELETED}); the rows
+     * stay, since enrollments, payments and certificates point at it. A code nobody used yet would still open it, so
+     * those are revoked.
+     */
+    @Transactional
+    public void retire(UserPrincipal actor, Course c) {
+        c.setStatus(Course.DELETED);
+        courses.save(c);
+        codes.findByTenantIdAndCourseIdOrderByCreatedAtDesc(c.getTenantId(), c.getId()).stream()
+                .filter(code -> "UNUSED".equals(code.getStatus()))
+                .forEach(code -> { code.setStatus("REVOKED"); codes.save(code); });
+        audit.record(actor, "COURSE_DELETED", "Course", c.getId(), c.getTitle(), null);
+    }
+
+    public CourseSummary summary(Course c) {
+        return toSummary(c.getTenantId(), c);
+    }
+
+    // ---- Checks every way of making or editing a course shares ----
+
+    /** A course is shown or hidden; deleting goes through {@link #retire}, never through a status. */
+    public static String visibleStatus(String raw) {
+        if (!"ACTIVE".equals(raw) && !"HIDDEN".equals(raw))
+            throw new com.manarah.common.exception.ApiExceptions.BadRequestException("الحالة غير صحيحة");
+        return raw;
+    }
+
+    public static BigDecimal validPrice(BigDecimal p) {
+        if (p.signum() < 0 || p.compareTo(new BigDecimal("1000000")) > 0)
+            throw new com.manarah.common.exception.ApiExceptions.BadRequestException("السعر غير صحيح");
+        return p;
+    }
+
+    /** 0 clears the discount. */
+    public static Integer validDiscount(Integer pct) {
+        if (pct < 0 || pct > 100)
+            throw new com.manarah.common.exception.ApiExceptions.BadRequestException("نسبة الخصم يجب أن تكون بين 0 و100");
+        return pct == 0 ? null : pct;
+    }
+
+    public static String requiredText(String s, int max, String message) {
+        if (s == null || s.isBlank()) throw new com.manarah.common.exception.ApiExceptions.BadRequestException(message);
+        return optionalText(s, max);
+    }
+
+    /** Blank means none. */
+    public static String optionalText(String s, int max) {
+        if (s == null || s.isBlank()) return null;
+        if (s.trim().length() > max)
+            throw new com.manarah.common.exception.ApiExceptions.BadRequestException("النص أطول من المسموح (" + max + " حرف)");
+        return s.trim();
     }
 
     /** A course cover must be an uploaded image, a bundled one, or an HTTPS link; blank means none. */

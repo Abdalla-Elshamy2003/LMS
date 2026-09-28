@@ -19,11 +19,12 @@ public class AcademyController {
     private final com.manarah.student.repo.StudentRepository students;
     private final BundleService bundles;
     private final com.manarah.subscription.SubscriptionPlanRepository plans;
+    private final BlockService blocks;
     public AcademyController(AcademyService service, TeacherAcademyRepository academies, CourseRepository courses,
                              com.manarah.student.repo.StudentRepository students, BundleService bundles,
-                             com.manarah.subscription.SubscriptionPlanRepository plans) {
+                             com.manarah.subscription.SubscriptionPlanRepository plans, BlockService blocks) {
         this.service = service; this.academies = academies; this.courses = courses; this.students = students; this.bundles = bundles;
-        this.plans = plans;
+        this.plans = plans; this.blocks = blocks;
     }
 
     /** Public home page payload: platform-wide numbers, the teacher cards and the teacher packages. */
@@ -72,6 +73,18 @@ public class AcademyController {
     public void access(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @PathVariable Long studentId, @RequestBody AcademyService.Account req) { service.access(actor, id, studentId, req); }
     @DeleteMapping("/academies/{id}/students/{studentId}")
     public void removeStudent(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @PathVariable Long studentId) { service.removeStudent(actor, id, studentId); }
+    // A teacher blocking one of their students in their own space, with the reason the student is shown.
+    public record BlockBody(String reason) {}
+    @GetMapping("/academies/{id}/blocks")
+    public Object seatBlocks(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id) { return blocks.seats(actor, id); }
+    @PutMapping("/academies/{id}/students/{studentId}/block")
+    public void blockSeat(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @PathVariable Long studentId, @RequestBody BlockBody body) {
+        blocks.blockSeat(actor, id, studentId, body.reason());
+    }
+    @DeleteMapping("/academies/{id}/students/{studentId}/block")
+    public void unblockSeat(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @PathVariable Long studentId) {
+        blocks.unblockSeat(actor, id, studentId);
+    }
     @GetMapping("/academies/{id}/assistants")
     public Object assistants(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id) { return service.assistants(actor, id); }
     @PostMapping("/academies/{id}/assistants")

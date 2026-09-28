@@ -45,14 +45,16 @@ public class LinkedStudentAccounts {
     private final JwtService jwt;
     private final PasswordEncoder passwords;
     private final com.manarah.audit.AuditService audit;
+    private final com.manarah.identity.AccountBlocks blocks;
 
     public LinkedStudentAccounts(UserRepository users, StudentRepository students, TeacherAcademyRepository academies,
                                  BranchRepository branches, CourseRepository courses, CourseRequests requests,
                                  GuardianRepository guardians, StudentGuardianRepository guardianLinks, JwtService jwt,
-                                 PasswordEncoder passwords, com.manarah.audit.AuditService audit) {
+                                 PasswordEncoder passwords, com.manarah.audit.AuditService audit,
+                                 com.manarah.identity.AccountBlocks blocks) {
         this.users = users; this.students = students; this.academies = academies; this.branches = branches;
         this.courses = courses; this.requests = requests; this.guardians = guardians; this.guardianLinks = guardianLinks;
-        this.jwt = jwt; this.passwords = passwords; this.audit = audit;
+        this.jwt = jwt; this.passwords = passwords; this.audit = audit; this.blocks = blocks;
     }
 
     /** A teacher the student has, as shown in their "مدرسيني" switcher. */
@@ -107,8 +109,8 @@ public class LinkedStudentAccounts {
     public Session switchTo(UserPrincipal actor, Long userId) {
         User me = users.findById(actor.getId()).orElseThrow(() -> new UnauthorizedException("الجلسة غير صالحة"));
         User target = rowsOf(me).stream().filter(u -> u.getId().equals(userId)).findFirst()
-                .filter(this::usable)
                 .orElseThrow(() -> new ForbiddenException("المدرس ده مش ضمن مدرسينك"));
+        if (!usable(target)) throw closedWhy(target);
         return new Session(target, tokenFor(target));
     }
 
@@ -156,7 +158,15 @@ public class LinkedStudentAccounts {
         if (!"ACTIVE".equals(row.getStatus())) return false;
         // A teacher head office deleted is gone from the student's teachers too.
         if (academies.findByTenantId(row.getTenantId()).map(TeacherAcademy::isArchived).orElse(false)) return false;
-        return students.findByTenantIdAndUserId(row.getTenantId(), row.getId()).map(s -> !ARCHIVED.equals(s.getStatus())).orElse(false);
+        // A seat the teacher blocked is closed too; the student is told why when they try to open it (see closedWhy).
+        return students.findByTenantIdAndUserId(row.getTenantId(), row.getId())
+                .map(s -> !ARCHIVED.equals(s.getStatus()) && s.getBlockedAt() == null).orElse(false);
+    }
+
+    /** The refusal for a seat the student cannot open: the teacher's reason when they blocked it. */
+    private ForbiddenException closedWhy(User row) {
+        String reason = students.findByTenantIdAndUserId(row.getTenantId(), row.getId()).map(blocks::seatReason).orElse(null);
+        return new ForbiddenException(reason != null ? reason : "المدرس ده وقّف حسابك عنده. تواصل معاه.");
     }
 
     // ---- Joining another teacher ------------------------------------------------------------------------------
@@ -178,7 +188,7 @@ public class LinkedStudentAccounts {
                 .orElseThrow(() -> new BadRequestException("الكورس ده مش متاح عند المدرس"));
         var existing = rowIn(owner, academy.getTenantId());
         if (existing.isPresent()) {
-            if (!usable(existing.get())) throw new ForbiddenException("المدرس ده وقّف حسابك عنده. تواصل معاه.");
+            if (!usable(existing.get())) throw closedWhy(existing.get());
             // Already studying with this teacher: the course they clicked is still what they came for.
             if (course != null) requests.request(academy.getTenantId(),
                     students.findByTenantIdAndUserId(academy.getTenantId(), existing.get().getId()).orElseThrow().getId(), course);
@@ -200,7 +210,7 @@ public class LinkedStudentAccounts {
         User owner = owner(anyRow);
         var existing = rowIn(owner, tenantId);
         if (existing.isPresent()) {
-            if (!usable(existing.get())) throw new ForbiddenException("المدرس ده وقّف حسابك عنده. تواصل معاه.");
+            if (!usable(existing.get())) throw closedWhy(existing.get());
             return students.findByTenantIdAndUserId(tenantId, existing.get().getId()).orElseThrow();
         }
         var from = profileOf(owner);

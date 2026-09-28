@@ -50,10 +50,10 @@ public class AdminControlService {
     }
 
     public record TeacherRow(Long academyId, String slug, String name, String subject, String photoUrl, boolean published,
-                             String username, long students, long courses, int videos, List<String> packages) {}
-    public record Seat(Long academyId, String teacher, String subject, Long studentId, String status) {}
+                             String username, long students, long courses, int videos, List<String> packages, String blockedReason) {}
+    public record Seat(Long academyId, String teacher, String subject, Long studentId, String status, String blockedReason) {}
     public record StudentRow(Long userId, String fullName, String login, String email, String phone, String status,
-                             List<Seat> teachers, List<String> packages, java.time.Instant joinedAt) {}
+                             List<Seat> teachers, List<String> packages, java.time.Instant joinedAt, String blockedReason) {}
     public record CourseRow(Long id, Long academyId, String teacher, String title, String year, BigDecimal price,
                             Integer discountPercent, BigDecimal finalPrice, String status, long students, String coverUrl,
                             String subject, String gradeLevel, String description) {}
@@ -97,7 +97,8 @@ public class AdminControlService {
                 users.findById(a.getTeacherId()).map(User::getUsername).orElse(""),
                 students.countByTenantIdAndStatusNot(a.getTenantId(), "ARCHIVED"),
                 courses.findByTenantIdAndTeacherId(a.getTenantId(), a.getTeacherId()).stream().filter(c -> "ACTIVE".equals(c.getStatus())).count(),
-                a.getVideos().size(), packagesOf.getOrDefault(a.getId(), List.of()))).toList();
+                a.getVideos().size(), packagesOf.getOrDefault(a.getId(), List.of()),
+                users.findById(a.getTeacherId()).map(User::getBlockedReason).orElse(null))).toList();
     }
 
     @Transactional
@@ -144,10 +145,11 @@ public class AdminControlService {
                 continue;
             List<Seat> list = e.getValue().stream().map(s -> {
                 var a = byTenant.get(s.getTenantId());
-                return new Seat(a.getId(), a.getName(), Objects.toString(a.getSubject(), ""), s.getId(), s.getStatus());
+                return new Seat(a.getId(), a.getName(), Objects.toString(a.getSubject(), ""), s.getId(), s.getStatus(), s.getBlockedReason());
             }).toList();
             out.add(new StudentRow(owner.getId(), owner.getFullName(), login, email, Objects.toString(owner.getPhone(), ""), owner.getStatus(),
-                    list, packagesOf.getOrDefault(owner.getId(), List.of()), e.getValue().get(e.getValue().size() - 1).getCreatedAt()));
+                    list, packagesOf.getOrDefault(owner.getId(), List.of()), e.getValue().get(e.getValue().size() - 1).getCreatedAt(),
+                    owner.getBlockedReason()));
             if (out.size() >= 500) break;
         }
         return out;
@@ -188,7 +190,7 @@ public class AdminControlService {
 
     /** Any of the course's details — see {@link AdminTeacherService#updateCourse}; fields left out stay as they are. */
     @Transactional
-    public CourseRow updateCourse(UserPrincipal actor, Long courseId, AdminTeacherService.CourseForm req) {
+    public CourseRow updateCourse(UserPrincipal actor, Long courseId, com.manarah.course.CourseDtos.EditCourseRequest req) {
         teachersAdmin.updateCourse(actor, courseId, req);
         Course c = courses.findById(courseId).orElseThrow();
         return row(c, academies.findByTenantId(c.getTenantId()).orElseThrow());
