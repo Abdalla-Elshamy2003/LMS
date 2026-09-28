@@ -31,9 +31,13 @@ public class TeacherAcademy {
     private boolean demoContent = true;
     private boolean published = true;
     private boolean defaultHome;
+    /** Set when head office deletes the teacher: the space drops out of every listing, but its history stays. */
+    @JsonIgnore private java.time.Instant archivedAt;
     @JsonIgnore @Column(columnDefinition = "TEXT") private String videosJson = "[]";
     /** Promotional posters, as /api/public/images/{id} URLs in display order. */
     @JsonIgnore @Column(columnDefinition = "TEXT") private String galleryJson = "[]";
+
+    @JsonIgnore public boolean isArchived() { return archivedAt != null; }
 
     public java.util.List<AcademyService.Video> getVideos() {
         try { return new com.fasterxml.jackson.databind.ObjectMapper().readValue(videosJson, new com.fasterxml.jackson.core.type.TypeReference<java.util.List<AcademyService.Video>>() {}); }

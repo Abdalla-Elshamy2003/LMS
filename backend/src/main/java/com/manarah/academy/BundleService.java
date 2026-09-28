@@ -191,7 +191,7 @@ public class BundleService {
         for (var r : list) {
             var m = new TeacherBundleMember();
             if (r.academyId() != null) {
-                var a = academies.findById(r.academyId()).filter(x -> actor.getTenantId().equals(x.getManagerTenantId()))
+                var a = academies.findById(r.academyId()).filter(x -> !x.isArchived() && actor.getTenantId().equals(x.getManagerTenantId()))
                         .orElseThrow(() -> new BadRequestException("اختر مساحات مدرسين تديرها إدارتك فقط"));
                 if (!linked.add(a.getId())) throw new BadRequestException("المدرس مضاف مرتين في نفس الباقة");
                 m.setAcademyId(a.getId());

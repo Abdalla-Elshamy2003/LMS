@@ -61,6 +61,7 @@ const SubscriptionPlansPage = lazy(() => import('./pages/SubscriptionPlansPage')
 const AssistantDesk = lazy(() => import('./pages/AssistantDesk'))
 const Bundles = lazy(() => import('./pages/Bundles'))
 const ControlCenter = lazy(() => import('./pages/ControlCenter'))
+const TeacherStudio = lazy(() => import('./pages/TeacherStudio'))
 const MyPackage = lazy(() => import('./pages/MyPackage'))
 const Assistants = lazy(() => import('./pages/Assistants'))
 const CenterPass = lazy(() => import('./features/center/CenterPass'))
@@ -150,6 +151,8 @@ export default function App() {
         <Route path="academy" element={<AcademySettings />} />
         <Route path="bundles" element={<Bundles />} />
         <Route path="control" element={<ControlCenter />} />
+        {/* One teacher on one page: "new" makes the teacher with their courses, an id edits them. */}
+        <Route path="control/teachers/:academyId" element={<TeacherStudio />} />
         <Route path="my-package" element={<MyPackage />} />
         <Route path="assistant" element={<AssistantDesk />} />
         <Route path="assistants" element={<Assistants />} />

@@ -37,14 +37,13 @@ public class AdminControlService {
     private final EnrollmentRepository enrollments;
     private final PasswordEncoder passwords;
     private final com.manarah.audit.AuditService audit;
-    private final org.springframework.context.ApplicationEventPublisher events;
+    private final AdminTeacherService teachersAdmin;
 
     public AdminControlService(BundleService bundleService, TeacherAcademyRepository academies, TeacherBundleRepository bundles,
                                TeacherBundleMemberRepository bundleMembers, BundleSubscriptionRepository subscriptions, UserRepository users,
                                StudentRepository students, CourseRepository courses, EnrollmentRepository enrollments,
-                               PasswordEncoder passwords, com.manarah.audit.AuditService audit,
-                               org.springframework.context.ApplicationEventPublisher events) {
-        this.events = events;
+                               PasswordEncoder passwords, com.manarah.audit.AuditService audit, AdminTeacherService teachersAdmin) {
+        this.teachersAdmin = teachersAdmin;
         this.bundleService = bundleService; this.academies = academies; this.bundles = bundles; this.bundleMembers = bundleMembers;
         this.subscriptions = subscriptions; this.users = users; this.students = students; this.courses = courses;
         this.enrollments = enrollments; this.passwords = passwords; this.audit = audit;
@@ -56,8 +55,8 @@ public class AdminControlService {
     public record StudentRow(Long userId, String fullName, String login, String email, String phone, String status,
                              List<Seat> teachers, List<String> packages, java.time.Instant joinedAt) {}
     public record CourseRow(Long id, Long academyId, String teacher, String title, String year, BigDecimal price,
-                            Integer discountPercent, BigDecimal finalPrice, String status, long students, String coverUrl) {}
-    public record CourseUpdate(BigDecimal price, String status) {}
+                            Integer discountPercent, BigDecimal finalPrice, String status, long students, String coverUrl,
+                            String subject, String gradeLevel, String description) {}
 
     // ---- Overview ---------------------------------------------------------------------------------------------
 
@@ -187,40 +186,27 @@ public class AdminControlService {
                 .map(c -> row(c, byTenant.get(c.getTenantId()))).toList();
     }
 
+    /** Any of the course's details — see {@link AdminTeacherService#updateCourse}; fields left out stay as they are. */
     @Transactional
-    public CourseRow updateCourse(UserPrincipal actor, Long courseId, CourseUpdate req) {
-        var managed = managed(actor);
-        Course c = courses.findById(courseId).orElseThrow(() -> NotFoundException.of("الكورس", courseId));
-        var a = managed.stream().filter(x -> x.getTenantId().equals(c.getTenantId())).findFirst()
-                .orElseThrow(() -> new ForbiddenException("الكورس ده تابع لإدارة تانية"));
-        String before = c.getPrice() + "/" + c.getStatus();
-        if (req.price() != null) {
-            if (req.price().signum() < 0 || req.price().compareTo(new BigDecimal("1000000")) > 0) throw new BadRequestException("السعر غير صحيح");
-            c.setPrice(req.price());
-        }
-        if (req.status() != null) {
-            if (!Set.of("ACTIVE", "HIDDEN").contains(req.status())) throw new BadRequestException("الحالة غير صحيحة");
-            c.setStatus(req.status());
-        }
-        courses.save(c);
-        if ("ACTIVE".equals(c.getStatus()) && !before.endsWith("/ACTIVE"))
-            events.publishEvent(new com.manarah.common.events.DomainEvents.CourseOffered(c.getTenantId(), c.getId()));
-        audit.record(actor, "COURSE_UPDATED_BY_ADMIN", "Course", c.getId(), before, c.getPrice() + "/" + c.getStatus());
-        return row(c, a);
+    public CourseRow updateCourse(UserPrincipal actor, Long courseId, AdminTeacherService.CourseForm req) {
+        teachersAdmin.updateCourse(actor, courseId, req);
+        Course c = courses.findById(courseId).orElseThrow();
+        return row(c, academies.findByTenantId(c.getTenantId()).orElseThrow());
     }
 
     private CourseRow row(Course c, TeacherAcademy a) {
         long enrolled = enrollments.findByTenantIdAndCourseId(c.getTenantId(), c.getId()).stream()
                 .filter(e -> Set.of("ACTIVE", "COMPLETED").contains(e.getStatus())).count();
         return new CourseRow(c.getId(), a.getId(), a.getName(), c.getTitle(), Objects.toString(c.getGrade(), ""), c.getPrice(),
-                c.getDiscountPercent(), c.getFinalPrice(), c.getStatus(), enrolled, Objects.toString(c.getCoverUrl(), ""));
+                c.getDiscountPercent(), c.getFinalPrice(), c.getStatus(), enrolled, Objects.toString(c.getCoverUrl(), ""),
+                Objects.toString(c.getSubject(), ""), Objects.toString(c.getGradeLevel(), ""), Objects.toString(c.getDescription(), ""));
     }
 
     // ---- Scope ------------------------------------------------------------------------------------------------
 
     private List<TeacherAcademy> managed(UserPrincipal actor) {
         bundleService.requireHeadOffice(actor);
-        return academies.findByManagerTenantId(actor.getTenantId()).stream()
+        return academies.managedBy(actor.getTenantId()).stream()
                 .sorted(Comparator.comparing(TeacherAcademy::getId)).toList();
     }
 

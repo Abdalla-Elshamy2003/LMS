@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  BarChart3, BookOpen, Building2, Eye, EyeOff, ExternalLink, GraduationCap, KeyRound, Layers, LayoutDashboard, LogIn, Plus, Search,
-  ShieldCheck, Sparkles, UserCheck, UserCog, UserX, Users, Wallet, Wand2, Wrench,
+  BarChart3, BookOpen, Building2, Eye, EyeOff, ExternalLink, GraduationCap, KeyRound, Layers, LayoutDashboard, LogIn, Pencil, Plus, Search,
+  ShieldCheck, Sparkles, Trash2, UserCheck, UserCog, UserX, Users, Wallet, Wand2, Wrench,
 } from 'lucide-react'
+import { DeleteCourseModal, DeleteTeacherModal } from './TeacherStudio'
 import api from '../lib/api'
 import { apiErrorMessage } from '../lib/apiError'
 import { fmtDate } from '../lib/format'
@@ -34,10 +35,12 @@ const TABS = [
  */
 export default function ControlCenter() {
   const { user } = useAuth()
+  const routed = useLocation()
   // Only a super admin manages the other admins; the tab isn't shown to anyone else.
   const tabs = TABS.filter(([key]) => key !== 'admins' || user?.role === 'SUPER_ADMIN')
-  const [tab, setTab] = useState(() => new URLSearchParams(location.search).get('tab') || 'overview')
-  const [flash, setFlash] = useState({ ok: '', error: '' })
+  const [tab, setTab] = useState(() => new URLSearchParams(routed.search).get('tab') || 'overview')
+  // A teacher's page sends its result back here (e.g. "deleted") when it returns to the list.
+  const [flash, setFlash] = useState({ ok: routed.state?.flash || '', error: '' })
   const say = (ok) => setFlash({ ok, error: '' })
   const fail = (e, fallback) => setFlash({ ok: '', error: apiErrorMessage(e, fallback) })
 
@@ -62,7 +65,7 @@ export default function ControlCenter() {
       {flash.ok && <div role="status" className="rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">{flash.ok}</div>}
 
       {tab === 'overview' && <Overview go={setTab} />}
-      {tab === 'teachers' && <Teachers say={say} fail={fail} />}
+      {tab === 'teachers' && <Teachers say={say} fail={fail} owner={user?.role === 'SUPER_ADMIN'} />}
       {tab === 'students' && <Students say={say} fail={fail} />}
       {tab === 'courses' && <Courses say={say} fail={fail} />}
       {tab === 'packages' && <Bundles />}
@@ -139,23 +142,26 @@ function QuickLinks() {
 
 // ---- Teachers ------------------------------------------------------------------------------------------------
 
-function Teachers({ say, fail }) {
+function Teachers({ say, fail, owner }) {
   const [rows, setRows] = useState(null)
   const [creds, setCreds] = useState(null)
-  const [adding, setAdding] = useState(false)
+  const [removing, setRemoving] = useState(null)
   const load = () => api.get('/admin/teachers').then(r => setRows(r.data)).catch(e => { setRows([]); fail(e, 'تعذّر تحميل المدرسين') })
   useEffect(() => { load() }, [])
   if (!rows) return <PageLoader />
 
   const togglePublished = async (t) => {
-    try { await api.put(`/admin/teachers/${t.academyId}/published`, { published: !t.published }); await load(); say(t.published ? `اتخفت صفحة ${t.name}` : `اتنشرت صفحة ${t.name}`) }
+    try { await api.put(`/admin/teachers/${t.academyId}/published`, { published: !t.published }); await load(); say(t.published ? `${t.name} اتخفى من الموقع` : `${t.name} بقى ظاهر في الموقع`) }
     catch (e) { fail(e, 'تعذّر تغيير حالة الصفحة') }
   }
   const enter = (t) => { sessionStorage.setItem('manarah_academy', JSON.stringify({ id: t.academyId, name: t.name, slug: t.slug })); location.href = '/app/courses' }
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end"><button type="button" className="btn-primary" onClick={() => setAdding(true)}><Plus size={17} /> مدرس جديد</button></div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-ink-500">«ظاهر» يعني المدرس باين في الصفحة الرئيسية وصفحته شغالة. اضغط على اسم أي مدرس عشان تعدّل كل حاجة بتاعته وكورساته من صفحة واحدة.</p>
+        <Link to="/app/control/teachers/new" className="btn-primary"><Plus size={17} /> مدرس جديد بكورساته</Link>
+      </div>
       {rows.length === 0 ? <div className="card"><EmptyState icon={GraduationCap} title="لسه مفيش مدرسين" hint="ابدأ بإضافة أول مدرس" /></div> : (
         <div className="card overflow-x-auto p-0">
           <table className="w-full min-w-[860px] text-right text-sm">
@@ -165,18 +171,20 @@ function Teachers({ say, fail }) {
                 <tr key={t.academyId} className="border-b border-ink-50">
                   <td className="p-4"><div className="flex items-center gap-3">
                     <span className="h-10 w-10 overflow-hidden rounded-xl bg-ink-100">{t.photoUrl && <img src={t.photoUrl} alt="" className="h-full w-full object-cover object-top" />}</span>
-                    <span><b className="block text-ink-800">{t.name}</b><small className="text-xs text-ink-400">{t.subject} · <span dir="ltr">/t/{t.slug}</span></small></span>
+                    <span><Link to={`/app/control/teachers/${t.academyId}`} className="block font-bold text-ink-800 hover:text-brand-700">{t.name}</Link><small className="text-xs text-ink-400">{t.subject} · <span dir="ltr">/t/{t.slug}</span></small></span>
                   </div></td>
                   <td dir="ltr" className="text-right text-xs text-ink-500">{t.username}</td>
                   <td className="font-bold">{t.students.toLocaleString('ar-EG')}</td>
                   <td className="font-bold">{t.courses.toLocaleString('ar-EG')}</td>
                   <td className="font-bold">{t.videos.toLocaleString('ar-EG')}</td>
                   <td>{t.packages.length ? t.packages.map(p => <span key={p} className="chip ml-1 bg-sky-50 text-sky-700">{p}</span>) : <span className="text-xs text-ink-300">—</span>}</td>
-                  <td><button type="button" onClick={() => togglePublished(t)} className={`chip ${t.published ? 'bg-emerald-50 text-emerald-700' : 'bg-ink-100 text-ink-500'}`}>{t.published ? <><Eye size={13} /> منشورة</> : <><EyeOff size={13} /> مخفية</>}</button></td>
+                  <td><button type="button" onClick={() => togglePublished(t)} aria-pressed={t.published} className={`chip ${t.published ? 'bg-emerald-50 text-emerald-700' : 'bg-ink-100 text-ink-500'}`}>{t.published ? <><Eye size={13} /> ظاهر</> : <><EyeOff size={13} /> مخفي</>}</button></td>
                   <td><div className="flex flex-wrap justify-end gap-1.5 pl-3">
+                    <Link className="btn-ghost px-2.5 py-1.5 text-xs text-brand-700" to={`/app/control/teachers/${t.academyId}`}><Pencil size={14} /> تعديل الكل</Link>
                     <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs" onClick={() => enter(t)}><LogIn size={14} /> ادخل المساحة</button>
-                    <a className="btn-ghost px-2.5 py-1.5 text-xs" href={`/t/${t.slug}`} target="_blank" rel="noreferrer"><ExternalLink size={14} /> الصفحة</a>
+                    {t.published && <a className="btn-ghost px-2.5 py-1.5 text-xs" href={`/t/${t.slug}`} target="_blank" rel="noreferrer"><ExternalLink size={14} /> الصفحة</a>}
                     <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs" onClick={() => setCreds(t)}><KeyRound size={14} /> بيانات الدخول</button>
+                    {owner && <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs text-rose-600" onClick={() => setRemoving(t)}><Trash2 size={14} /> حذف</button>}
                   </div></td>
                 </tr>
               ))}
@@ -185,7 +193,8 @@ function Teachers({ say, fail }) {
         </div>
       )}
       <CredentialsModal teacher={creds} onClose={() => setCreds(null)} onSaved={async (msg) => { setCreds(null); await load(); say(msg) }} fail={fail} />
-      <NewTeacherModal open={adding} onClose={() => setAdding(false)} onSaved={async (msg) => { setAdding(false); await load(); say(msg) }} fail={fail} />
+      <DeleteTeacherModal open={!!removing} teacher={removing} onClose={() => setRemoving(null)}
+        onDeleted={async (msg) => { setRemoving(null); await load(); say(msg) }} />
     </div>
   )
 }
@@ -206,31 +215,6 @@ function CredentialsModal({ teacher, onClose, onSaved, fail }) {
         <div><label className="label">اسم المستخدم</label><input dir="ltr" className="input" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} /></div>
         <div><label className="label">كلمة مرور جديدة</label><input dir="ltr" type="password" className="input" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="١٠ أحرف على الأقل، حروف وأرقام" /></div>
         <button type="submit" disabled={busy} className="btn-primary w-full justify-center">{busy ? <Spinner className="h-4 w-4" /> : 'حفظ'}</button>
-      </form>
-    </Modal>
-  )
-}
-
-function NewTeacherModal({ open, onClose, onSaved, fail }) {
-  const [form, setForm] = useState({ name: '', slug: '', username: '', password: '' })
-  const [busy, setBusy] = useState(false)
-  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
-  const save = async (e) => {
-    e.preventDefault(); setBusy(true)
-    try { await api.post('/academies', form); setForm({ name: '', slug: '', username: '', password: '' }); onSaved(`اتعملت مساحة ${form.name}`) }
-    catch (err) { fail(err, 'تعذّر إنشاء المدرس') }
-    finally { setBusy(false) }
-  }
-  return (
-    <Modal open={open} onClose={onClose} title="مدرس جديد">
-      <form onSubmit={save} className="space-y-4">
-        <div><label className="label">اسم المدرس</label><input className="input" value={form.name} onChange={set('name')} placeholder="مستر ..." /></div>
-        <div><label className="label">رابط الصفحة (بالإنجليزي)</label><div className="flex items-center gap-2" dir="ltr"><span className="text-xs text-ink-400">/t/</span><input className="input" value={form.slug} onChange={set('slug')} placeholder="mr-name" /></div></div>
-        <div className="grid grid-cols-2 gap-3">
-          <div><label className="label">اسم المستخدم</label><input dir="ltr" className="input" value={form.username} onChange={set('username')} placeholder="mr.name" /></div>
-          <div><label className="label">كلمة المرور</label><input dir="ltr" type="password" className="input" value={form.password} onChange={set('password')} /></div>
-        </div>
-        <button type="submit" disabled={busy} className="btn-primary w-full justify-center">{busy ? <Spinner className="h-4 w-4" /> : 'إنشاء المساحة'}</button>
       </form>
     </Modal>
   )
@@ -308,6 +292,7 @@ function Courses({ say, fail }) {
   const [q, setQ] = useState('')
   const [rows, setRows] = useState(null)
   const [prices, setPrices] = useState({})
+  const [removing, setRemoving] = useState(null)
   const load = (query = q) => api.get('/admin/courses', { params: { q: query || undefined } }).then(r => { setRows(r.data); setPrices({}) }).catch(e => { setRows([]); fail(e, 'تعذّر تحميل الكورسات') })
   useEffect(() => { const t = setTimeout(() => load(q), 300); return () => clearTimeout(t) }, [q])
   const byTeacher = useMemo(() => (rows || []).reduce((m, c) => { (m[c.teacher] ||= []).push(c); return m }, {}), [rows])
@@ -322,9 +307,12 @@ function Courses({ say, fail }) {
       <div className="relative max-w-md"><Search size={18} className="absolute right-3.5 top-3 text-ink-400" /><input className="input pr-11" value={q} onChange={e => setQ(e.target.value)} placeholder="ابحث باسم الكورس أو المدرس..." /></div>
       {!rows ? <PageLoader /> : rows.length === 0 ? <div className="card"><EmptyState icon={BookOpen} title="مفيش كورسات مطابقة" hint="جرّب بحث تاني" /></div> : Object.entries(byTeacher).map(([teacher, list]) => (
         <div key={teacher} className="card overflow-x-auto p-0">
-          <p className="border-b border-ink-100 px-5 py-3 font-extrabold text-ink-700">{teacher} <span className="text-xs font-bold text-ink-400">· {list.length.toLocaleString('ar-EG')} كورس</span></p>
-          <table className="w-full min-w-[760px] text-right text-sm">
-            <thead><tr className="border-b border-ink-100 text-xs text-ink-400"><th className="p-3">الكورس</th><th>السنة</th><th>الطلاب</th><th>السعر (ج.م)</th><th>الظهور</th></tr></thead>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-100 px-5 py-3">
+            <p className="font-extrabold text-ink-700">{teacher} <span className="text-xs font-bold text-ink-400">· {list.length.toLocaleString('ar-EG')} كورس</span></p>
+            <Link to={`/app/control/teachers/${list[0].academyId}`} className="btn-ghost px-2.5 py-1.5 text-xs text-brand-700"><Pencil size={14} /> تعديل المدرس وكورساته</Link>
+          </div>
+          <table className="w-full min-w-[860px] text-right text-sm">
+            <thead><tr className="border-b border-ink-100 text-xs text-ink-400"><th className="p-3">الكورس</th><th>السنة</th><th>الطلاب</th><th>السعر (ج.م)</th><th>الظهور</th><th /></tr></thead>
             <tbody>
               {list.map(c => (
                 <tr key={c.id} className="border-b border-ink-50">
@@ -342,13 +330,19 @@ function Courses({ say, fail }) {
                   </div></td>
                   <td><button type="button" onClick={() => update(c, { status: c.status === 'ACTIVE' ? 'HIDDEN' : 'ACTIVE' }, c.status === 'ACTIVE' ? `اتخفى ${c.title}` : `اتعرض ${c.title}`)}
                     className={`chip ${c.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-ink-100 text-ink-500'}`}>{c.status === 'ACTIVE' ? <><Eye size={13} /> ظاهر</> : <><EyeOff size={13} /> مخفي</>}</button></td>
+                  <td><div className="flex justify-end gap-1.5 pl-3">
+                    <Link to={`/app/control/teachers/${c.academyId}`} className="btn-ghost px-2.5 py-1.5 text-xs"><Pencil size={14} /> تعديل</Link>
+                    <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs text-rose-600" onClick={() => setRemoving(c)}><Trash2 size={14} /> حذف</button>
+                  </div></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       ))}
-      {rows?.length > 0 && <p className="text-xs text-ink-400">الكورس المخفي بيختفي من صفحات المدرسين والباقات، والطلاب المشتركين فيه بيفضلوا شايفينه.</p>}
+      {rows?.length > 0 && <p className="text-xs text-ink-400">الكورس المخفي بيختفي من صفحات المدرسين والباقات، والطلاب المشتركين فيه بيفضلوا شايفينه. الكورس المحذوف بيختفي من كل حتة، حتى من الطلاب المشتركين.</p>}
+      <DeleteCourseModal open={!!removing} course={removing} onClose={() => setRemoving(null)} fail={fail}
+        onDeleted={() => { const c = removing; setRemoving(null); setRows(rs => rs.filter(r => r.id !== c.id)); say(`اتحذف كورس ${c.title}`) }} />
     </div>
   )
 }

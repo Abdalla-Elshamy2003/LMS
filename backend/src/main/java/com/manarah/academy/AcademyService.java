@@ -79,12 +79,12 @@ public class AcademyService {
         if (!actor.isAdmin()) {
             // A teacher with a school account sees the page(s) linked to that account. Teachers who
             // have no page yet get an empty list, not an error — the screen explains it instead.
-            return academies.findByOwnerUserId(actor.getId());
+            return academies.findByOwnerUserIdAndArchivedAtIsNull(actor.getId());
         }
-        return academies.findByManagerTenantId(actor.getTenantId());
+        return academies.managedBy(actor.getTenantId());
     }
     public TeacherAcademy manage(UserPrincipal actor, Long id) {
-        var a = academies.findById(id).orElseThrow(() -> NotFoundException.of("صفحة المدرس", id));
+        var a = academies.findById(id).filter(x -> !x.isArchived()).orElseThrow(() -> NotFoundException.of("صفحة المدرس", id));
         if ((actor.isAdmin() && (a.getManagerTenantId().equals(actor.getTenantId()) || a.getTenantId().equals(actor.getTenantId())))
                 || (actor.getRole() == Role.TEACHER && a.getTeacherId().equals(actor.getId()) && a.getTenantId().equals(actor.getTenantId()))
                 || (actor.getRole() == Role.ASSISTANT && a.getTenantId().equals(actor.getTenantId()))
@@ -203,7 +203,10 @@ public class AcademyService {
     public void teacherCredentials(UserPrincipal actor, Long id, Credentials req) {
         var a = manage(actor, id);
         if (!actor.isAdmin()) throw new ForbiddenException("تعديل حساب المدرس متاح للإدارة فقط");
-        var u = users.findById(a.getTeacherId()).orElseThrow(); credentials(u, req.username(), req.password());
+        var u = users.findById(a.getTeacherId()).orElseThrow();
+        // A blank password keeps the current one, so a new username or email doesn't force a new password.
+        if (req.password() == null || req.password().isBlank()) u.setUsername(logins.username(u, req.username()));
+        else credentials(u, req.username(), req.password());
         if (req.email() != null && !req.email().isBlank()) {
             String email = required(req.email(), 120).toLowerCase(Locale.ROOT);
             if (!EMAIL.matcher(email).matches()) throw new BadRequestException("البريد الإلكتروني غير صالح");

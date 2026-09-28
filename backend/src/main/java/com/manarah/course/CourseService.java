@@ -75,7 +75,8 @@ public class CourseService {
 
     // Package-private: callers must first derive tenantId from their authorized course list.
     CourseDetail getForTenant(Long tenantId, Long id, boolean includeUnreleased) {
-        Course c = courses.findByTenantIdAndId(tenantId, id).orElseThrow(() -> NotFoundException.of("الكورس", id));
+        Course c = courses.findByTenantIdAndId(tenantId, id).filter(x -> !Course.DELETED.equals(x.getStatus()))
+                .orElseThrow(() -> NotFoundException.of("الكورس", id));
         Instant now = Instant.now();
         List<ModuleView> moduleViews = modules.findByTenantIdAndCourseIdOrderByPosition(tenantId, id).stream()
                 .map(m -> {
@@ -95,34 +96,52 @@ public class CourseService {
     @Transactional
     public CourseDetail create(UserPrincipal actor, CreateCourseRequest req) {
         Long tenantId = TenantContext.require();
+        // A teacher's own courses are theirs; an assistant inside a teacher's academy creates courses for that teacher.
+        Long acting = teacherScope.teacherIdFor(actor);
+        Long teacherId = acting != null ? acting : req.teacherId();
+        if (teacherId == null) {
+            var teachers = users.findByTenantIdAndRole(tenantId, com.manarah.identity.domain.Role.TEACHER);
+            if (teachers.size() == 1) teacherId = teachers.getFirst().getId();
+        }
+        if (teacherId != null) users.findByTenantIdAndId(tenantId, teacherId)
+                .filter(u -> u.getRole() == com.manarah.identity.domain.Role.TEACHER)
+                .orElseThrow(() -> new com.manarah.common.exception.ApiExceptions.BadRequestException("اختر مدرساً من هذه المساحة"));
+        Course c = createIn(tenantId, req.branchId() != null ? req.branchId() : actor.getBranchId(), teacherId, req, "ACTIVE");
+        return get(c.getId(), true);
+    }
+
+    /**
+     * Makes a course in {@code tenantId} for {@code teacherId} (already checked by the caller) — the one place a course
+     * is made, whether the teacher adds it or head office does from its teacher page. Students hear about it only when
+     * it is offered straight away.
+     */
+    @Transactional
+    public Course createIn(Long tenantId, Long branchId, Long teacherId, CreateCourseRequest req, String status) {
         Course c = new Course();
         c.setTenantId(tenantId);
-        c.setBranchId(req.branchId() != null ? req.branchId() : actor.getBranchId());
+        c.setBranchId(branchId);
+        c.setTeacherId(teacherId);
         c.setTitle(req.title());
         c.setSubject(req.subject());
         c.setGradeLevel(req.gradeLevel());
         c.setDescription(req.description());
         c.setPrice(req.price() != null ? req.price() : BigDecimal.ZERO);
-        // A teacher's own courses are theirs; an assistant inside a teacher's academy creates courses for that teacher.
-        Long acting = teacherScope.teacherIdFor(actor);
-        c.setTeacherId(acting != null ? acting : req.teacherId());
-        if (c.getTeacherId() == null) {
-            var teachers = users.findByTenantIdAndRole(tenantId, com.manarah.identity.domain.Role.TEACHER);
-            if (teachers.size() == 1) c.setTeacherId(teachers.getFirst().getId());
-        }
-        if (c.getTeacherId() != null) users.findByTenantIdAndId(tenantId, c.getTeacherId())
-                .filter(u -> u.getRole() == com.manarah.identity.domain.Role.TEACHER)
-                .orElseThrow(() -> new com.manarah.common.exception.ApiExceptions.BadRequestException("اختر مدرساً من هذه المساحة"));
-        String cover = req.coverUrl() == null ? "" : req.coverUrl().trim();
-        if (!cover.isEmpty() && !cover.matches("^https://[^\\s]+$") && !cover.matches("^/api/public/images/[0-9]+$")
-                && !cover.matches("^/images/[a-zA-Z0-9._-]+$"))
-            throw new com.manarah.common.exception.ApiExceptions.BadRequestException("رابط صورة الكورس غير صحيح");
-        c.setCoverUrl(cover.isEmpty() ? null : cover);
+        c.setCoverUrl(coverUrl(req.coverUrl()));
         c.setSchedule(req.schedule());
         c.setGrade(req.grade());
+        c.setStatus(status);
         courses.save(c);
         if ("ACTIVE".equals(c.getStatus())) events.publishEvent(new com.manarah.common.events.DomainEvents.CourseOffered(tenantId, c.getId()));
-        return get(c.getId(), true);
+        return c;
+    }
+
+    /** A course cover must be an uploaded image, a bundled one, or an HTTPS link; blank means none. */
+    public static String coverUrl(String raw) {
+        String cover = raw == null ? "" : raw.trim();
+        if (!cover.isEmpty() && !cover.matches("^https://[^\\s]+$") && !cover.matches("^/api/public/images/[0-9]+$")
+                && !cover.matches("^/images/[a-zA-Z0-9._-]+$") && !cover.matches("^/videos/[a-zA-Z0-9._-]+\\.(png|jpg)$"))
+            throw new com.manarah.common.exception.ApiExceptions.BadRequestException("رابط صورة الكورس غير صحيح");
+        return cover.isEmpty() ? null : cover;
     }
 
     @Transactional

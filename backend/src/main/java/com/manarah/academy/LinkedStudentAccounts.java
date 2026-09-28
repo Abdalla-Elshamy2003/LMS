@@ -154,6 +154,8 @@ public class LinkedStudentAccounts {
 
     private boolean usable(User row) {
         if (!"ACTIVE".equals(row.getStatus())) return false;
+        // A teacher head office deleted is gone from the student's teachers too.
+        if (academies.findByTenantId(row.getTenantId()).map(TeacherAcademy::isArchived).orElse(false)) return false;
         return students.findByTenantIdAndUserId(row.getTenantId(), row.getId()).map(s -> !ARCHIVED.equals(s.getStatus())).orElse(false);
     }
 

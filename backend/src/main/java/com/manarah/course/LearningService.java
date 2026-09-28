@@ -40,7 +40,8 @@ public class LearningService {
     }
 
     public Course access(UserPrincipal actor, Long courseId, boolean write) {
-        Course c = courses.findByTenantIdAndId(actor.getTenantId(), courseId)
+        // A deleted course is gone for everyone — its students, its teacher and the admins alike.
+        Course c = courses.findByTenantIdAndId(actor.getTenantId(), courseId).filter(x -> !Course.DELETED.equals(x.getStatus()))
                 .orElseThrow(() -> NotFoundException.of("الكورس", courseId));
         if (actor.isAdmin() || actor.getRole() == Role.CONTENT_MANAGER) return c;
         if (actor.getRole() == Role.TEACHER && Objects.equals(c.getTeacherId(), actor.getId())) return c;

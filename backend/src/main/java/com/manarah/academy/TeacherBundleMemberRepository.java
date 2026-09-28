@@ -6,4 +6,5 @@ import java.util.*;
 public interface TeacherBundleMemberRepository extends JpaRepository<TeacherBundleMember, Long> {
     List<TeacherBundleMember> findByBundleIdOrderByPositionAsc(Long bundleId);
     void deleteByBundleId(Long bundleId);
+    List<TeacherBundleMember> findByAcademyId(Long academyId);
 }

@@ -70,7 +70,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 if (scope == null && request.getRequestURI().startsWith("/api/files/")) scope = request.getParameter("academy");
                 if (scope != null && !scope.isBlank()) {
                     var academy = academies.findById(Long.valueOf(scope)).orElseThrow();
-                    if (principal.isAdmin() && academy.getManagerTenantId().equals(principal.getTenantId())) {
+                    if (principal.isAdmin() && !academy.isArchived() && academy.getManagerTenantId().equals(principal.getTenantId())) {
                         Long branchId = users.findById(academy.getTeacherId()).orElseThrow().getBranchId();
                         principal = new UserPrincipal(principal.getId(), academy.getTenantId(), branchId, principal.getFullName(), principal.getUsername(), principal.getRole());
                     } else if (!academy.getTenantId().equals(principal.getTenantId())) {

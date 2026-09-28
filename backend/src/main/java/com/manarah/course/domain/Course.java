@@ -16,6 +16,9 @@ import java.time.Instant;
 @Setter
 public class Course extends BaseEntity {
 
+    /** Status of a course head office deleted: kept for the history pointing at it, gone from every listing. */
+    public static final String DELETED = "DELETED";
+
     @Column(name = "branch_id", nullable = false)
     private Long branchId;
 
