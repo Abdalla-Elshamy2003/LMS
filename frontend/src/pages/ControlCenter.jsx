@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   BarChart3, BookOpen, Building2, Eye, EyeOff, ExternalLink, GraduationCap, KeyRound, Layers, LayoutDashboard, LogIn, Pencil, Plus, Search,
   ShieldCheck, Sparkles, Trash2, UserCheck, UserCog, UserX, Users, Wallet, Wand2, Wrench,
 } from 'lucide-react'
 import { DeleteCourseModal, DeleteTeacherModal } from './TeacherStudio'
+import ActionMenu from '../components/ActionMenu'
 import api from '../lib/api'
 import { apiErrorMessage } from '../lib/apiError'
 import { fmtDate } from '../lib/format'
@@ -293,6 +294,7 @@ function Courses({ say, fail }) {
   const [rows, setRows] = useState(null)
   const [prices, setPrices] = useState({})
   const [removing, setRemoving] = useState(null)
+  const navigate = useNavigate()
   const load = (query = q) => api.get('/admin/courses', { params: { q: query || undefined } }).then(r => { setRows(r.data); setPrices({}) }).catch(e => { setRows([]); fail(e, 'تعذّر تحميل الكورسات') })
   useEffect(() => { const t = setTimeout(() => load(q), 300); return () => clearTimeout(t) }, [q])
   const byTeacher = useMemo(() => (rows || []).reduce((m, c) => { (m[c.teacher] ||= []).push(c); return m }, {}), [rows])
@@ -328,11 +330,14 @@ function Courses({ say, fail }) {
                       <button type="button" className="btn-primary px-3 py-1.5 text-xs" onClick={() => update(c, { price: Number(prices[c.id]) }, `اتحدّث سعر ${c.title}`)}>حفظ</button>
                     )}
                   </div></td>
-                  <td><button type="button" onClick={() => update(c, { status: c.status === 'ACTIVE' ? 'HIDDEN' : 'ACTIVE' }, c.status === 'ACTIVE' ? `اتخفى ${c.title}` : `اتعرض ${c.title}`)}
-                    className={`chip ${c.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-ink-100 text-ink-500'}`}>{c.status === 'ACTIVE' ? <><Eye size={13} /> ظاهر</> : <><EyeOff size={13} /> مخفي</>}</button></td>
-                  <td><div className="flex justify-end gap-1.5 pl-3">
-                    <Link to={`/app/control/teachers/${c.academyId}`} className="btn-ghost px-2.5 py-1.5 text-xs"><Pencil size={14} /> تعديل</Link>
-                    <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs text-rose-600" onClick={() => setRemoving(c)}><Trash2 size={14} /> حذف</button>
+                  <td><span className={`chip ${c.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-ink-100 text-ink-500'}`}>{c.status === 'ACTIVE' ? <><Eye size={13} /> ظاهر</> : <><EyeOff size={13} /> مخفي</>}</span></td>
+                  <td><div className="flex justify-end pl-3">
+                    <ActionMenu label={`خيارات ${c.title}`} items={[
+                      { label: 'تعديل', icon: Pencil, onClick: () => navigate(`/app/control/teachers/${c.academyId}`) },
+                      { label: c.status === 'ACTIVE' ? 'إخفاء من الموقع' : 'إظهار في الموقع', icon: c.status === 'ACTIVE' ? EyeOff : Eye,
+                        onClick: () => update(c, { status: c.status === 'ACTIVE' ? 'HIDDEN' : 'ACTIVE' }, c.status === 'ACTIVE' ? `اتخفى ${c.title} من الموقع` : `${c.title} بقى ظاهر في الموقع`) },
+                      { label: 'حذف', icon: Trash2, danger: true, onClick: () => setRemoving(c) },
+                    ]} />
                   </div></td>
                 </tr>
               ))}

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
-  ArrowRight, BookOpen, ChevronDown, ChevronUp, ExternalLink, Eye, EyeOff, GraduationCap, ImagePlus, KeyRound, LayoutTemplate,
-  PlayCircle, Plus, Save, Trash2, TriangleAlert, UserRound,
+  ArrowRight, BookOpen, ExternalLink, Eye, EyeOff, GraduationCap, ImagePlus, KeyRound, LayoutTemplate,
+  Pencil, PlayCircle, Plus, Save, Trash2, TriangleAlert, UserRound,
 } from 'lucide-react'
+import ActionMenu from '../components/ActionMenu'
 import api from '../lib/api'
 import { apiErrorMessage } from '../lib/apiError'
 import { useAuth } from '../lib/auth'
@@ -332,7 +333,8 @@ function CourseCard({ course, creating, academy, teacherSubject, onChange, onRem
     sessionStorage.setItem('manarah_academy', JSON.stringify({ id: academy.academyId, name: academy.name, slug: academy.slug }))
     location.href = `/app/courses/${course.id}`
   }
-  const visible = value.status === 'ACTIVE'
+  // A saved course shows what the site shows now; its visibility changes from the menu, not the edit form.
+  const visible = (saved ? course : value).status === 'ACTIVE'
 
   return (
     <div className="rounded-2xl border border-ink-100 bg-white">
@@ -345,18 +347,17 @@ function CourseCard({ course, creating, academy, teacherSubject, onChange, onRem
             {saved && ` · ${course.students.toLocaleString('ar-EG')} طالب`}
           </small>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button type="button" onClick={saved ? toggle : () => setField('status', visible ? 'HIDDEN' : 'ACTIVE')} aria-pressed={visible}
-            className={`chip ${visible ? 'bg-emerald-50 text-emerald-700' : 'bg-ink-100 text-ink-500'}`}>
-            {visible ? <><Eye size={13} /> ظاهر</> : <><EyeOff size={13} /> مخفي</>}
-          </button>
-          {saved && <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs" onClick={enter}><PlayCircle size={14} /> الدروس والفيديوهات</button>}
-          <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs" onClick={() => setOpen(o => !o)} aria-expanded={open}>
-            {open ? <><ChevronUp size={14} /> قفل</> : <><ChevronDown size={14} /> تعديل</>}
-          </button>
-          {saved
-            ? <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs text-rose-600" onClick={() => setConfirm(true)}><Trash2 size={14} /> حذف</button>
-            : <button type="button" className="btn-ghost px-2.5 py-1.5 text-xs text-rose-600" onClick={onRemove}><Trash2 size={14} /> شيل</button>}
+        <div className="flex items-center gap-1.5">
+          <span className={`chip ${visible ? 'bg-emerald-50 text-emerald-700' : 'bg-ink-100 text-ink-500'}`}>
+            {visible ? <><Eye size={13} /> ظاهر في الموقع</> : <><EyeOff size={13} /> مخفي من الموقع</>}
+          </span>
+          <ActionMenu label={`خيارات ${value.title || 'الكورس'}`} items={[
+            { label: open ? 'قفل التعديل' : 'تعديل', icon: Pencil, onClick: () => setOpen(o => !o) },
+            { label: visible ? 'إخفاء من الموقع' : 'إظهار في الموقع', icon: visible ? EyeOff : Eye,
+              onClick: saved ? toggle : () => setField('status', visible ? 'HIDDEN' : 'ACTIVE') },
+            { label: 'الدروس والفيديوهات', icon: PlayCircle, onClick: enter, hidden: !saved },
+            { label: saved ? 'حذف' : 'شيل من القايمة', icon: Trash2, danger: true, onClick: saved ? () => setConfirm(true) : onRemove },
+          ]} />
         </div>
       </div>
 
