@@ -24,7 +24,7 @@ export default function SubscriptionPlans() {
     window.addEventListener('manarah:subscriptions', refresh)
     return () => window.removeEventListener('manarah:subscriptions', refresh)
   }, [])
-  if (!rows) return null
+  if (!rows) return <div className="card flex items-center gap-3 p-6 text-sm font-bold text-ink-500" role="status"><Spinner className="h-5 w-5 border-brand-200 border-t-brand-600" /> جارٍ تحميل أسعار الاشتراك...</div>
 
   return (
     <motion.div variants={fadeUp} className="card p-5 sm:p-6">

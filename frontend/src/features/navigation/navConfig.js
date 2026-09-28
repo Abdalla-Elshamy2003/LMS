@@ -41,6 +41,7 @@ const ITEMS = {
   cardScanner: { to: '/app/card-scanner', label: 'قارئ الكارتات', icon: ScanLine, roles: [...ADMIN_ROLES, 'TEACHER', 'ASSISTANT'] },
   cards: { to: '/app/cards', label: 'إصدار الكارتات', icon: CreditCard, roles: ADMIN_ROLES },
   reports: { to: '/app/reports', label: 'التقارير الدورية', icon: BarChart3, roles: [...ADMIN_ROLES, 'TEACHER', 'ASSISTANT', 'STUDENT', 'PARENT'] },
+  subscriptions: { to: '/app/subscriptions', label: 'أسعار الاشتراك', icon: Wallet, roles: [...ADMIN_ROLES, 'TEACHER', 'ASSISTANT'] },
   attendance: { to: '/app/attendance', label: 'الحضور', icon: CalendarCheck, roles: [...ADMIN_ROLES, 'TEACHER', 'ASSISTANT', 'STUDENT'] },
   exams: { to: '/app/exams', label: 'الامتحانات', icon: FileQuestion, roles: ['STUDENT', 'TEACHER', 'ASSISTANT', 'CONTENT_MANAGER', ...ADMIN_ROLES] },
   homework: { to: '/app/homework', label: 'الواجبات', icon: ClipboardList, roles: ['STUDENT', 'TEACHER', 'ASSISTANT', ...ADMIN_ROLES] },
@@ -65,7 +66,7 @@ const LAYOUTS = {
   admin: [
     { id: 'main', title: 'الرئيسية', items: ['control', 'dashboard', 'reports'] },
     { id: 'platform', title: 'السناتر والأدمنز', items: ['centers', 'admins'] },
-    { id: 'academic', title: 'الإدارة الأكاديمية', items: ['academy', 'bundles', 'students', 'staff', 'courses', 'learning', 'schedule'] },
+    { id: 'academic', title: 'الإدارة الأكاديمية', items: ['academy', 'subscriptions', 'bundles', 'students', 'staff', 'courses', 'learning', 'schedule'] },
     { id: 'assessment', title: 'المحتوى والتقييم', items: ['exams', 'homework', 'certificates', 'leaderboard'] },
     { id: 'operations', title: 'العمليات', items: ['attendance', 'gateLog', 'cardScanner', 'cards'] },
     { id: 'communication', title: 'التواصل والتسويق', items: ['notifications', 'support', 'community', 'campaigns', 'leads'] },
@@ -75,7 +76,7 @@ const LAYOUTS = {
   ],
   teacher: [
     { id: 'overview', title: 'نظرة عامة', items: ['dashboard', 'assistantDesk', 'reports', 'schedule'] },
-    { id: 'teaching', title: 'التدريس', items: ['academy', 'assistants', 'courses', 'learning', 'students'] },
+    { id: 'teaching', title: 'التدريس', items: ['academy', 'subscriptions', 'assistants', 'courses', 'learning', 'students'] },
     { id: 'assessment', title: 'التقييم', items: ['exams', 'homework', 'certificates'] },
     { id: 'students', title: 'متابعة الطلاب', items: ['attendance', 'gateLog', 'cardScanner', 'leaderboard'] },
     { id: 'communication', title: 'التواصل', items: ['notifications', 'support', 'community'] },

@@ -13,7 +13,6 @@ import LearningHub from '../components/LearningHub'
 import DeskSummary from '../features/assistant/DeskSummary'
 import StudentCatalog from '../features/student-catalog/StudentCatalog'
 import PendingRequests from '../features/student-catalog/PendingRequests'
-import SubscriptionPlans from '../features/subscriptions/SubscriptionPlans'
 import { SchedulePreview } from './Schedule'
 import CenterHome from '../features/center/CenterHome'
 
@@ -81,7 +80,6 @@ export default function Dashboard() {
     <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
       {/* Inside a teacher's space the admin can open paid requests for that teacher, the same as the teacher. */}
       {sessionStorage.getItem('manarah_academy') && user.role !== 'ACCOUNTANT' && <PendingRequests />}
-      {sessionStorage.getItem('manarah_academy') && user.role !== 'ACCOUNTANT' && <SubscriptionPlans />}
       {user.role !== 'ACCOUNTANT' && <LearningHub compact />}
       {user.role !== 'ACCOUNTANT' && <SchedulePreview />}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
@@ -180,7 +178,6 @@ function TeacherDashboard({ data }) {
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
       {['TEACHER', 'ASSISTANT'].includes(user.role) && <PendingRequests />}
-      {['TEACHER', 'ASSISTANT'].includes(user.role) && <SubscriptionPlans />}
       {['TEACHER', 'ASSISTANT'].includes(user.role) && <DeskSummary />}
       {['TEACHER', 'ASSISTANT'].includes(user.role) && <LearningHub compact />}
       <SchedulePreview />

@@ -57,6 +57,7 @@ const GateLog = lazy(() => import('./pages/GateLog'))
 const CardScanner = lazy(() => import('./pages/CardScanner'))
 const CardPrint = lazy(() => import('./pages/CardPrint'))
 const Reports = lazy(() => import('./pages/Reports'))
+const SubscriptionPlansPage = lazy(() => import('./pages/SubscriptionPlansPage'))
 const AssistantDesk = lazy(() => import('./pages/AssistantDesk'))
 const Bundles = lazy(() => import('./pages/Bundles'))
 const ControlCenter = lazy(() => import('./pages/ControlCenter'))
@@ -134,6 +135,7 @@ export default function App() {
         <Route path="card-scanner" element={<CardScanner />} />
         <Route path="cards" element={<CardPrint />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="subscriptions" element={<SubscriptionPlansPage />} />
         <Route path="exams" element={<Exams />} />
         <Route path="homework" element={<Homework />} />
         <Route path="payments" element={<Payments />} />
