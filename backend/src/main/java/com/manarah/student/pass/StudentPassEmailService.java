@@ -67,13 +67,14 @@ public class StudentPassEmailService {
             return false;
         }
 
-        String verifyUrl = appUrl + "/student/verify/" + passTokens.ensure(student).getPassToken();
+        String token = passTokens.ensure(student).getPassToken();
+        String verifyUrl = appUrl + "/student/verify/" + token;
         String institution = institutions.nameOf(tenantId).orElse("دروس");
         Map<String, String> details = details(student, email, institution);
 
         boolean delivered = mail.sendHtml(email, "كود الـ QR الخاص بك — " + institution,
                 plainText(student, details, verifyUrl), html(student, details, verifyUrl, institution),
-                new SmtpEmailSender.InlineImage(QR_CID, QrCodeImages.png(verifyUrl, 360)));
+                new SmtpEmailSender.InlineImage(QR_CID, QrCodeImages.png(verifyUrl, 360), StudentPassQrController.url(appUrl, token)));
         log.info("student_pass_email outcome={} studentId={}", delivered ? "sent" : "failed", studentId);
         return delivered;
     }

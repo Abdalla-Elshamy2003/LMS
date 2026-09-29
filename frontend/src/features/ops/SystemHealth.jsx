@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Activity, CheckCircle2, DatabaseBackup, Mail, Send, TriangleAlert } from 'lucide-react'
 import api from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiError'
+import { reportError } from '../../lib/monitoring'
 import { PageLoader, Spinner } from '../../components/ui'
 
 const bytes = (n) => n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} ميجا` : `${Math.max(1, Math.round(n / 1024))} كيلو`
@@ -30,8 +31,8 @@ export default function SystemHealth() {
     <div className="grid gap-6 lg:grid-cols-3">
       <Card icon={Mail} title="الإيميل" ok={email.ready}
         okText="شغال" badText="مش متظبط"
-        hint={email.ready ? <>الإيميلات بتطلع من <b dir="ltr">{email.from}</b>: استعادة كلمة المرور، وكارت الطالب، والإشعارات.</>
-          : 'الإيميلات مش بتتبعت. محتاج بيانات SMTP من Brevo على السيرفر.'}>
+        hint={email.ready ? <>الإيميلات بتطلع من <b dir="ltr">{email.from}</b> عن طريق {email.transport}: استعادة كلمة المرور، وكارت الطالب، والإشعارات.</>
+          : 'الإيميلات مش بتتبعت. محتاج مفتاح Brevo API على السيرفر.'}>
         <TestEmail />
       </Card>
 
@@ -42,6 +43,7 @@ export default function SystemHealth() {
           <Line ok={monitoring.backend}>أخطاء السيرفر</Line>
           <Line ok={monitoring.frontend}>أخطاء المتصفح</Line>
         </ul>
+        {(monitoring.backend || monitoring.frontend) && <TestError />}
       </Card>
 
       <Card icon={DatabaseBackup} title="النسخ الاحتياطي" ok={backups.configured && backups.fresh}
@@ -85,6 +87,22 @@ function Card({ icon: Icon, title, ok, okText, badText, hint, children }) {
 
 function Line({ ok, children }) {
   return <li className={`flex items-center gap-2 ${ok ? 'text-emerald-700' : 'text-ink-400'}`}>{ok ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />} {children}</li>
+}
+
+/** Sends one deliberate error from the server and one from this browser, to see both arrive in Sentry. */
+function TestError() {
+  const [done, setDone] = useState('')
+  const send = async () => {
+    reportError(new Error('Sentry test from «حالة النظام» (browser) — not a real problem'))
+    try { await api.post('/admin/system/test-error') } catch { /* the browser one still went */ }
+    setDone('اتبعت خطأين للتجربة (سيرفر ومتصفح). هتلاقيهم في Sentry خلال دقيقة، وهيوصلك إيميل بيهم.')
+  }
+  return (
+    <div className="mt-4">
+      <button type="button" className="btn-soft" onClick={send}><Activity size={16} /> ابعت خطأ تجربة</button>
+      {done && <p role="status" className="mt-2 text-sm font-semibold text-emerald-700">{done}</p>}
+    </div>
+  )
 }
 
 /** Takes a backup now instead of waiting for the night (super admins only; the server says so otherwise). */

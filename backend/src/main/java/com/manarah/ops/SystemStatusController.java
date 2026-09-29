@@ -37,7 +37,7 @@ public class SystemStatusController {
     public Map<String, Object> status(@AuthenticationPrincipal UserPrincipal actor) {
         bundleService.requireHeadOffice(actor);
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("email", Map.of("ready", email.isDeliverable(), "from", email.from()));
+        out.put("email", Map.of("ready", email.isDeliverable(), "from", email.from(), "transport", email.transport()));
         out.put("monitoring", Map.of("backend", !blank(backendDsn), "frontend", !blank(frontendDsn)));
         out.put("backups", backups.summary());
         Map<String, Object> job = new LinkedHashMap<>();
@@ -46,6 +46,15 @@ public class SystemStatusController {
         job.put("lastRun", backupJob.lastRun());
         out.put("backupJob", job);
         return out;
+    }
+
+    /** Logs one deliberate error, to prove server errors reach Sentry (it shows up there as a new issue). */
+    @PostMapping("/test-error")
+    public Map<String, Object> testError(@AuthenticationPrincipal UserPrincipal actor) {
+        bundleService.requireHeadOffice(actor);
+        org.slf4j.LoggerFactory.getLogger(SystemStatusController.class)
+                .error("Sentry test from «حالة النظام» — not a real problem", new IllegalStateException("Sentry test error"));
+        return Map.of("reported", !blank(backendDsn));
     }
 
     /** Takes a backup now instead of waiting for the night — to check the whole chain works. Super admins only. */
