@@ -198,6 +198,17 @@ management:
     mail:
       enabled: false
 
+sentry:
+  # Error reports to Sentry. Blank DSN = off: nothing is sent. Every ERROR log line (unexpected server errors,
+  # failed background jobs) becomes an event; no personal data rides along and no performance tracing is sampled.
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:production}
+  send-default-pii: false
+  traces-sample-rate: 0
+  logging:
+    minimum-event-level: error
+    minimum-breadcrumb-level: info
+
 springdoc:
   api-docs:
     # API documentation is an administrative tool and is disabled unless explicitly enabled.

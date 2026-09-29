@@ -92,6 +92,35 @@ public class SmtpEmailSender implements ExternalMessageSender {
         }
     }
 
+    /** The address mail goes out from, or blank when none is set. */
+    public String from() {
+        return from;
+    }
+
+    /**
+     * Sends one test message and says why it failed, for head office's "send a test email" button — unlike
+     * {@link #send}, which only reports success. Returns null when the message was handed to the SMTP server.
+     */
+    public String sendTest(String recipient) {
+        if (!enabled) return "الإيميل مقفول: MANARAH_EMAIL_ENABLED مش true";
+        JavaMailSender sender = mailer.getIfAvailable();
+        if (sender == null) return "مفيش سيرفر SMTP: SPRING_MAIL_HOST فاضي";
+        if (from.isEmpty()) return "مفيش عنوان مُرسِل: MANARAH_EMAIL_FROM فاضي";
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(from);
+            message.setTo(recipient.trim());
+            message.setSubject("رسالة تجربة من دروس");
+            message.setText("لو الرسالة دي وصلتك، يبقى إيميلات المنصة شغالة: استعادة كلمة المرور، وكارت الطالب، والإشعارات.");
+            sender.send(message);
+            log.info("[EMAIL] test delivered to '{}'", recipient);
+            return null;
+        } catch (Exception e) {
+            log.warn("[EMAIL] test delivery to '{}' failed: {}", recipient, e.toString());
+            return e.getMessage() == null ? e.toString() : e.getMessage();
+        }
+    }
+
     @Override
     public boolean send(String recipient, String title, String body) {
         JavaMailSender sender = enabled ? mailer.getIfAvailable() : null;

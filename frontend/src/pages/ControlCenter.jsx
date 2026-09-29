@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import SystemHealth from '../features/ops/SystemHealth'
 import {
-  BarChart3, BookOpen, Building2, Eye, EyeOff, ExternalLink, GraduationCap, KeyRound, Layers, LayoutDashboard, LogIn, Pencil, Plus, Search,
+  Activity, BarChart3, BookOpen, Building2, Eye, EyeOff, ExternalLink, GraduationCap, KeyRound, Layers, LayoutDashboard, LogIn, Pencil, Plus, Search,
   ShieldCheck, Sparkles, Trash2, UserCheck, UserCog, UserX, Users, Wallet, Wand2, Wrench,
 } from 'lucide-react'
 import { DeleteCourseModal, DeleteTeacherModal } from './TeacherStudio'
@@ -27,6 +28,7 @@ const TABS = [
   ['packages', 'الباقات وأسعارها', Layers],
   ['centers', 'السناتر', Building2],
   ['admins', 'الأدمنز', UserCog],
+  ['system', 'حالة النظام', Activity],
   ['tools', 'أدوات وإعدادات', Wrench],
 ]
 
@@ -73,6 +75,7 @@ export default function ControlCenter() {
       {tab === 'packages' && <Bundles />}
       {tab === 'payments' && <PaymentsAdmin />}
       {tab === 'tools' && <Tools say={say} fail={fail} />}
+      {tab === 'system' && <SystemHealth />}
       {tab === 'centers' && <CentersAdmin embedded />}
       {tab === 'admins' && user?.role === 'SUPER_ADMIN' && <AdminsAdmin embedded />}
     </div>

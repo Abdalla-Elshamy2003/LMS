@@ -17,6 +17,7 @@ const Features = lazy(() => import('./pages/Features'))
 const BundleLanding = lazy(() => import('./pages/BundleLanding'))
 const PackageCheckout = lazy(() => import('./pages/PackageCheckout'))
 const About = lazy(() => import('./pages/About'))
+const Legal = lazy(() => import('./pages/Legal'))
 const Contact = lazy(() => import('./pages/Contact'))
 const SuccessStories = lazy(() => import('./pages/SuccessStories'))
 const Blog = lazy(() => import('./pages/Blog'))
@@ -102,6 +103,9 @@ export default function App() {
       {/* The pricing page was retired; old links land on the home page. */}
       <Route path="/pricing" element={<Navigate to="/" replace />} />
       <Route path="/about" element={standalone(<About />)} />
+      <Route path="/privacy" element={standalone(<Legal kind="privacy" />)} />
+      <Route path="/terms" element={standalone(<Legal kind="terms" />)} />
+      <Route path="/refund" element={standalone(<Legal kind="refund" />)} />
       <Route path="/contact" element={standalone(<Contact />)} />
       <Route path="/success-stories" element={standalone(<SuccessStories />)} />
       <Route path="/blog" element={standalone(<Blog />)} />

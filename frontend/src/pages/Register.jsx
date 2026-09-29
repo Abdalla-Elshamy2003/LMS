@@ -362,6 +362,10 @@ export default function Register() {
 
               <ErrorBox error={error} conflict={conflict} loginHref={loginHref} />
 
+              <p className="text-xs leading-6 text-ink-500">
+                بإنشاء الحساب انت موافق على <Link to="/terms" target="_blank" className="font-bold text-brand-700">الشروط والأحكام</Link> و<Link to="/privacy" target="_blank" className="font-bold text-brand-700">سياسة الخصوصية</Link> و<Link to="/refund" target="_blank" className="font-bold text-brand-700">سياسة الاسترداد</Link>. لو عندك أقل من 18 سنة، لازم ولي أمرك يكون موافق.
+              </p>
+
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => setStep(1)} className="btn-ghost">رجوع</button>
                 <button type="submit" disabled={saving} className="btn-primary flex-1 py-3 text-base">

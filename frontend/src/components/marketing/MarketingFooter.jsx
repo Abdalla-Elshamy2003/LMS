@@ -29,6 +29,9 @@ export default function MarketingFooter() {
             <Link to="/about" className="block hover:text-brand-600">من نحن</Link>
             <Link to="/blog" className="block hover:text-brand-600">المدونة</Link>
             <Link to="/contact" className="block hover:text-brand-600">تواصل معنا</Link>
+            <Link to="/terms" className="block hover:text-brand-600">الشروط والأحكام</Link>
+            <Link to="/privacy" className="block hover:text-brand-600">سياسة الخصوصية</Link>
+            <Link to="/refund" className="block hover:text-brand-600">سياسة الاسترداد</Link>
           </div>
         </div>
         <div>
