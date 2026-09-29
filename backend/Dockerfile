@@ -33,7 +33,15 @@ RUN groupadd --system manarah && useradd --system --gid manarah --home /app mana
 # curl is used by the container HEALTHCHECK below; gosu drops root privileges in the entrypoint; ffmpeg turns
 # uploaded lesson videos into HLS when manarah.video.transcode.enabled is on.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl gosu ffmpeg \
+    && apt-get install -y --no-install-recommends curl gosu ffmpeg ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+# PostgreSQL 18 client tools (pg_dump, pg_restore, psql) for the nightly database backup (DatabaseBackupJob). They
+# must be at least the server's version, so they come from the PostgreSQL project's own apt repository.
+RUN install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt jammy-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client-18 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build --chown=manarah:manarah /build/target/app.jar app.jar

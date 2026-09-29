@@ -22,11 +22,12 @@ public class SystemStatusController {
     private final BundleService bundleService;
     private final SmtpEmailSender email;
     private final BackupStatus backups;
+    private final DatabaseBackupJob backupJob;
     private final String backendDsn, frontendDsn;
 
-    public SystemStatusController(BundleService bundleService, SmtpEmailSender email, BackupStatus backups,
+    public SystemStatusController(BundleService bundleService, SmtpEmailSender email, BackupStatus backups, DatabaseBackupJob backupJob,
                                   @Value("${sentry.dsn:}") String backendDsn, @Value("${SENTRY_FRONTEND_DSN:}") String frontendDsn) {
-        this.bundleService = bundleService; this.email = email; this.backups = backups;
+        this.bundleService = bundleService; this.email = email; this.backups = backups; this.backupJob = backupJob;
         this.backendDsn = backendDsn; this.frontendDsn = frontendDsn;
     }
 
@@ -39,7 +40,21 @@ public class SystemStatusController {
         out.put("email", Map.of("ready", email.isDeliverable(), "from", email.from()));
         out.put("monitoring", Map.of("backend", !blank(backendDsn), "frontend", !blank(frontendDsn)));
         out.put("backups", backups.summary());
+        Map<String, Object> job = new LinkedHashMap<>();
+        job.put("available", backupJob.available());
+        job.put("running", backupJob.isRunning());
+        job.put("lastRun", backupJob.lastRun());
+        out.put("backupJob", job);
         return out;
+    }
+
+    /** Takes a backup now instead of waiting for the night — to check the whole chain works. Super admins only. */
+    @PostMapping("/backup-now") @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public Map<String, Object> backupNow(@AuthenticationPrincipal UserPrincipal actor) {
+        bundleService.requireHeadOffice(actor);
+        if (!backupJob.available()) throw new BadRequestException("النسخ الاحتياطي مش متاح على السيرفر ده (أدوات PostgreSQL أو التخزين مش موجودين)");
+        if (!backupJob.startNow()) throw new BadRequestException("في نسخة احتياطية شغالة دلوقتي — استنى تخلص");
+        return Map.of("started", true);
     }
 
     @PostMapping("/test-email")

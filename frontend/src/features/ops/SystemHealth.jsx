@@ -16,9 +16,15 @@ export default function SystemHealth() {
   const [error, setError] = useState('')
   const load = () => api.get('/admin/system/status').then(r => setStatus(r.data)).catch(e => setError(apiErrorMessage(e, 'تعذّر تحميل حالة النظام')))
   useEffect(() => { load() }, [])
+  // While a backup runs, check back every few seconds so the result shows without a reload.
+  useEffect(() => {
+    if (!status?.backupJob?.running) return
+    const t = setTimeout(load, 5000)
+    return () => clearTimeout(t)
+  }, [status])
   if (error) return <div role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div>
   if (!status) return <PageLoader />
-  const { email, monitoring, backups } = status
+  const { email, monitoring, backups, backupJob } = status
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -50,6 +56,12 @@ export default function SystemHealth() {
             {!backups.fresh && <li className="font-bold text-rose-600">آخر نسخة أقدم من ٣٦ ساعة — النسخ الليلي وقف.</li>}
           </ul>
         ) : backups.configured && !backups.error && <p className="mt-3 text-sm text-ink-500">لسه مفيش نسخ. أول نسخة بتتعمل الليلة.</p>}
+        {backupJob?.lastRun && (
+          <p className={`mt-3 rounded-xl p-2.5 text-xs leading-6 ${backupJob.lastRun.ok ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-700'}`} dir="auto">
+            آخر تشغيل ({when(backupJob.lastRun.at)}): {backupJob.lastRun.ok ? 'نجح — ' : 'فشل — '}{backupJob.lastRun.message}
+          </p>
+        )}
+        <BackupNow job={backupJob} onStarted={load} />
       </Card>
     </div>
   )
@@ -73,6 +85,27 @@ function Card({ icon: Icon, title, ok, okText, badText, hint, children }) {
 
 function Line({ ok, children }) {
   return <li className={`flex items-center gap-2 ${ok ? 'text-emerald-700' : 'text-ink-400'}`}>{ok ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />} {children}</li>
+}
+
+/** Takes a backup now instead of waiting for the night (super admins only; the server says so otherwise). */
+function BackupNow({ job, onStarted }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  if (!job?.available) return <p className="mt-3 text-xs text-ink-400">النسخ الاحتياطي مش متاح على السيرفر ده.</p>
+  const start = async () => {
+    setBusy(true); setError('')
+    try { await api.post('/admin/system/backup-now'); await onStarted() }
+    catch (e) { setError(apiErrorMessage(e, 'تعذّر بدء النسخ الاحتياطي')) }
+    finally { setBusy(false) }
+  }
+  return (
+    <div className="mt-4">
+      <button type="button" className="btn-soft" disabled={busy || job.running} onClick={start}>
+        {busy || job.running ? <><Spinner className="h-4 w-4" /> بيتعمل نسخة دلوقتي...</> : <><DatabaseBackup size={16} /> خد نسخة دلوقتي</>}
+      </button>
+      {error && <p role="alert" className="mt-2 text-sm font-semibold text-rose-600">{error}</p>}
+    </div>
+  )
 }
 
 function TestEmail() {

@@ -15,12 +15,12 @@ import java.time.Instant;
 import java.util.*;
 
 /**
- * What the nightly database backups (ops/db-backup) have left in the storage bucket: how many, and when the newest
- * one landed — so a job that silently stopped shows up on head office's status page and trips the uptime probe.
+ * What the nightly database backups ({@link DatabaseBackupJob}) have left in the storage bucket: how many, and when the
+ * newest one landed — so a job that silently stopped shows up on head office's status page and trips the uptime probe.
  */
 @Component
 public class BackupStatus {
-    /** Where ops/db-backup writes, inside the storage bucket. Keep the two in step. */
+    /** Where the backups live inside the storage bucket (ops/db-backup/restore.sh reads the same place). */
     static final String PREFIX = "backups/postgres/";
     /** A nightly job: anything older than this means at least one night was missed. */
     static final Duration STALE_AFTER = Duration.ofHours(36);
@@ -47,10 +47,24 @@ public class BackupStatus {
         return fresh;
     }
 
+    /** Forgets the cached listing, so a backup that just finished shows at once. */
+    public void invalidate() { cached = null; }
+
+    public boolean configured() {
+        return !(blank(endpoint) || blank(bucket) || blank(accessKey) || blank(secretKey));
+    }
+
+    String bucket() { return bucket; }
+
+    /** A client for the bucket the backups live in; the caller closes it. */
+    S3Client client() {
+        return S3Client.builder().region(Region.of("auto")).endpointOverride(URI.create(endpoint))
+                .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey))).build();
+    }
+
     private Summary read() {
-        if (blank(endpoint) || blank(bucket) || blank(accessKey) || blank(secretKey)) return new Summary(false, 0, null, false, null);
-        try (S3Client s3 = S3Client.builder().region(Region.of("auto")).endpointOverride(URI.create(endpoint))
-                .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey))).build()) {
+        if (!configured()) return new Summary(false, 0, null, false, null);
+        try (S3Client s3 = client()) {
             List<S3Object> all = new ArrayList<>();
             String token = null;
             do {
