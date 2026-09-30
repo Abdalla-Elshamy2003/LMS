@@ -4,7 +4,7 @@ import argparse
 import base64
 import json
 from pathlib import Path
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 
 def literal(value):
@@ -26,7 +26,8 @@ def main():
     slug = literal(catalog["slug"])
     if args.verify:
         def get(path):
-            with urlopen(args.base.rstrip("/") + path, timeout=30) as response:
+            request = Request(args.base.rstrip("/") + path, headers={"User-Agent": "Mozilla/5.0 (compatible; DroosCatalogVerifier/1.0)"})
+            with urlopen(request, timeout=30) as response:
                 return json.load(response)
         page = get("/api/public/academies/" + catalog["slug"])
         assert page["profile"]["demoContent"] is False
@@ -35,9 +36,10 @@ def main():
         assert set(visible) == {c["title"] for c in courses}, "Public catalog differs"
         for expected in courses:
             actual = visible[expected["title"]]
-            assert actual["description"] == expected["description"]
+            assert actual["description"].replace("\r\n", "\n") == expected["description"]
             assert actual["year"] == expected["grade"]
-            with urlopen(args.base.rstrip("/") + actual["coverUrl"], timeout=30) as response:
+            request = Request(args.base.rstrip("/") + actual["coverUrl"], headers={"User-Agent": "Mozilla/5.0 (compatible; DroosCatalogVerifier/1.0)"})
+            with urlopen(request, timeout=30) as response:
                 assert response.headers.get_content_type() in ("image/jpeg", "image/png")
                 assert response.read(8).startswith((b"\x89PNG", b"\xff\xd8\xff"))
         card = next(c for c in get("/api/public/academies") if c["slug"] == catalog["slug"])

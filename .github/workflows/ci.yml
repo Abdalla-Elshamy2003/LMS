@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   backend:
@@ -109,3 +109,22 @@ jobs:
       - name: Clean up test stack
         if: always()
         run: docker compose down --volumes --remove-orphans
+
+  deploy-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend, stack-smoke-test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned Railway CLI
+        run: npm install -g @railway/cli@5.58.0
+      - name: Deploy backend and frontend, then verify production
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_DROOS_DEPLOY_TOKEN }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: node scripts/deploy-railway.mjs

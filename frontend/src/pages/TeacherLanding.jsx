@@ -219,7 +219,8 @@ function Slider({ items, plans, subject, cta, login, reveal, onPreview, enroll, 
     const el = track.current
     if (!el) return
     const step = el.querySelector('.tl-slide')?.offsetWidth || 300
-    el.scrollBy({ left: (el.scrollLeft <= 0 ? -1 : 1) * dir * (step + 22), behavior: 'smooth' })
+    const direction = getComputedStyle(el).direction === 'rtl' ? 1 : -1
+    el.scrollBy({ left: direction * dir * (step + 22), behavior: 'smooth' })
   }
 
   return (
