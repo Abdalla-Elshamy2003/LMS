@@ -12,6 +12,7 @@ import { fmtMoney, GRADES } from '../lib/format'
 import { useAuth } from '../lib/auth'
 import { courseHref } from '../lib/courseNavigation'
 import ImageUpload from '../components/ImageUpload'
+import WeeklySchedulePicker, { emptySchedule, scheduleProblem, scheduleText } from '../components/WeeklySchedulePicker'
 import StudentCatalog from '../features/student-catalog/StudentCatalog'
 
 const GRADIENTS = ['from-brand-500 to-brand-800', 'from-emerald-500 to-teal-700', 'from-sky-500 to-blue-700', 'from-amber-500 to-orange-700', 'from-rose-500 to-pink-700', 'from-teal-500 to-cyan-700']
@@ -144,7 +145,8 @@ export default function Courses() {
         </motion.div>
       )}
 
-      <NewCourse open={showNew} onClose={() => setShowNew(false)} teachers={teachers} onSaved={() => { setShowNew(false); load() }} />
+      <NewCourse open={showNew} onClose={() => setShowNew(false)} teachers={teachers}
+        onSaved={(warning) => { setShowNew(false); load(); setFlash(warning ? { ok: '', error: warning } : { ok: 'اتضاف الكورس', error: '' }) }} />
       <EditCourse course={editing} onClose={() => setEditing(null)}
         onSaved={async (title) => { setEditing(null); await load(); setFlash({ ok: `اتحفظ كورس ${title}`, error: '' }) }} />
       <DeleteCourseModal open={!!removing} course={removing && { ...removing, students: removing.studentCount }} url={removing && courseUrl(removing)}
@@ -212,12 +214,27 @@ function EditCourse({ course, onClose, onSaved }) {
 }
 
 function NewCourse({ open, onClose, teachers, onSaved }) {
-  const [form, setForm] = useState({ title: '', subject: '', gradeLevel: 'ثانوي', grade: '', price: 0, teacherId: '', schedule: '', coverUrl: '' })
+  const [form, setForm] = useState({ title: '', subject: '', gradeLevel: 'ثانوي', grade: '', price: 0, teacherId: '', coverUrl: '' })
+  const [when, setWhen] = useState(emptySchedule)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+  // The picked days and hours become the course's schedule line and its weekly slots in «الجدول الدراسي».
   const save = async () => {
-    setSaving(true)
-    try { await api.post('/courses', { ...form, price: Number(form.price), teacherId: form.teacherId || null }); onSaved() } finally { setSaving(false) }
+    const problem = scheduleProblem(when, { needEnd: true })
+    if (problem) return setError(problem)
+    setSaving(true); setError('')
+    try {
+      const { data } = await api.post('/courses', { ...form, schedule: scheduleText(when), price: Number(form.price), teacherId: form.teacherId || null })
+      const failed = []
+      for (const day of when.days) {
+        try { await api.post('/schedule', { courseId: data.summary.id, dayOfWeek: day, startTime: when.start, endTime: when.end }) }
+        catch (e) { failed.push(apiErrorMessage(e, 'تعذّر إضافة الموعد')) }
+      }
+      setForm({ title: '', subject: '', gradeLevel: 'ثانوي', grade: '', price: 0, teacherId: '', coverUrl: '' }); setWhen(emptySchedule())
+      onSaved(failed.length ? `اتضاف الكورس، بس في موعد ما اتضافش للجدول: ${[...new Set(failed)].join(' — ')}` : '')
+    } catch (e) { setError(apiErrorMessage(e, 'تعذّر إضافة الكورس')) }
+    finally { setSaving(false) }
   }
   return (
     <Modal open={open} onClose={onClose} title="إضافة كورس جديد">
@@ -241,11 +258,12 @@ function NewCourse({ open, onClose, teachers, onSaved }) {
           </div>
           <div><label className="label">السعر (ج.م)</label><input type="number" className="input" value={form.price} onChange={set('price')} /></div>
         </div>
-        <div><label className="label">المواعيد</label><input className="input" value={form.schedule} onChange={set('schedule')} placeholder="الأحد والثلاثاء 6:00م" /></div>
+        <WeeklySchedulePicker value={when} onChange={setWhen} needEnd label="مواعيد الحصص (اختياري)" />
         <div>
           <label className="label">صورة الكورس (اختياري)</label>
           <ImageUpload value={form.coverUrl} label="رفع صورة الكورس" onChange={(url) => setForm((f) => ({ ...f, coverUrl: url }))} />
         </div>
+        {error && <p role="alert" className="rounded-2xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <button onClick={onClose} className="btn-ghost">إلغاء</button>
           <button onClick={save} disabled={saving || !form.title} className="btn-primary">{saving ? 'جارٍ الحفظ...' : 'حفظ'}</button>

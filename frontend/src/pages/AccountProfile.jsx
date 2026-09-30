@@ -10,6 +10,7 @@ import { studentVerifyUrl } from '../features/student-verification/studentVerifi
 import { fmtDateTime } from '../lib/format'
 import { apiErrorMessage } from '../lib/apiError'
 import MySubscriptions from '../features/subscriptions/MySubscriptions'
+import WeeklySchedulePicker, { parseSchedule, scheduleProblem, scheduleText } from '../components/WeeklySchedulePicker'
 
 const roleLinks = {
   STUDENT: [['/app/learning', 'مساحة التعلّم', BookOpen], ['/app/schedule', 'جدولي', CalendarDays], ['/app/notifications', 'إشعاراتي', Bell], ['/app/support', 'الدعم', LifeBuoy]],
@@ -49,9 +50,18 @@ function Info({ icon: Icon, label, value }) { return <div className="flex items-
 
 function EditProfile({ profile, onClose, onSaved }) {
   const [form, setForm] = useState(profile), [saving, setSaving] = useState(false), [error, setError] = useState('')
+  // The schedule is picked, not typed. One written by hand before stays as it is until days are picked instead.
+  const [when, setWhen] = useState(() => parseSchedule(profile.schedule))
+  const legacy = profile.schedule && !parseSchedule(profile.schedule).days.length ? profile.schedule : ''
   const set = key => e => setForm(f => ({ ...f, [key]: e.target.value }))
-  const save = async () => { setSaving(true); setError(''); try { const r = await api.put('/users/me', form); onSaved(r.data) } catch (e) { setError(apiErrorMessage(e, 'تعذّر حفظ الملف')) } finally { setSaving(false) } }
-  return <Modal open onClose={onClose} title="تعديل الملف الشخصي" wide><div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2"><div><label className="label">الاسم الكامل</label><input className="input" value={form.fullName || ''} onChange={set('fullName')} /></div><div><label className="label">رقم الهاتف</label><input className="input" value={form.phone || ''} onChange={set('phone')} /></div></div><div><label className="label"><Camera size={14} className="ml-1 inline" />رابط الصورة الشخصية</label><input type="url" className="input" value={form.photoUrl || ''} onChange={set('photoUrl')} placeholder="https://..." /></div>{profile.role === 'TEACHER' && <><div className="grid gap-3 sm:grid-cols-2"><div><label className="label">المسمى المهني</label><input className="input" value={form.title || ''} onChange={set('title')} /></div><div><label className="label">التخصصات</label><input className="input" value={form.subjects || ''} onChange={set('subjects')} placeholder="كيمياء · علوم" /></div></div><div><label className="label">مواعيدك</label><input className="input" value={form.schedule || ''} onChange={set('schedule')} /></div><div><label className="label">نبذة احترافية</label><textarea rows={4} className="input" value={form.bio || ''} onChange={set('bio')} /></div></>}{error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{error}</p>}<div className="flex justify-end gap-2"><button className="btn-ghost" onClick={onClose}>إلغاء</button><button className="btn-primary" disabled={saving || !form.fullName?.trim()} onClick={save}>{saving ? <Spinner className="h-4 w-4 border-white/40 border-t-white" /> : <Save size={16} />}حفظ التعديلات</button></div></div></Modal>
+  const save = async () => {
+    const problem = scheduleProblem(when)
+    if (problem) return setError(problem)
+    setSaving(true); setError('')
+    try { const r = await api.put('/users/me', { ...form, schedule: when.days.length ? scheduleText(when) : legacy }); onSaved(r.data) }
+    catch (e) { setError(apiErrorMessage(e, 'تعذّر حفظ الملف')) } finally { setSaving(false) }
+  }
+  return <Modal open onClose={onClose} title="تعديل الملف الشخصي" wide><div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2"><div><label className="label">الاسم الكامل</label><input className="input" value={form.fullName || ''} onChange={set('fullName')} /></div><div><label className="label">رقم الهاتف</label><input className="input" value={form.phone || ''} onChange={set('phone')} /></div></div><div><label className="label"><Camera size={14} className="ml-1 inline" />رابط الصورة الشخصية</label><input type="url" className="input" value={form.photoUrl || ''} onChange={set('photoUrl')} placeholder="https://..." /></div>{profile.role === 'TEACHER' && <><div className="grid gap-3 sm:grid-cols-2"><div><label className="label">المسمى المهني</label><input className="input" value={form.title || ''} onChange={set('title')} /></div><div><label className="label">التخصصات</label><input className="input" value={form.subjects || ''} onChange={set('subjects')} placeholder="كيمياء · علوم" /></div></div><div><WeeklySchedulePicker value={when} onChange={setWhen} label="مواعيدك" />{legacy && !when.days.length && <p className="mt-2 text-xs text-ink-500">مواعيدك الحالية: <b>{legacy}</b> — اختار الأيام والساعة عشان تستبدلها.</p>}</div><div><label className="label">نبذة احترافية</label><textarea rows={4} className="input" value={form.bio || ''} onChange={set('bio')} /></div></>}{error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{error}</p>}<div className="flex justify-end gap-2"><button className="btn-ghost" onClick={onClose}>إلغاء</button><button className="btn-primary" disabled={saving || !form.fullName?.trim()} onClick={save}>{saving ? <Spinner className="h-4 w-4 border-white/40 border-t-white" /> : <Save size={16} />}حفظ التعديلات</button></div></div></Modal>
 }
 
 function PasswordModal({ onClose }) {

@@ -5,6 +5,7 @@ import api from '../lib/api'
 import { Modal, PageLoader, EmptyState, stagger, fadeUp } from '../components/ui'
 import { initials } from '../lib/format'
 import { apiErrorMessage } from '../lib/apiError'
+import WeeklySchedulePicker, { emptySchedule, scheduleProblem, scheduleText } from '../components/WeeklySchedulePicker'
 
 export default function Staff() {
   const [teachers, setTeachers] = useState(null)
@@ -139,12 +140,15 @@ function TeacherDetailModal({ teacher, onClose }) {
 function NewTeacher({ open, onClose, onSaved }) {
   const empty = { fullName: '', email: '', phone: '', password: '', role: 'TEACHER', title: '', subjects: '', schedule: '', bio: '', photoUrl: '' }
   const [form, setForm] = useState(empty)
+  const [when, setWhen] = useState(emptySchedule)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
   const save = async () => {
+    const problem = scheduleProblem(when)
+    if (problem) return setErr(problem)
     setSaving(true); setErr('')
-    try { await api.post('/users', form); setForm(empty); onSaved() }
+    try { await api.post('/users', { ...form, schedule: scheduleText(when) }); setForm(empty); setWhen(emptySchedule()); onSaved() }
     catch (e) { setErr(apiErrorMessage(e, 'تعذّر الحفظ')) }
     finally { setSaving(false) }
   }
@@ -159,10 +163,8 @@ function NewTeacher({ open, onClose, onSaved }) {
           <div><label className="label">البريد الإلكتروني</label><input className="input" value={form.email} onChange={set('email')} placeholder="teacher@example.com" /></div>
           <div><label className="label">الهاتف</label><input className="input" value={form.phone} onChange={set('phone')} placeholder="01xxxxxxxxx" /></div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div><label className="label">المواد التي يدرّسها</label><input className="input" value={form.subjects} onChange={set('subjects')} placeholder="الجبر · التفاضل" /></div>
-          <div><label className="label">المواعيد</label><input className="input" value={form.schedule} onChange={set('schedule')} placeholder="الأحد والثلاثاء 6م" /></div>
-        </div>
+        <div><label className="label">المواد التي يدرّسها</label><input className="input" value={form.subjects} onChange={set('subjects')} placeholder="الجبر · التفاضل" /></div>
+        <WeeklySchedulePicker value={when} onChange={setWhen} label="المواعيد (اختياري)" />
         <div className="grid grid-cols-2 gap-3">
           <div><label className="label">كلمة المرور</label><input required type="password" minLength={10} maxLength={72} autoComplete="new-password" className="input" value={form.password} onChange={set('password')} placeholder="10 أحرف على الأقل، حروف وأرقام" /></div>
           <div><label className="label">رابط الصورة (اختياري)</label><input className="input" value={form.photoUrl} onChange={set('photoUrl')} placeholder="https://..." /></div>
