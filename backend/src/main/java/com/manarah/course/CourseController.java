@@ -104,6 +104,24 @@ public class CourseController {
         return service.addLesson(moduleId, req);
     }
 
+    public record OrderRequest(List<Long> ids) {}
+
+    /** The order students see the course's units in. */
+    @PutMapping("/{id}/modules/order")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
+    public void reorderModules(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @RequestBody OrderRequest req) {
+        learning.access(actor, id, true);
+        service.reorderModules(id, req.ids());
+    }
+
+    /** The order students see a unit's lessons in. */
+    @PutMapping("/modules/{moduleId}/lessons/order")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','ASSISTANT','CONTENT_MANAGER')")
+    public void reorderLessons(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long moduleId, @RequestBody OrderRequest req) {
+        learning.access(actor, learning.moduleCourse(actor, moduleId), true);
+        service.reorderLessons(moduleId, req.ids());
+    }
+
     @PutMapping("/modules/{moduleId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','BRANCH_ADMIN','ACADEMIC_MANAGER','TEACHER','CONTENT_MANAGER')")
     public ModuleView renameModule(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long moduleId, @Valid @RequestBody UpdateModuleRequest req) {

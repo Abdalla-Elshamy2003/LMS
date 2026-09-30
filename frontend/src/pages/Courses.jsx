@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { BookOpen, Eye, EyeOff, Pencil, Plus, Save, Trash2, Users2 } from 'lucide-react'
+import { BookOpen, Eye, EyeOff, Pencil, Plus, Save, Search, Trash2, Users2 } from 'lucide-react'
+import { distinctYears, sameYear } from '../lib/schoolYears'
 import api from '../lib/api'
 import { apiErrorMessage } from '../lib/apiError'
 import { ADMIN_ROLES } from '../lib/roles'
@@ -35,6 +36,8 @@ export default function Courses() {
 
   const [subject, setSubject] = useState('')
   const [teacherId, setTeacherId] = useState('')
+  const [query, setQuery] = useState('')
+  const [year, setYear] = useState('')
   const load = () => api.get('/courses').then((r) => setCourses(r.data))
   const loadChildren = () => api.get('/dashboard/parent').then(async (r) => {
     const children = r.data.children || []
@@ -75,19 +78,34 @@ export default function Courses() {
 
   const scoped =isParent ? courses.filter((c) => childrenCourseIds.has(c.id)) : user.role === 'TEACHER' ? courses.filter(c => c.teacherId === user.id) : courses
   const subjects = [...new Set(scoped.map((c) => c.subject).filter(Boolean))]
-  const filtered = scoped.filter((c) => (!subject || c.subject === subject) && (!teacherId || String(c.teacherId) === teacherId))
+  const years = distinctYears(scoped.map((c) => c.grade))
+  const needle = query.trim().toLowerCase()
+  const filtered = scoped.filter((c) => (!subject || c.subject === subject) && (!teacherId || String(c.teacherId) === teacherId)
+    && (!year || sameYear(c.grade, year)) && (!needle || `${c.title} ${c.subject || ''}`.toLowerCase().includes(needle)))
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
-        <select className="input max-w-[180px]" value={subject} onChange={(e) => setSubject(e.target.value)}>
+        <div className="relative w-full sm:max-w-xs">
+          <Search size={17} className="pointer-events-none absolute right-3.5 top-3.5 text-ink-400" />
+          <input className="input pr-10" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث باسم الكورس..." aria-label="ابحث باسم الكورس" />
+        </div>
+        {years.length > 0 && (
+          <select className="input max-w-[200px]" value={year} onChange={(e) => setYear(e.target.value)} aria-label="السنة الدراسية">
+            <option value="">كل السنين</option>
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        )}
+        <select className="input max-w-[180px]" value={subject} onChange={(e) => setSubject(e.target.value)} aria-label="المادة">
           <option value="">كل المواد</option>
           {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select className="input max-w-[200px]" value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
-          <option value="">كل المدرسين</option>
-          {teachers.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}
-        </select>
+        {user.role !== 'TEACHER' && (
+          <select className="input max-w-[200px]" value={teacherId} onChange={(e) => setTeacherId(e.target.value)} aria-label="المدرس">
+            <option value="">كل المدرسين</option>
+            {teachers.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}
+          </select>
+        )}
         <p className="text-sm text-ink-400">{filtered.length} كورس</p>
         {canManage && <button onClick={() => setShowNew(true)} className="btn-primary mr-auto"><Plus size={18} /> كورس جديد</button>}
       </div>

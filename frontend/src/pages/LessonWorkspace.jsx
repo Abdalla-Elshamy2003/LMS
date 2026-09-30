@@ -5,13 +5,13 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
+  ChevronLeft,
   Play,
   Video,
   BookOpen,
   Files,
   Plus,
   CheckCircle2,
-  ChevronDown,
   Download,
   ExternalLink,
   Users,
@@ -27,6 +27,7 @@ import { PageLoader, EmptyState, ProgressBar } from "../components/ui";
 import { fmtDate } from "../lib/format";
 import { AddModule, AddLesson, AddMaterials, EditModule, EditLesson, ConfirmDelete } from "./CourseDetail";
 import RowMenu from "../components/RowMenu";
+import { UnitsOverview, UnitLessons } from "../features/course/CourseMap";
 import { apiErrorMessage } from '../lib/apiError'
 
 function mediaUrl(material) {
@@ -136,7 +137,6 @@ export default function LessonWorkspace() {
   const [modal, setModal] = useState(null);
   const [tab, setTab] = useState("about");
   const [materialId, setMaterialId] = useState(null);
-  const [collapsed, setCollapsed] = useState({});
   const [saving, setSaving] = useState(false);
   const [previewing, setPreviewing] = useState(student);
   const [videoEndedAt, setVideoEndedAt] = useState(null);
@@ -186,10 +186,17 @@ export default function LessonWorkspace() {
   }, [id]);
   const lessons =
     course?.modules.flatMap((m) =>
-      m.lessons.map((l) => ({ ...l, moduleTitle: m.title })),
+      m.lessons.map((l) => ({ ...l, moduleTitle: m.title, moduleId: m.id })),
     ) || [];
-  const active =
-    lessons.find((l) => String(l.id) === params.get("lesson")) || lessons[0];
+  // One step at a time: the course's units, then a unit's lessons (?unit=), then a lesson (?lesson=).
+  const active = lessons.find((l) => String(l.id) === params.get("lesson"));
+  const unitIndex = course
+    ? course.modules.findIndex((m) => (active ? m.id === active.moduleId : String(m.id) === params.get("unit")))
+    : -1;
+  const unit = unitIndex >= 0 ? course.modules[unitIndex] : null;
+  const activeIndex = active ? lessons.findIndex((l) => l.id === active.id) : -1;
+  // Where a student left off: the first lesson they haven't finished.
+  const resume = lessons.find((l) => !progress.some((p) => p.lessonId === l.id && p.completed));
   const saved = progress.find((p) => p.lessonId === active?.id);
   const materials = active?.materials || [];
   // An uploaded video (videoAssetId) has no public URL: the protected player asks the server for it.
@@ -208,7 +215,10 @@ export default function LessonWorkspace() {
   const choose = (lesson) => {
     setParams({ lesson: lesson.id });
     setTab("about");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  const openUnit = (unitId) => { setParams({ unit: unitId }); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const openCourse = () => setParams({});
   const save = async (position, done = false) => {
     if (!student || !active) return;
     const lessonId = active.id;
@@ -267,23 +277,47 @@ export default function LessonWorkspace() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-bold text-brand-600">
-            {course.summary.subject} / {course.summary.gradeLevel}
+            {[course.summary.subject, course.summary.grade || course.summary.gradeLevel].filter(Boolean).join(" · ")}
           </p>
           <h2 className="mt-2 text-2xl font-black">{course.summary.title}</h2>
           <p className="mt-2 text-sm text-ink-500">
-            {course.summary.teacherName} · {lessons.length} درس ·{" "}
-            {course.modules.length} فصل
+            {course.summary.teacherName} · {course.modules.length} وحدة ·{" "}
+            {lessons.length} درس
           </p>
         </div>
-        {staff && (
+        {staff && !active && !unit && (
           <button
             className="btn-primary"
             onClick={() => setModal({ type: "module" })}
           >
-            <Plus size={17} /> فصل جديد
+            <Plus size={17} /> وحدة جديدة
           </button>
         )}
       </div>
+      {!active && notice && <p role="alert" className="rounded-2xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{notice}</p>}
+      {!active ? (
+        unit ? (
+          <UnitLessons unit={unit} index={unitIndex} progress={progress} staff={staff} student={student}
+            onBack={openCourse} onOpenLesson={choose} onModal={setModal} onChanged={load} onError={setNotice} />
+        ) : (
+          <UnitsOverview course={course} progress={progress} staff={staff} student={student} resume={resume}
+            onOpenUnit={openUnit} onOpenLesson={choose} onModal={setModal} onChanged={load} onError={setNotice} />
+        )
+      ) : (
+      <>
+      <nav aria-label="مكانك في الكورس" className="flex flex-wrap items-center justify-between gap-3">
+        <p className="flex flex-wrap items-center gap-1.5 text-sm text-ink-500">
+          <button type="button" onClick={openCourse} className="font-bold hover:text-brand-700">كل الوحدات</button>
+          <ChevronLeft size={14} />
+          <button type="button" onClick={() => openUnit(unit.id)} className="font-bold hover:text-brand-700">الوحدة {(unitIndex + 1).toLocaleString("ar-EG")}: {unit.title}</button>
+          <ChevronLeft size={14} />
+          <span className="font-bold text-ink-800">{active.title}</span>
+        </p>
+        <span className="flex gap-2">
+          {activeIndex > 0 && <button type="button" className="btn-ghost px-3 py-1.5 text-sm" onClick={() => choose(lessons[activeIndex - 1])}><ArrowRight size={15} /> الدرس اللي فات</button>}
+          {activeIndex < lessons.length - 1 && <button type="button" className="btn-soft px-3 py-1.5 text-sm" onClick={() => choose(lessons[activeIndex + 1])}>الدرس اللي بعده <ChevronLeft size={15} /></button>}
+        </span>
+      </nav>
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-5">
           <div className="overflow-hidden rounded-3xl bg-slate-950 text-white shadow-xl">
@@ -313,7 +347,7 @@ export default function LessonWorkspace() {
                       ? staff
                         ? "أضف فيديو الشرح، أو ابدأ بنص الدرس والملفات المرفقة."
                         : "تابع شرح الدرس والملفات أسفل المساحة. سيظهر فيديو المدرس هنا عند إضافته."
-                      : "أضف فصلاً ثم درساً وارفع فيديو الشرح والملفات."}
+                      : "ضيف فيديو الشرح والملفات للدرس ده من «إضافة مواد»."}
                   </p>
                   {staff && active && (
                     <button
@@ -652,13 +686,16 @@ export default function LessonWorkspace() {
         <aside className="card overflow-hidden xl:sticky xl:top-24">
           <div className="border-b border-ink-100 p-5">
             <div className="flex items-center justify-between">
-              <h3 className="font-extrabold">محتوى الكورس</h3>
-              <BookOpen size={19} className="text-brand-600" />
+              <button type="button" onClick={() => openUnit(unit.id)} className="min-w-0 text-right">
+                <small className="block text-xs font-bold text-brand-600">الوحدة {(unitIndex + 1).toLocaleString("ar-EG")}</small>
+                <h3 className="truncate font-extrabold hover:text-brand-700">{unit.title}</h3>
+              </button>
+              <BookOpen size={19} className="shrink-0 text-brand-600" />
             </div>
             {student && (
               <>
                 <p className="my-3 text-xs text-ink-500">
-                  {completed} من {lessons.length} درس مكتمل
+                  {completed} من {lessons.length} درس مكتمل في الكورس كله
                 </p>
                 <ProgressBar
                   value={
@@ -669,34 +706,8 @@ export default function LessonWorkspace() {
             )}
           </div>
           <div className="max-h-[70vh] overflow-y-auto">
-            {course.modules.map((m, i) => (
-              <div key={m.id} className="border-b border-ink-100 last:border-0">
-                <div className="flex items-center bg-ink-50/70 pl-2">
-                <button
-                  onClick={() =>
-                    setCollapsed((s) => ({ ...s, [m.id]: !s[m.id] }))
-                  }
-                  aria-expanded={!collapsed[m.id]}
-                  className="flex min-w-0 flex-1 items-center gap-3 p-4 text-right"
-                >
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-xs font-bold text-brand-600">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span className="flex-1 text-sm font-bold">{m.title}</span>
-                  <ChevronDown
-                    size={15}
-                    className={`transition-transform ${collapsed[m.id] ? "-rotate-90" : ""}`}
-                  />
-                </button>
-                {staff && (
-                  <RowMenu
-                    label={`خيارات الفصل ${m.title}`}
-                    onEdit={() => setModal({ type: "editModule", module: m })}
-                    onDelete={() => setModal({ type: "deleteModule", module: m })}
-                  />
-                )}
-                </div>
-                {!collapsed[m.id] && (
+            {[unit].map((m) => (
+              <div key={m.id}>
                   <div className="space-y-1 p-2">
                     {m.lessons.map((l, j) => {
                       const done = progress.some(
@@ -745,24 +756,17 @@ export default function LessonWorkspace() {
                         }
                         className="btn-soft mt-2 w-full border border-dashed border-brand-200"
                       >
-                        <Plus size={15} /> إضافة درس
+                        <Plus size={15} /> إضافة درس للوحدة
                       </button>
                     )}
-                    {!m.lessons.length && !staff && (
-                      <p className="p-3 text-xs text-ink-400">
-                        الدروس قيد التجهيز
-                      </p>
-                    )}
                   </div>
-                )}
               </div>
             ))}
-            {!course.modules.length && (
-              <EmptyState icon={BookOpen} title="لم تُضف فصول بعد" />
-            )}
           </div>
         </aside>
       </div>
+      </>
+      )}
       {modal?.type === "module" && (
         <AddModule
           courseId={id}
@@ -805,8 +809,8 @@ export default function LessonWorkspace() {
       )}
       {modal?.type === "deleteModule" && (
         <ConfirmDelete
-          title="حذف الفصل"
-          warning={`هيتم حذف الفصل «${modal.module.title}» وكل دروسه وملفاته، وتقدّم الطلاب فيها. مش هينفع تتراجع.`}
+          title="حذف الوحدة"
+          warning={`هيتم حذف الوحدة «${modal.module.title}» وكل دروسها وملفاتها، وتقدّم الطلاب فيها. مش هينفع تتراجع.`}
           onClose={() => setModal(null)}
           onConfirm={async () => {
             await api.delete(`/courses/modules/${modal.module.id}`);
@@ -822,7 +826,7 @@ export default function LessonWorkspace() {
           onClose={() => setModal(null)}
           onConfirm={async () => {
             await api.delete(`/courses/lessons/${modal.lesson.id}`);
-            if (String(modal.lesson.id) === params.get("lesson")) setParams({});
+            if (String(modal.lesson.id) === params.get("lesson")) setParams({ unit: modal.lesson.moduleId || unit?.id || "" });
             setModal(null);
             load();
           }}

@@ -272,6 +272,29 @@ public class CourseService {
         return new ModuleView(m.getId(), m.getTitle(), m.getPosition(), List.of(), m.getCreatedAt());
     }
 
+    /** Puts a course's units in the given order; {@code ids} must be exactly the course's units. */
+    @Transactional
+    public void reorderModules(Long courseId, List<Long> ids) {
+        Long tenantId = TenantContext.require();
+        List<CourseModule> all = modules.findByTenantIdAndCourseIdOrderByPosition(tenantId, courseId);
+        requireSameItems(all.stream().map(CourseModule::getId).toList(), ids);
+        for (CourseModule m : all) { m.setPosition(ids.indexOf(m.getId()) + 1); modules.save(m); }
+    }
+
+    /** Puts a unit's lessons in the given order; {@code ids} must be exactly the unit's lessons. */
+    @Transactional
+    public void reorderLessons(Long moduleId, List<Long> ids) {
+        Long tenantId = TenantContext.require();
+        List<Lesson> all = lessons.findByTenantIdAndModuleIdOrderByPosition(tenantId, moduleId);
+        requireSameItems(all.stream().map(Lesson::getId).toList(), ids);
+        for (Lesson l : all) { l.setPosition(ids.indexOf(l.getId()) + 1); lessons.save(l); }
+    }
+
+    private static void requireSameItems(List<Long> current, List<Long> ordered) {
+        if (ordered == null || ordered.size() != current.size() || !new java.util.HashSet<>(ordered).equals(new java.util.HashSet<>(current)))
+            throw new com.manarah.common.exception.ApiExceptions.BadRequestException("الترتيب لازم يشمل كل العناصر مرة واحدة — حدّث الصفحة وجرّب تاني");
+    }
+
     /** Removes the chapter with all its lessons, their files, and every student's progress in them. */
     @Transactional
     public void deleteModule(Long moduleId) {

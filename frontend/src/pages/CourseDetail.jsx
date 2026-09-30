@@ -26,11 +26,11 @@ export function AddModule({ courseId, onClose, onSaved }) {
   const [title, setTitle] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const save = async () => { setSaving(true); setError(''); try { await api.post(`/courses/${courseId}/modules`, { title: title.trim() }); onSaved() } catch (e) { setError(apiErrorMessage(e, 'تعذّر حفظ الفصل')) } finally { setSaving(false) } }
+  const save = async () => { setSaving(true); setError(''); try { await api.post(`/courses/${courseId}/modules`, { title: title.trim() }); onSaved() } catch (e) { setError(apiErrorMessage(e, 'تعذّر حفظ الوحدة')) } finally { setSaving(false) } }
   return (
-    <Modal open onClose={onClose} title="فصل جديد">
+    <Modal open onClose={onClose} title="وحدة جديدة">
       <div className="space-y-4">
-        <div><label className="label">عنوان الفصل</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="الفصل الأول" /></div>
+        <div><label className="label">اسم الوحدة</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="الوحدة الأولى: الجبر" /></div>
         {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
         <div className="flex justify-end gap-2"><button onClick={onClose} className="btn-ghost">إلغاء</button><button onClick={save} disabled={saving || !title} className="btn-primary">حفظ</button></div>
       </div>
@@ -47,7 +47,7 @@ export function AddLesson({ moduleId, onClose, onSaved }) {
   return (
     <Modal open onClose={onClose} title="درس جديد">
       <div className="space-y-4">
-        <div><label className="label">عنوان الدرس</label><input className="input" value={form.title} onChange={set('title')} placeholder="المحاضرة الأولى" /></div>
+        <div><label className="label">عنوان الدرس</label><input className="input" value={form.title} onChange={set('title')} placeholder="الدرس الأول: المعادلات" /></div>
         <div><label className="label">المدة (دقيقة)</label><input type="number" className="input" value={form.durationMin} onChange={set('durationMin')} /></div>
         <div><label className="label">شرح الدرس</label><textarea className="input" rows={4} value={form.contentText} onChange={set('contentText')} /></div>
         {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
@@ -63,9 +63,9 @@ export function EditModule({ module, onClose, onSaved }) {
   const [error, setError] = useState('')
   const save = async () => { setSaving(true); setError(''); try { await api.put(`/courses/modules/${module.id}`, { title: title.trim() }); onSaved() } catch (e) { setError(apiErrorMessage(e, 'تعذّر حفظ التعديل')) } finally { setSaving(false) } }
   return (
-    <Modal open onClose={onClose} title="تعديل الفصل">
+    <Modal open onClose={onClose} title="تعديل الوحدة">
       <div className="space-y-4">
-        <div><label className="label">عنوان الفصل</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+        <div><label className="label">اسم الوحدة</label><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
         {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
         <div className="flex justify-end gap-2"><button onClick={onClose} className="btn-ghost">إلغاء</button><button onClick={save} disabled={saving || !title.trim()} className="btn-primary">حفظ</button></div>
       </div>
@@ -99,7 +99,7 @@ export function EditLesson({ lesson, onClose, onSaved }) {
   )
 }
 
-/** Asks before deleting a chapter or lesson; `warning` says what else goes with it. */
+/** Asks before deleting a unit or lesson; `warning` says what else goes with it. */
 export function ConfirmDelete({ title, warning, onClose, onConfirm }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
