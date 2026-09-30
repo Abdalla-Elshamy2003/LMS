@@ -4,6 +4,14 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:
@@ -89,13 +97,7 @@ jobs:
         run: docker compose up --build -d
       - name: Wait for backend/frontend health
         run: |
-          for i in $(seq 1 30); do
-            status=$(docker compose ps --format '{{.Name}} {{.Status}}')
-            echo "$status"
-            if echo "$status" | grep -c '(healthy)' | grep -q 5; then exit 0; fi
-            sleep 5
-          done
-          echo "Stack did not become healthy in time" && docker compose logs && exit 1
+          docker compose up --wait --wait-timeout 240
       - name: Smoke test login through the real stack
         run: |
           curl -fsS -X POST http://localhost/api/auth/login \
@@ -104,3 +106,6 @@ jobs:
       - name: Dump logs on failure
         if: failure()
         run: docker compose logs
+      - name: Clean up test stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans

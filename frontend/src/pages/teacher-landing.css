@@ -179,7 +179,8 @@ a.tl-cover{display:block;cursor:pointer}
 /* The teacher's prices by school year: one subscription opens the whole year. */
 .tl-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin-bottom:28px}.tl-plan{background:#fff;border:1px solid #d9e6ea;border-radius:15px;padding:18px 20px;display:flex;flex-direction:column;gap:6px}.tl-plan>span{font-size:11px;font-weight:800;color:#598074}.tl-plan>strong{font-size:22px;font-weight:900;color:var(--navy)}.tl-plan>strong small{font-size:11px;font-weight:700;color:#7a868a}.tl-plan>del{font-size:11px;color:#899295}.tl-plan>p{font-size:11px;line-height:1.9;color:#73818a}.tl-plan>a,.tl-plan>button{align-self:flex-start;display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12px;font-weight:800;color:var(--blue)}.tl-price small{font-size:10px;color:#7a868a}
 /* The teacher's own course artwork: whole, undimmed, with only a subtle zoom on hover */
-.tl-cover.art{background:#0b2e47}
+.tl-cover.art{background:#0b2e47;aspect-ratio:1122/1402}
+.tl-cover.art>img{object-fit:contain}
 .tl-course:hover .tl-cover.art>img{transform:scale(1.03)}
 .tl-slide .tl-course p{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 /* A promotional poster in the hero instead of the arched portrait: its own shape, nothing cropped */

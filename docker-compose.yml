@@ -38,7 +38,9 @@ services:
   # path. In real production, point MANARAH_S3_* at a managed provider (Cloudflare R2, AWS S3,
   # Backblaze B2, ...) instead of running MinIO yourself.
   minio:
-    image: minio/minio:latest
+    build:
+      context: ./ops/minio
+      target: server
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -56,7 +58,9 @@ services:
       - manarah-net
 
   minio-init:
-    image: minio/mc:latest
+    build:
+      context: ./ops/minio
+      target: client
     depends_on:
       minio:
         condition: service_healthy
