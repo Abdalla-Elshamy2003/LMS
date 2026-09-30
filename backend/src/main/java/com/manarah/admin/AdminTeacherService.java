@@ -182,7 +182,7 @@ public class AdminTeacherService {
                 blank(req.aboutText()) ? description : req.aboutText(),
                 subject, req.phone(), a.isDemoContent(), req.published() == null ? a.isPublished() : req.published(), null,
                 Objects.toString(a.getInstapayNumber(), ""), Objects.toString(a.getVodafoneCashNumber(), ""),
-                Objects.toString(a.getPaymentNote(), ""), null);
+                Objects.toString(a.getPaymentNote(), ""), null, null, null);
     }
 
     private TeacherAcademy managed(UserPrincipal actor, Long academyId) {

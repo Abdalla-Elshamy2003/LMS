@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
-import { ArrowUpLeft, ArrowLeft, Play, Check, Sparkles, BookOpen, PenTool, Target, ChevronDown, GraduationCap, Phone, Menu, X } from 'lucide-react'
+import { ArrowUpLeft, ArrowLeft, Play, Check, Sparkles, PenTool, Target, ChevronDown, GraduationCap, Phone, Menu, X } from 'lucide-react'
 import api from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { apiErrorMessage } from '../lib/apiError'
@@ -10,6 +10,7 @@ import MathBackdrop from '../components/MathBackdrop'
 import { embedUrl } from '../lib/videoEmbed'
 import { sameYear } from '../lib/schoolYears'
 import { monthsLabel, perMonths } from '../lib/subscriptions'
+import { themeFor } from '../lib/subjectThemes'
 import './teacher-landing.css'
 
 const samples = [
@@ -20,7 +21,6 @@ const samples = [
   { id: 'demo-5', title: 'الإحصاء والاحتمالات ببساطة', grade: 'الصف الثاني الإعدادي', description: 'من قراءة الجدول لحد حساب الاحتمال، خطوة خطوة.', price: 270, discountPercent: 0, finalPrice: 270, symbol: 'P(A)', label: 'أرقام ليها معنى', tone: 'peach' },
   { id: 'demo-6', title: 'أدواتك في الجبر والهندسة', grade: 'الصف الثالث الإعدادي', description: 'مراجعة شاملة تجمع كل أدوات السنة في مكان واحد.', price: 290, discountPercent: 15, finalPrice: 247, symbol: 'y = x²', label: 'جاهز للثانوي', tone: 'green' },
 ]
-const marqueeSymbols = ['a² + b² = c²', 'ƒ(x) = 2x + 3', '∫ x dx', 'π ≈ 3.14159', '∑ⁿ', 'lim x→0', 'd/dx (x²) = 2x', '√x', 'sin²θ + cos²θ = 1', 'n!', 'Δ = b² − 4ac', 'y = mx + b']
 const lessons = [
   { title: 'الدالة مش مجرد قانون', tag: 'جبر', formula: 'ƒ(𝑥) = 2𝑥 + 3', text: 'الدالة زي ماكينة: بتدخل لها قيمة، فتطلع لك قيمة جديدة حسب قاعدة ثابتة. لو س = ٢، يبقى د(٢) = ٢ × ٢ + ٣ = ٧. جرّب بنفسك لما س = ٥!', answer: 'الإجابة: د(٥) = ١٣' },
   { title: 'المثلث بيحكيلك إيه؟', tag: 'هندسة', formula: 'a² + b² = c²', text: 'في المثلث القائم: مربع الوتر يساوي مجموع مربعي الضلعين الآخرين. لو الضلعان ٣ و٤، مربع الوتر = ٩ + ١٦ = ٢٥، يعني الوتر = ٥.', answer: 'جرّب: لو الضلعان ٦ و٨، الوتر = ١٠' },
@@ -87,7 +87,8 @@ export default function TeacherLanding() {
   }
   const reveal = { initial: reduced ? false : { opacity: 0, y: 22 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: 0.12 }, transition: { duration: .55 } }
   const cta = p.phone ? `tel:${p.phone.replace(/[^+0-9]/g, '')}` : login
-  return <div className="teacher-site" dir="rtl">
+  const theme = themeFor(p.subjectTheme)
+  return <div className={theme.words ? 'teacher-site tl-words' : 'teacher-site'} dir="rtl">
     <div className="tl-announcement"><Sparkles size={14}/><span>خطوة جديدة، فهم أعمق، وثقة أكبر. يلا نبدأ!</span><span className="tl-mini-dot"/> العام الدراسي ٢٠٢٦ / ٢٠٢٧</div>
     <header className="tl-header"><div className="tl-container tl-nav">
       <Link to={slug ? `/t/${slug}` : '/'} className="tl-brand"><img src="/images/logo.png" alt="" className="tl-logo" /><span><strong>{p.name}</strong><small>{p.tagline}</small></span></Link>
@@ -97,22 +98,22 @@ export default function TeacherLanding() {
         : <Link to={login} className="tl-button small">دخول الطالب <ArrowUpLeft size={16}/></Link>}<button className="tl-menu" aria-label="فتح القائمة" aria-expanded={menu} onClick={() => setMenu(!menu)}>{menu ? <X/> : <Menu/>}</button>
     </div></header>
     <main>
-      <section id="home" className="tl-hero"><MathBackdrop count={18} /><div className="tl-container tl-hero-grid">
+      <section id="home" className="tl-hero"><MathBackdrop count={18} symbols={theme.symbols} /><div className="tl-container tl-hero-grid">
         <motion.div {...reveal} className="tl-hero-copy"><span className="tl-eyebrow"><span/> أهلاً بيك في منصتك لـ{p.subject}</span>
-          <h1>{p.headline}</h1><p className="tl-description">{p.description}</p>
+          <TypedHeadline text={p.headline} on={p.typingEffect && !reduced} /><p className="tl-description">{p.description}</p>
           <div className="tl-actions"><a href="#courses" className="tl-button">اكتشف كورساتك <ArrowLeft size={19}/></a>{demo && <a href="#lessons" className="tl-watch"><span><Play size={17} fill="currentColor"/></span> خد فكرة عن الشرح</a>}</div>
           <div className="tl-trust"><span><Check size={16}/> شرح خطوة بخطوة</span><span><Check size={16}/> تدريب على كل فكرة</span><span><Check size={16}/> تعلّم على راحتك</span></div>
         </motion.div>
-        <motion.div {...reveal} className="tl-portrait-wrap"><div className="tl-orbit"/><span className="tl-formula f1" aria-hidden="true">𝑥² + 𝑦²</span><span className="tl-formula f2" aria-hidden="true">π</span><span className="tl-formula f3" aria-hidden="true">√𝑥</span>
+        <motion.div {...reveal} className="tl-portrait-wrap"><div className="tl-orbit"/>{theme.floats.map((f, i) => <span key={i} className={`tl-formula f${i + 1}`} aria-hidden="true">{f}</span>)}
           <div className={heroPoster ? 'tl-portrait poster' : 'tl-portrait'}><img src={heroPoster || p.photoUrl} alt={`مستر ${p.name}، ${p.tagline}`} fetchPriority="high"/></div>
           {!heroPoster && <><motion.div className="tl-float-note" animate={reduced ? {} : { y: [0, -9, 0] }} transition={{ duration: 5, repeat: Infinity }}><span className="tl-note-icon"><Target size={24}/></span><div><strong>نفهمها.. نحلّها!</strong><small>كل فكرة بتقرّبك لهدفك</small></div><Sparkles size={18}/></motion.div>
           <div className="tl-portrait-label"><span>معاك خطوة بخطوة</span><strong>مستر {p.name}</strong></div></>}
         </motion.div>
-      </div><div className="tl-container tl-method-strip"><span><BookOpen/> شرح يبسّط الصعب</span><i/><span><PenTool/> تطبيق يثبّت الفكرة</span><i/><span><Target/> مراجعة تربط المنهج</span><a href="#courses">ابدأ رحلتك <ArrowUpLeft size={17}/></a></div></section>
+      </div><div className="tl-container tl-method-strip">{theme.strip.map(([Icon, text], i) => <Fragment key={text}>{i > 0 && <i/>}<span><Icon/> {text}</span></Fragment>)}<a href="#courses">{theme.cta} <ArrowUpLeft size={17}/></a></div></section>
 
       {/* Continuously scrolling notation strip — duplicated once so the loop has no visible seam. */}
       <div className="tl-marquee" aria-hidden="true"><div>
-        {[...marqueeSymbols, ...marqueeSymbols].map((s, i) => <span key={i}>{s}</span>)}
+        {[...theme.symbols, ...theme.symbols].map((s, i) => <span key={i}>{s}</span>)}
       </div></div>
 
       <section id="courses" className="tl-section tl-container"><motion.div {...reveal} className="tl-section-head"><div><span className="tl-kicker">كل مرحلة.. وليها خطتها</span><h2>اختار خطوتك الجاية<span>.</span></h2></div><p>شرح منظّم، وأفكار مترابطة، وتدريب يخليك<br/> تدخل على كل مسألة بثقة.</p></motion.div>
@@ -147,7 +148,7 @@ export default function TeacherLanding() {
 
       <section className="tl-container tl-steps-section"><div><span className="tl-kicker">رحلتك هنا بسيطة</span><h2>من أول دخول..<br/>لأول «أنا فهمتها!»</h2></div><div className="tl-steps">{[['01', 'اختار كورسك', 'دوس «اشترك» على الكورس اللي عايزه من الكورسات اللي فوق.'], ['02', 'اعمل حسابك في دقيقة', 'المادة وسنتك الدراسية والكورس بيتحددوا لوحدهم من الكورس اللي اخترته.'], ['03', 'ابدأ على طول', 'المجاني بيتفتح فوراً، والمدفوع بيتفتح أول ما المستر يأكّد التحويل. وأي كورس جديد لسنتك بيظهرلك لوحده.']].map(([n, title, text]) => <div key={n}><b>{n}</b><h3>{title}</h3><p>{text}</p></div>)}</div></section>
       <section id="faq" className="tl-section tl-container tl-faq"><div><span className="tl-kicker">قبل ما تبدأ</span><h2>عندك سؤال؟<br/>خلّينا نوضّحه.</h2><p>كل حاجة تحتاج تعرفها عن دخولك للمنصة.</p></div><div>{[['إزاي أعمل حساب وأشترك؟', 'دوس «اشترك» على الكورس اللي عايزه واعمل حسابك بالإيميل. الكورس المجاني بيتفتح على طول، والمدفوع بيظهر في لوحتك ومعاه طريقة الدفع — أول ما تحوّل، المستر يبعتلك كود أو يفعّله من عنده.'], ['لو المستر نزّل كورس جديد لسنتي هعرف إزاي؟', 'هيظهرلك في لوحتك تحت «متاح لسنتك» ويوصلك إشعار، وتشترك فيه لوحده.'], ['عندي حساب مع مدرس تاني، أعمل حساب جديد؟', `لأ. سجّل دخولك بنفس الإيميل ودوس «اشترك» على كورس مستر ${p.name} — هيتضاف لحسابك وتتنقل بين مدرسينك من «مدرسيني».`], ['مش لاقي كورس اتفقت عليه، أعمل إيه؟', 'تواصل مع المستر يراجع إتاحة الكورس لحسابك، وبعدها حدّث صفحة كورساتك.'], ['نسيت كلمة المرور؟', 'دوس «نسيت كلمة المرور؟» في صفحة الدخول وهيوصلك رابط على إيميلك.']].map(([q, a]) => <details key={q}><summary>{q}<ChevronDown size={18}/></summary><p>{a}</p></details>)}</div></section>
-      <section className="tl-container tl-final-cta"><div><span>مسألتك الجاية.. إنت قدّها.</span><h2>جاهز تبدأ وتفهمها صح؟</h2><p>خطوة بسيطة دلوقتي، تفرق في رحلتك كلها.</p></div><a href={cta} className="tl-button light">{p.phone ? 'تواصل مع المستر' : 'ادخل على حسابك'} <ArrowUpLeft size={20}/></a><span className="tl-cta-math" aria-hidden="true">∑</span></section>
+      <section className="tl-container tl-final-cta"><div><span>{theme.closing}</span><h2>جاهز تبدأ وتفهمها صح؟</h2><p>خطوة بسيطة دلوقتي، تفرق في رحلتك كلها.</p></div><a href={cta} className="tl-button light">{p.phone ? 'تواصل مع المستر' : 'ادخل على حسابك'} <ArrowUpLeft size={20}/></a><span className="tl-cta-math" aria-hidden="true">{theme.glyph}</span></section>
     </main>
     <footer className="tl-container tl-footer"><Link to={slug ? `/t/${slug}` : '/'} className="tl-brand"><img src="/images/logo.png" alt="" className="tl-logo" /><span><strong>{p.name}</strong><small>{p.tagline}</small></span></Link><p>مساحتك للفهم، والتطبيق، والثقة.</p><span>© {new Date().getFullYear()} · مستر {p.name} · <Link to="/terms">الشروط</Link> · <Link to="/privacy">الخصوصية</Link> · <Link to="/refund">الاسترداد</Link></span></footer>
     {joinError && <div role="alert" className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-2xl bg-rose-600 px-5 py-3 text-center text-sm font-bold text-white shadow-lg" onClick={() => setJoinError('')}>{joinError}</div>}
@@ -160,6 +161,30 @@ export default function TeacherLanding() {
         : <div className="tl-modal-formula" dir="ltr">{lesson.formula}</div>}
       <p>{lesson.text || lesson.description}</p>{lesson.answer && <strong>{lesson.answer}</strong>}<button className="tl-button" onClick={() => setLesson(null)}>{lesson.url ? 'إغلاق' : 'تمام، فهمتها'} <Check size={18}/></button></div></div>}
   </div>
+}
+
+/**
+ * The hero headline, optionally revealed word by word as if someone were typing it (the teacher's
+ * "typingEffect" switch). Every word is laid out from the start and only faded in, so the heading never
+ * grows or pushes the page down while it plays; whole words rather than letters, so Arabic keeps its
+ * joined shapes. Screen readers get the full sentence at once through aria-label.
+ */
+function TypedHeadline({ text, on }) {
+  const words = (text || '').split(/\s+/).filter(Boolean)
+  const [shown, setShown] = useState(on ? 0 : words.length)
+  useEffect(() => {
+    if (!on) { setShown(words.length); return }
+    setShown(0)
+    let n = 0, timer
+    const next = () => { n += 1; setShown(n); if (n < words.length) timer = setTimeout(next, 170 + Math.random() * 140) }
+    timer = setTimeout(next, 450)
+    return () => clearTimeout(timer)
+  }, [text, on])
+  if (!on) return <h1>{text}</h1>
+  const caret = <b aria-hidden="true" className={shown < words.length ? 'tl-caret' : 'tl-caret done'}/>
+  return <h1 aria-label={text} className="tl-typed">
+    {shown === 0 && caret}{words.map((w, i) => <Fragment key={i}>{i > 0 && ' '}<span aria-hidden="true" className={i < shown ? 'in' : ''}>{w}</span>{i === shown - 1 && caret}</Fragment>)}
+  </h1>
 }
 
 /** Default cover art, cycled by position for anything published without its own image. */

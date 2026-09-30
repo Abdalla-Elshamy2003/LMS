@@ -25,6 +25,7 @@ import { useAuth } from "../lib/auth";
 import { PageLoader, Spinner } from "../components/ui";
 import ImageUpload from "../components/ImageUpload";
 import { apiErrorMessage } from '../lib/apiError'
+import { SUBJECT_THEMES, themeFor } from "../lib/subjectThemes";
 
 const blankAccount = {
   fullName: "",
@@ -497,6 +498,65 @@ export default function AcademySettings() {
                     </label>
                   ))}
                 </div>
+                <fieldset className="space-y-3">
+                  <legend className="text-xs font-bold">شكل الصفحة حسب المادة</legend>
+                  <p className="text-xs text-ink-400">
+                    بيغيّر الشريط اللي تحت الصورة («شرح يبسّط الصعب…») والرموز
+                    اللي بتتحرك في الخلفية، عشان تناسب مادتك.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(SUBJECT_THEMES).map(([key, t]) => {
+                      const active = (form.subjectTheme || "math") === key;
+                      return (
+                        <button
+                          type="button"
+                          key={key}
+                          aria-pressed={active}
+                          onClick={() =>
+                            setForm((f) => ({ ...f, subjectTheme: key }))
+                          }
+                          className={`rounded-full border px-4 py-1.5 text-sm font-bold transition ${active ? "border-brand-600 bg-brand-600 text-white" : "border-ink-200 hover:border-brand-400"}`}
+                        >
+                          {t.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="rounded-xl bg-ink-50 p-3 text-xs leading-6">
+                    <span className="text-ink-400">هيظهر للزوار: </span>
+                    {themeFor(form.subjectTheme).strip.map(([, t]) => t).join(" · ")}
+                    {form.headline !== themeFor(form.subjectTheme).headline && (
+                      <button
+                        type="button"
+                        className="block mt-1 font-bold text-brand-700 hover:underline"
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            headline: themeFor(f.subjectTheme).headline,
+                          }))
+                        }
+                      >
+                        استخدم عنوان مقترح: «{themeFor(form.subjectTheme).headline}»
+                      </button>
+                    )}
+                  </div>
+                </fieldset>
+                <label className="flex gap-3 items-start text-sm">
+                  <input
+                    type="checkbox"
+                    checked={!!form.typingEffect}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, typingEffect: e.target.checked }))
+                    }
+                  />
+                  <span>
+                    كتابة العنوان الرئيسي كلمة كلمة
+                    <small className="block mt-1 text-ink-400">
+                      العنوان بيظهر للزائر كأن حد بيكتبه قدامه دلوقتي. اقفلها لو
+                      عايز العنوان يظهر كامل على طول.
+                    </small>
+                  </span>
+                </label>
                 <label className="flex gap-3 items-start text-sm">
                   <input
                     type="checkbox"

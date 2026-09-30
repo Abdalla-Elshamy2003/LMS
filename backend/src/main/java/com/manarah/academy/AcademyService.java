@@ -49,19 +49,24 @@ public class AcademyService {
             this(name, slug, username, password, null);
         }
     }
-    /** {@code videos} and {@code gallery} left null keep what the page already has. */
+    /** Subjects a public page can be dressed for; the frontend holds the matching copy and notation. */
+    public static final Set<String> SUBJECT_THEMES =
+            Set.of("math", "physics", "chemistry", "history", "geography", "arabic", "philosophy");
+
+    /** {@code videos}, {@code gallery}, {@code subjectTheme} and {@code typingEffect} left null keep what the page already has. */
     public record Content(String name, String tagline, String headline, String description, String aboutText,
                           String subject, String phone, boolean demoContent, boolean published, List<Video> videos,
-                          String instapayNumber, String vodafoneCashNumber, String paymentNote, List<String> gallery) {
+                          String instapayNumber, String vodafoneCashNumber, String paymentNote, List<String> gallery,
+                          String subjectTheme, Boolean typingEffect) {
         public Content(String name, String tagline, String headline, String description, String aboutText,
                        String subject, String phone, boolean demoContent, boolean published, List<Video> videos) {
-            this(name, tagline, headline, description, aboutText, subject, phone, demoContent, published, videos, "", "", "", null);
+            this(name, tagline, headline, description, aboutText, subject, phone, demoContent, published, videos, "", "", "", null, null, null);
         }
         public Content(String name, String tagline, String headline, String description, String aboutText,
                        String subject, String phone, boolean demoContent, boolean published, List<Video> videos,
                        String instapayNumber, String vodafoneCashNumber, String paymentNote) {
             this(name, tagline, headline, description, aboutText, subject, phone, demoContent, published, videos,
-                    instapayNumber, vodafoneCashNumber, paymentNote, null);
+                    instapayNumber, vodafoneCashNumber, paymentNote, null, null, null);
         }
     }
     public record Video(String title, String description, String url, String poster, String category) {}
@@ -149,6 +154,11 @@ public class AcademyService {
         String phone = req.phone() == null ? "" : req.phone().trim();
         if (!phone.isEmpty() && !phone.matches("[+0-9 ()-]{7,25}")) throw new BadRequestException("رقم التواصل غير صحيح");
         a.setPhone(phone); a.setDemoContent(req.demoContent()); a.setPublished(req.published());
+        if (req.subjectTheme() != null) {
+            if (!SUBJECT_THEMES.contains(req.subjectTheme())) throw new BadRequestException("اختيار المادة غير صحيح");
+            a.setSubjectTheme(req.subjectTheme());
+        }
+        if (req.typingEffect() != null) a.setTypingEffect(req.typingEffect());
         String instapay = req.instapayNumber() == null ? "" : req.instapayNumber().trim();
         String vodafone = req.vodafoneCashNumber() == null ? "" : req.vodafoneCashNumber().trim();
         if (instapay.length() > 40) throw new BadRequestException("رقم إنستاباي طويل جداً");

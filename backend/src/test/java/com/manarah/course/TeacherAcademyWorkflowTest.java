@@ -89,7 +89,16 @@ class TeacherAcademyWorkflowTest {
         mvc.perform(get("/api/public/academies/test-math")).andExpect(status().isNotFound());
         content.put("published", true);
         mvc.perform(put("/api/academies/" + aid).header("Authorization", "Bearer " + teacher).contentType(MediaType.APPLICATION_JSON).content(body(content))).andExpect(status().isOk());
-        mvc.perform(get("/api/public/academies/test-math")).andExpect(status().isOk()).andExpect(jsonPath("$.profile.headline").value("عنوان جديد محفوظ")).andExpect(jsonPath("$.profile.photoData").doesNotExist());
+        mvc.perform(get("/api/public/academies/test-math")).andExpect(status().isOk()).andExpect(jsonPath("$.profile.headline").value("عنوان جديد محفوظ")).andExpect(jsonPath("$.profile.photoData").doesNotExist())
+            .andExpect(jsonPath("$.profile.subjectTheme").value("math")).andExpect(jsonPath("$.profile.typingEffect").value(false));
+        // The page's subject look and the typed headline: saved when sent, kept when a caller leaves them out.
+        content.put("subjectTheme", "history"); content.put("typingEffect", true);
+        mvc.perform(put("/api/academies/" + aid).header("Authorization", "Bearer " + teacher).contentType(MediaType.APPLICATION_JSON).content(body(content))).andExpect(status().isOk());
+        content.remove("subjectTheme"); content.remove("typingEffect");
+        mvc.perform(put("/api/academies/" + aid).header("Authorization", "Bearer " + teacher).contentType(MediaType.APPLICATION_JSON).content(body(content))).andExpect(status().isOk());
+        mvc.perform(get("/api/public/academies/test-math")).andExpect(jsonPath("$.profile.subjectTheme").value("history")).andExpect(jsonPath("$.profile.typingEffect").value(true));
+        content.put("subjectTheme", "astrology");
+        mvc.perform(put("/api/academies/" + aid).header("Authorization", "Bearer " + teacher).contentType(MediaType.APPLICATION_JSON).content(body(content))).andExpect(status().isBadRequest());
     }
 
     @Test void teacherEmailLoginGalleryAndBaccalaureateYears() throws Exception {

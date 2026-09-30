@@ -17,11 +17,11 @@ const spread = (n, salt) => {
   return v - Math.floor(v)
 }
 
-export default function MathBackdrop({ count = 16, className = '' }) {
+export default function MathBackdrop({ count = 16, className = '', symbols = SYMBOLS }) {
   return (
     <div className={`tl-math-bg ${className}`} aria-hidden="true">
       {Array.from({ length: count }, (_, i) => {
-        const symbol = SYMBOLS[i % SYMBOLS.length]
+        const symbol = symbols[i % symbols.length]
         const top = 4 + spread(i, 1) * 90
         const left = 2 + spread(i, 2) * 94
         const size = 15 + spread(i, 3) * 34

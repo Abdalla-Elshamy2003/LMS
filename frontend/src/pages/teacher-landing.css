@@ -162,6 +162,16 @@
 
 a.tl-cover{display:block;cursor:pointer}
 
+/* Typed hero headline: words are all laid out up front and faded in one by one, behind a blinking caret. */
+.tl-typed>span{opacity:0;transition:opacity .25s}
+.tl-typed>span.in{opacity:1}
+.tl-caret{display:inline-block;width:0;height:.85em;border-inline-start:3px solid var(--orange);margin-inline:.06em -3px;vertical-align:-.08em;animation:tl-caret .9s steps(1) infinite}
+.tl-caret.done{animation:tl-caret .9s steps(1) 4 forwards}
+@keyframes tl-caret{50%{opacity:0}}
+/* Subjects whose notation is Arabic words (history, Arabic, ...) drop the italic Georgia face used for formulas. */
+.tl-words .tl-marquee span,.tl-words .tl-math-bg span,.tl-words .tl-formula,.tl-words .tl-cta-math{font-family:'Cairo',sans-serif;font-style:normal;font-weight:700}
+.tl-words .tl-marquee span{font-size:20px}
+
 @media(prefers-reduced-motion:reduce){.teacher-site *,.tl-auth *{scroll-behavior:auto!important;animation:none!important;transition:none!important}.tl-sat{opacity:1!important}.tl-math-bg{display:none!important}.tl-slide:nth-child(2n){padding-top:0}}
 /* The quiet way in for a student who already paid and holds the teacher's code. */
 .tl-code-link{display:inline-block;margin-top:10px;font-size:10px;font-weight:700;color:#6f7f87;text-decoration:underline;text-underline-offset:3px}.tl-code-link:hover{color:var(--blue)}
@@ -187,3 +197,4 @@ a.tl-cover{display:block;cursor:pointer}
 .tl-poster-view .tl-modal-close{left:10px;top:10px;z-index:2;width:38px;height:38px;border-radius:50%;background:#fffffff0;display:grid;place-items:center;color:#14354b}
 @media(max-width:1050px){.tl-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.tl-gallery{gap:12px}.tl-poster{border-width:4px;border-radius:14px}.tl-portrait.poster{max-width:340px}}
+

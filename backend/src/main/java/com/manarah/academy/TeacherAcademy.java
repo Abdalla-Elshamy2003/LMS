@@ -20,6 +20,10 @@ public class TeacherAcademy {
     private String description = "من أول فكرة لحد أصعب مسألة، هنفهم ونطبّق ونراجع سوا. رحلتك في الرياضيات تبدأ هنا، خطوة بخطوة مع مستر محمد سليمان.";
     private String aboutText = "أهلاً بيك! هنا بنحوّل المسائل الكبيرة لخطوات بسيطة. شرح منظّم، تدريب بعد كل درس، ومراجعة تثبّت المعلومة. هدفنا إنك تفهم الفكرة وتعرف تستخدمها بنفسك.";
     private String subject = "الرياضيات";
+    /** Which subject the public page is dressed for — one of {@link AcademyService#SUBJECT_THEMES}. */
+    private String subjectTheme = "math";
+    /** Whether the hero headline is revealed word by word, as if someone were typing it. */
+    private boolean typingEffect;
     private String phone = "";
     /** Manual payment instructions shown at checkout — no payment gateway required. */
     private String instapayNumber = "";
