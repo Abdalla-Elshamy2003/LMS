@@ -1,7 +1,7 @@
 import {
   Award, BarChart3, Bell, BookMarked, BookOpen, Building2, CalendarCheck, CalendarDays, ClipboardCheck, ClipboardList, CreditCard, DoorOpen,
   FileQuestion, GraduationCap, HeartHandshake, Inbox, Layers, LayoutDashboard, LogOut, Megaphone, MessagesSquare,
-  ScanLine, ShieldCheck, SlidersHorizontal, Trophy, UserCog, UserRound, UserX, Users, Wallet,
+  Receipt, ScanLine, ShieldCheck, SlidersHorizontal, Trophy, UserCog, UserRound, UserX, Users, Wallet,
 } from 'lucide-react'
 import { ADMIN_ROLES } from '../../lib/roles'
 
@@ -30,6 +30,7 @@ const ITEMS = {
   centerBooks: { to: '/app/center/books', label: 'الكتب والحجوزات', icon: BookMarked, roles: ['CENTER_ADMIN'] },
   centerSettings: { to: '/app/center/settings', label: 'إعدادات السنتر', icon: SlidersHorizontal, roles: ['CENTER_ADMIN'] },
   myPackage: { to: '/app/my-package', label: 'باقتي', icon: Layers, roles: ['STUDENT'] },
+  myPayments: { to: '/app/my-payments', label: 'مدفوعاتي', icon: Receipt, roles: ['STUDENT'] },
   assistants: { to: '/app/assistants', label: 'المساعدون (إنشاء حساب)', icon: UserCog, roles: ['TEACHER'] },
   family: { to: '/app/family', label: 'متابعة الأبناء', icon: HeartHandshake, roles: ['PARENT'] },
   familyFinance: { to: '/app/family/finance', label: 'مصروفات الأبناء', icon: Wallet, roles: ['PARENT'] },
@@ -86,6 +87,7 @@ const LAYOUTS = {
   student: [
     { id: 'overview', title: 'نظرة عامة', items: ['dashboard', 'reports'] },
     { id: 'learning', title: 'التعلّم', items: ['myPackage', 'learning', 'courses', 'schedule'] },
+    { id: 'money', title: 'الاشتراك والدفع', items: ['myPayments'] },
     { id: 'assessment', title: 'التقييم', items: ['exams', 'homework', 'certificates'] },
     { id: 'activity', title: 'النشاط', items: ['attendance', 'leaderboard'] },
     { id: 'communication', title: 'التواصل', items: ['notifications', 'support', 'community'] },

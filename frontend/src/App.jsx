@@ -65,6 +65,8 @@ const ControlCenter = lazy(() => import('./pages/ControlCenter'))
 const TeacherStudio = lazy(() => import('./pages/TeacherStudio'))
 const BlocksPage = lazy(() => import('./pages/BlocksPage'))
 const MyPackage = lazy(() => import('./pages/MyPackage'))
+const MyPayments = lazy(() => import('./pages/MyPayments'))
+const InvoicePage = lazy(() => import('./pages/InvoicePage'))
 const Assistants = lazy(() => import('./pages/Assistants'))
 const CenterPass = lazy(() => import('./features/center/CenterPass'))
 const CenterScan = lazy(() => import('./features/center/CenterScan'))
@@ -160,6 +162,9 @@ export default function App() {
         <Route path="control/teachers/:academyId" element={<TeacherStudio />} />
         <Route path="blocks" element={<BlocksPage />} />
         <Route path="my-package" element={<MyPackage />} />
+        {/* A student's invoices; the payment gateway sends them back to an invoice's own page. */}
+        <Route path="my-payments" element={<MyPayments />} />
+        <Route path="my-payments/:id" element={<InvoicePage />} />
         <Route path="assistant" element={<AssistantDesk />} />
         <Route path="assistants" element={<Assistants />} />
         <Route path="rules" element={<Rules />} />

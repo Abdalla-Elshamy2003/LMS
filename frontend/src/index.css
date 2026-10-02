@@ -189,3 +189,12 @@ video::-webkit-media-controls-enclosure { overflow: hidden; }
   body.printing-cards .lg\:pr-64, body.printing-cards .lg\:pr-20 { padding-right: 0 !important; }
   body.printing-cards .center-card { break-inside: avoid; box-shadow: none; }
 }
+
+/* An invoice prints on its own: no sidebar, header or page padding, and its colours kept. */
+@media print {
+  body.printing-invoice { background: #fff; }
+  body.printing-invoice aside, body.printing-invoice header { display: none !important; }
+  body.printing-invoice main { padding: 0 !important; }
+  body.printing-invoice .lg\:pr-64, body.printing-invoice .lg\:pr-20 { padding-right: 0 !important; }
+  body.printing-invoice .invoice-sheet { box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

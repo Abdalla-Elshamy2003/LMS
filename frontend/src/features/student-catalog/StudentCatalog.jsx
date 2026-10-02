@@ -7,7 +7,7 @@ import { useAuth } from '../../lib/auth'
 import { fmtMoney, SCHOOL_YEARS } from '../../lib/format'
 import { distinctYears, forYear } from '../../lib/schoolYears'
 import { fmtDay, monthsLabel, planLabel, planPrice } from '../../lib/subscriptions'
-import PayForm, { usePlatformMethods } from '../payments/PayForm'
+import { usePlatformMethods } from '../payments/usePlatformMethods'
 import PaymentIcon, { METHOD_META } from '../../components/payments/PaymentIcon'
 import { courseHref } from '../../lib/courseNavigation'
 import { apiErrorMessage } from '../../lib/apiError'
@@ -144,7 +144,7 @@ export default function StudentCatalog({ compact = false }) {
 
       {waiting.length > 0 && (
         <Section title="مستني الدفع" tone="amber" hint={platform?.length
-          ? 'ادفع من «ادفع دلوقتي» وابعت بيانات التحويل — الإدارة بتأكّد والاشتراك يبدأ على طول.'
+          ? 'ادفع من «مدفوعاتي»: كود فوري أو فودافون كاش وإنستاباي — والاشتراك يبدأ أول ما الدفع يتأكد.'
           : 'حوّل للمدرس، وبعدها اكتب الكود اللي هيبعتهولك — أو المدرس يفعّله من عنده.'}>
           {waiting.map((c) => (
             <CourseCard key={c.id} c={c} plan={planOf(c)} focused={focus === c.id} badge={<Chip tone="amber"><Clock3 size={12} /> مستني الدفع</Chip>}>
@@ -207,7 +207,7 @@ export default function StudentCatalog({ compact = false }) {
       )}
 
       {payFor && <PayModal course={payFor.course} plan={payFor.plan} payment={data.payment} teacher={data.teacher} platform={platform}
-        onSent={async () => { setPayFor(null); setNotice('بعتنا الدفع للإدارة تراجعه. أول ما يتأكد اشتراكك هيبدأ على طول ويوصلك إشعار.'); await load() }}
+        onPayNow={(p) => nav(`/app/my-payments?plan=${p.id}`)}
         onClose={() => {
         setPayFor(null)
         if (focus) { params.delete('focus'); setParams(params, { replace: true }) }
@@ -322,9 +322,8 @@ function CourseCard({ c, plan, owned, badge, focused, children }) {
   )
 }
 
-function PayModal({ course, plan, payment, teacher, platform, onSent, onClose, onHaveCode }) {
-  const viaPlatform = platform?.length > 0 && plan?.pendingId
-  const amount = plan ? (plan.finalPrice != null ? fmtMoney(plan.finalPrice) : 'المبلغ') : fmtMoney(priceOf(course))
+function PayModal({ course, plan, payment, teacher, platform, onPayNow, onClose, onHaveCode }) {
+  const viaPlatform = platform?.length > 0 && plan
   const [copied, setCopied] = useState('')
   const copy = (text, key) => navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1500) })
   return (
@@ -338,7 +337,18 @@ function PayModal({ course, plan, payment, teacher, platform, onSent, onClose, o
         {viaPlatform ? (
           <>
             {plan.paymentStatus === 'REJECTED' && <p className="rounded-2xl bg-rose-50 p-3 text-xs font-bold leading-6 text-rose-700">الدفع اللي فات ما اتأكدش: {plan.paymentNote}</p>}
-            <PayForm methods={platform} subscriptionId={plan.pendingId} amountText={amount} onSent={onSent} />
+            <div className="rounded-2xl border border-ink-100 p-4">
+              <p className="text-sm font-bold text-ink-700">ادفع من «مدفوعاتي» بالطريقة اللي تريحك:</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {platform.map((m) => (
+                  <span key={m.code} className="flex items-center gap-1.5 rounded-full bg-ink-50 py-1 pl-3 pr-1 text-xs font-bold text-ink-600">
+                    <PaymentIcon code={m.code} size={22} /> {METHOD_META[m.code]?.label || m.name}{Number(m.feePercent) > 0 ? ` (+${Number(m.feePercent).toLocaleString('ar-EG')}٪)` : ''}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-2 text-xs leading-6 text-ink-500">بتختار المدة وطريقة الدفع وبتطلعلك فاتورة برقم — بكود فوري تدفع بيه في أي فرع، أو برقم التحويل.</p>
+            </div>
+            <button type="button" onClick={() => onPayNow(plan)} className="btn-primary w-full justify-center py-3"><Wallet size={16} /> ادفع دلوقتي</button>
             <button type="button" onClick={onHaveCode} className="btn-ghost w-full justify-center text-xs"><KeyRound size={14} /> معايا كود اشتراك</button>
           </>
         ) : <>

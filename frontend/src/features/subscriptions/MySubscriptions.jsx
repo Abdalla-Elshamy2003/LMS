@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { CalendarClock, GraduationCap, RefreshCw } from 'lucide-react'
 import api from '../../lib/api'
@@ -15,28 +16,29 @@ const STATUS = {
   CANCELLED: ['متوقف', 'bg-rose-50 text-rose-700'],
 }
 
-/** The student's subscriptions with every teacher they have: the day each started, the day it ends, days left, renew. */
+/**
+ * The student's subscriptions with every teacher they have: the day each started, the day it ends, days left. Renewing
+ * (or paying a waiting one) happens in «مدفوعاتي», in that teacher's space.
+ */
 export default function MySubscriptions() {
   const { switchTeacher } = useAuth()
+  const navigate = useNavigate()
   const [rows, setRows] = useState(null)
-  const [busy, setBusy] = useState(null), [note, setNote] = useState(''), [error, setError] = useState('')
-  const load = () => api.get('/me/subscriptions').then((r) => setRows(r.data)).catch(() => setRows([]))
-  useEffect(() => { load() }, [])
+  const [busy, setBusy] = useState(null), [error, setError] = useState('')
+  useEffect(() => { api.get('/me/subscriptions').then((r) => setRows(r.data)).catch(() => setRows([])) }, [])
 
-  const renew = async (s) => {
-    setBusy(s.planId); setError(''); setNote('')
-    try {
-      await api.post(`/me/plans/${s.planId}/request`)
-      setNote(`طلب التجديد اتبعت لـ${s.teacher}. حوّل المبلغ وهيفعّله أو يبعتلك كود.`)
-      await load()
-    } catch (e) { setError(apiErrorMessage(e, 'تعذّر إرسال طلب التجديد')) } finally { setBusy(null) }
+  const pay = async (s) => {
+    const target = `/app/my-payments?plan=${s.planId}`
+    if (s.current || !s.seatUserId) return navigate(target)
+    setBusy(s.planId); setError('')
+    try { await switchTeacher(s.seatUserId, target) }
+    catch (e) { setError(apiErrorMessage(e, 'تعذّر فتح حساب المدرس')); setBusy(null) }
   }
 
   if (!rows || rows.length === 0) return null
   return (
     <motion.section variants={fadeUp} className="card p-5 sm:p-6">
       <h3 className="flex items-center gap-2 text-base font-extrabold text-ink-800"><CalendarClock size={18} className="text-brand-600" /> اشتراكاتي</h3>
-      {note && <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{note}</p>}
       {error && <p role="alert" className="mt-3 rounded-xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{error}</p>}
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         {rows.map((s) => {
@@ -68,18 +70,17 @@ export default function MySubscriptions() {
                   <p className={`mt-1.5 text-xs font-bold ${s.daysLeft <= 7 ? 'text-amber-700' : 'text-emerald-700'}`}>باقي {Number(s.daysLeft).toLocaleString('ar-EG')} يوم</p>
                 </div>
               )}
-              {s.status === 'PENDING' && <p className="mt-3 text-xs leading-6 text-amber-800">حوّل للمدرس ({planPrice({ finalPrice: s.price, months: s.months })}) وهيفعّل اشتراكك أو يبعتلك كود.</p>}
-              {s.renewalPending && <p className="mt-3 text-xs leading-6 text-amber-800">طلب التجديد مستني الدفع ({planPrice({ finalPrice: s.price, months: s.months })}).</p>}
+              {s.status === 'PENDING' && <p className="mt-3 text-xs leading-6 text-amber-800">مستني الدفع ({planPrice({ finalPrice: s.price, months: s.months })}) — ادفعه من «مدفوعاتي».</p>}
+              {s.renewalPending && <p className="mt-3 text-xs leading-6 text-amber-800">التجديد مستني الدفع ({planPrice({ finalPrice: s.price, months: s.months })}) — ادفعه من «مدفوعاتي».</p>}
 
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs text-ink-400">{s.price != null ? `${fmtMoney(s.price)} لمدة ${monthsLabel(s.months)}` : `لمدة ${monthsLabel(s.months)}`}</p>
                 <div className="flex gap-2">
                   {!s.current && s.seatUserId && <button type="button" onClick={() => switchTeacher(s.seatUserId, '/app/courses')} className="btn-ghost text-xs">افتح كورساته</button>}
-                  {s.status !== 'PENDING' && !s.renewalPending && (
-                    <button type="button" disabled={busy === s.planId} onClick={() => renew(s)} className="btn-soft text-xs">
-                      {busy === s.planId ? <Spinner className="h-4 w-4 border-brand-200 border-t-brand-600" /> : <RefreshCw size={14} />} جدّد
-                    </button>
-                  )}
+                  <button type="button" disabled={busy === s.planId} onClick={() => pay(s)} className="btn-soft text-xs">
+                    {busy === s.planId ? <Spinner className="h-4 w-4 border-brand-200 border-t-brand-600" /> : <RefreshCw size={14} />}
+                    {s.status === 'PENDING' || s.renewalPending ? 'ادفع' : 'جدّد'}
+                  </button>
                 </div>
               </div>
 

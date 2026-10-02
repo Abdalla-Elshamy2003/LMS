@@ -11,7 +11,7 @@ import { Spinner } from '../components/ui'
 import { SCHOOL_YEARS, GRADES, fmtMoney } from '../lib/format'
 import { yearKey, sameYear, distinctYears } from '../lib/schoolYears'
 import { monthsLabel, planLabel, planPrice } from '../lib/subscriptions'
-import { usePlatformMethods } from '../features/payments/PayForm'
+import { usePlatformMethods } from '../features/payments/usePlatformMethods'
 import PaymentIcon, { METHOD_META } from '../components/payments/PaymentIcon'
 import { qrDataUrl } from '../lib/qr'
 import { studentVerifyUrl } from '../features/student-verification/studentVerificationApi'
@@ -437,13 +437,14 @@ function Welcome({ done, pass, qr, email, onGo }) {
           <p className="text-sm font-extrabold text-amber-900">فاضل الدفع: {plan ? planPrice(plan) : 'تواصل مع المدرس للسعر'}</p>
           {platform?.length > 0 ? (
             <div className="mt-3 space-y-2">
-              {platform.map((m) => (
-                <button key={m.code} type="button" onClick={() => copy(m.account, m.code)} className="flex w-full items-center justify-between gap-3 rounded-2xl bg-white p-2.5 text-right">
-                  <span className="flex items-center gap-2 text-sm font-bold text-ink-700"><PaymentIcon code={m.code} size={28} /> {METHOD_META[m.code]?.label || m.name}</span>
-                  <span dir="ltr" className="flex items-center gap-2 font-mono text-sm">{m.account} <Copy size={13} />{copied === m.code && <span className="text-[11px]">تم النسخ</span>}</span>
-                </button>
-              ))}
-              <p className="text-xs leading-6 text-amber-800">بعد التحويل ادخل «كورساتي» ودوس «ادفع دلوقتي» وابعت رقم العملية وصورة الإيصال — الإدارة بتأكّد واشتراكك يبدأ على طول.</p>
+              <div className="flex flex-wrap gap-2">
+                {platform.map((m) => (
+                  <span key={m.code} className="flex items-center gap-1.5 rounded-full bg-white py-1 pl-3 pr-1 text-xs font-bold text-ink-700">
+                    <PaymentIcon code={m.code} size={24} /> {METHOD_META[m.code]?.label || m.name}{Number(m.feePercent) > 0 ? ` (+${Number(m.feePercent).toLocaleString('ar-EG')}٪)` : ''}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs leading-6 text-amber-800">ادخل «مدفوعاتي» من القائمة، اختار المدة وطريقة الدفع وهتطلعلك فاتورة بالمبلغ: كود فوري تدفع بيه في أي فرع، أو رقم فودافون كاش / إنستاباي تحوّل عليه وتبعت السكرين. اشتراكك يبدأ أول ما الدفع يتأكد.</p>
             </div>
           ) : hasPayment ? (
             <div className="mt-3 space-y-2">

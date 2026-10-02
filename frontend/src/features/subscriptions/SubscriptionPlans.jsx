@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { CalendarClock, Copy, KeyRound, Plus, RefreshCw, Save, Users, XCircle } from 'lucide-react'
+import { CalendarClock, Copy, KeyRound, Plus, RefreshCw, Save, Trash2, Users, XCircle } from 'lucide-react'
 import api from '../../lib/api'
 import { fmtMoney, SCHOOL_YEARS } from '../../lib/format'
 import { apiErrorMessage } from '../../lib/apiError'
@@ -59,6 +59,15 @@ function PlanRow({ plan, onSaved, onSubscribers, onCodes }) {
     price: plan.price ?? '', discountPercent: plan.discountPercent || 0, months: plan.months || 2, active: plan.active !== false,
   })
   const [custom, setCustom] = useState(!MONTH_CHOICES.includes(plan.months || 2))
+  // Other lengths at their own price for the whole period (e.g. 6 months for 500), next to the main one.
+  const [extras, setExtras] = useState(() => (plan.extraOptions || []).map((o) => ({ months: o.months, price: String(o.price) })))
+  const setExtra = (i, k, v) => { setSaved(false); setExtras(extras.map((x, j) => (j === i ? { ...x, [k]: v } : x))) }
+  const freeMonths = (keep) => Array.from({ length: 24 }, (_, i) => i + 1)
+    .filter((m) => m === keep || (m !== Number(form.months) && !extras.some((x) => x.months === m)))
+  const addExtra = () => {
+    const free = freeMonths(), m = [6, 3, 12].find((v) => free.includes(v)) ?? free[0]
+    if (m) { setSaved(false); setExtras([...extras, { months: m, price: '' }]) }
+  }
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [saved, setSaved] = useState(false)
   const set = (k) => (e) => { setSaved(false); setForm({ ...form, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }) }
   const price = Number(form.price) || 0, discount = Number(form.discountPercent) || 0
@@ -70,6 +79,7 @@ function PlanRow({ plan, onSaved, onSubscribers, onCodes }) {
       await api.put('/plans', {
         id: plan.id, year: plan.year, subject: plan.subject,
         price: form.price === '' ? null : Number(form.price), discountPercent: discount, months: Number(form.months), active: form.active,
+        extraOptions: extras.filter((x) => x.price !== '').map((x) => ({ months: Number(x.months), price: Number(x.price) })),
       })
       setSaved(true); await onSaved()
     } catch (e) { setError(apiErrorMessage(e, 'تعذّر حفظ السعر')) } finally { setBusy(false) }
@@ -109,6 +119,28 @@ function PlanRow({ plan, onSaved, onSubscribers, onCodes }) {
         <p className="text-sm text-ink-600">
           {price ? <>الطالب يدفع <b className="text-brand-700">{fmtMoney(final)}</b> {perMonths(form.months)}{discount > 0 && <del className="mr-1 text-xs text-ink-400">{fmtMoney(price)}</del>}</> : 'حط السعر عشان يظهر للطلاب'}
         </p>
+      </div>
+      <div className="mt-3 rounded-2xl bg-ink-50 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-bold text-ink-600">مدد تانية بسعر خاص <span className="font-normal text-ink-400">— الطالب يختار وهو بيدفع</span></p>
+          {extras.length < 6 && price > 0 && <button type="button" onClick={addExtra} className="btn-ghost text-xs"><Plus size={14} /> مدة</button>}
+        </div>
+        {extras.length === 0 ? (
+          <p className="mt-1 text-[11px] leading-5 text-ink-400">مثلاً ٦ شهور بسعر أقل من ٦ × سعر الشهر، عشان تشجّع الاشتراك الطويل.</p>
+        ) : (
+          <div className="mt-2 space-y-2">
+            {extras.map((x, i) => (
+              <div key={i} className="flex flex-wrap items-center gap-2">
+                <select className="input w-32" value={x.months} onChange={(e) => setExtra(i, 'months', Number(e.target.value))} aria-label="المدة">
+                  {freeMonths(x.months).map((m) => <option key={m} value={m}>{monthsLabel(m)}</option>)}
+                </select>
+                <input type="number" min="1" className="input w-32" value={x.price} onChange={(e) => setExtra(i, 'price', e.target.value)} placeholder="السعر كله" aria-label="سعر المدة كلها" />
+                <span className="text-[11px] text-ink-500">{Number(x.price) > 0 ? `يعني ${fmtMoney(Number(x.price) / x.months)} في الشهر` : 'ج.م للمدة كلها'}</span>
+                <button type="button" onClick={() => { setSaved(false); setExtras(extras.filter((_, j) => j !== i)) }} className="mr-auto text-ink-400 hover:text-rose-600" aria-label="شيل المدة"><Trash2 size={15} /></button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       {error && <p role="alert" className="mt-2 rounded-xl bg-rose-50 p-2 text-xs font-bold text-rose-700">{error}</p>}
       <div className="mt-3 flex flex-wrap gap-2">
