@@ -157,6 +157,24 @@ class InvoiceFlowTest {
         assertThat(fresh.path("status").asText()).isEqualTo("UNPAID");
         assertThat(fresh.path("fawryCode").asText()).isNotEqualTo(late.path("fawryCode").asText());
 
+        // A student who only sent the screenshot on WhatsApp: head office finds the invoice by its number and confirms it.
+        String three = register("طالب تالت", "pay.three@example.com", "01011116666");
+        var insta = ok(call(post("/api/me/invoices"), three, Map.of("planId", plan, "months", 6, "method", "INSTAPAY")));
+        assertThat(insta.path("total").decimalValue()).isEqualByComparingTo("500");
+        assertThat(insta.path("planId").asLong()).isEqualTo(plan);
+        String typed = " " + insta.path("number").asText().substring(3).toLowerCase() + " ";
+        call(get("/api/admin/invoices/lookup").param("number", typed), teacher, null).andExpect(status().isForbidden());
+        var found = ok(call(get("/api/admin/invoices/lookup").param("number", typed), admin, null));
+        assertThat(found.path("id").asLong()).isEqualTo(insta.path("id").asLong());
+        assertThat(found.path("studentName").asText()).isEqualTo("طالب تالت");
+        call(post("/api/admin/invoices/" + fawry.path("id").asLong() + "/confirm"), admin, Map.of("reference", "x")).andExpect(status().isBadRequest());
+        var confirmed = ok(call(post("/api/admin/invoices/" + found.path("id").asLong() + "/confirm"), admin, Map.of("reference", "IPN-55")));
+        assertThat(confirmed.path("status").asText()).isEqualTo("PAID");
+        assertThat(Instant.parse(confirmed.path("periodEndsAt").asText())).isAfter(Instant.now().plus(170, ChronoUnit.DAYS));
+        call(post("/api/admin/invoices/" + found.path("id").asLong() + "/confirm"), admin, Map.of()).andExpect(status().isConflict());
+        call(get("/api/courses/" + course), three, null).andExpect(status().isOk());
+        assertThat(ok(call(get("/api/admin/payments/summary"), admin, null)).path("total").decimalValue()).isEqualByComparingTo("1110");
+
         // The older pay screen goes through an invoice too: Vodafone Cash still costs 110 there.
         long pending = 0;
         for (JsonNode s : ok(call(get("/api/plans/requests"), teacher, null))) if (s.path("studentName").asText().equals("طالب تاني")) pending = s.path("id").asLong();

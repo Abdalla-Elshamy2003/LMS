@@ -81,7 +81,7 @@ public class InvoiceService {
                               String method, String methodName, boolean gateway, BigDecimal baseAmount, BigDecimal feePercent,
                               BigDecimal feeAmount, BigDecimal total, Instant createdAt, Instant expiresAt, Instant paidAt,
                               String fawryCode, String account, String accountName, String whatsapp, String instructions, String note,
-                              String studentName, String studentCode, String email, String phone, Instant periodEndsAt) {}
+                              String studentName, String studentCode, String email, String phone, Instant periodEndsAt, Long planId) {}
 
     // ---- What a student can pay for, and with what ------------------------------------------------------------
 
@@ -302,12 +302,18 @@ public class InvoiceService {
             notices.headOffice(inv.getTenantId(), "دفع لطلب اتقفل قبل كده",
                     "فاتورة " + inv.getNumber() + " اتدفعت (" + inv.getTotal().toPlainString() + " ج.م) لطلب اشتراك مبقاش مستني دفع. راجع الطالب.");
         }
-        if (FAWRY.equals(inv.getMethodCode())) {
-            PaymentSubmission p = new PaymentSubmission();
+        // Every paid invoice counts once in head office's totals: as the receipt it was approved by, or as a record made here.
+        PaymentSubmission p = submissions.findFirstByInvoiceIdOrderByIdDesc(inv.getId())
+                .filter(x -> !PaymentSubmission.REJECTED.equals(x.getStatus())).orElse(null);
+        if (p == null) {
+            p = new PaymentSubmission();
             p.setTenantId(inv.getTenantId()); p.setStudentId(inv.getStudentId()); p.setPlanSubscriptionId(inv.getPlanSubscriptionId());
-            p.setInvoiceId(inv.getId()); p.setMethodCode(FAWRY); p.setAmount(inv.getTotal());
-            p.setReference(Objects.toString(reference, "")); p.setSender(""); p.setStatus(PaymentSubmission.APPROVED);
-            p.setNote("اتأكد من فوري تلقائياً"); p.setReviewedAt(now); p.setCreatedAt(now);
+            p.setInvoiceId(inv.getId()); p.setMethodCode(inv.getMethodCode()); p.setSender(""); p.setCreatedAt(now);
+            p.setReference(Objects.toString(reference, ""));
+            p.setNote(FAWRY.equals(inv.getMethodCode()) ? "اتأكد من فوري تلقائياً" : "اتأكد من الإدارة برقم الفاتورة");
+        }
+        if (!PaymentSubmission.APPROVED.equals(p.getStatus())) {
+            p.setStatus(PaymentSubmission.APPROVED); p.setAmount(inv.getTotal()); p.setReviewedBy(by); p.setReviewedAt(now);
             submissions.save(p);
         }
         PlanSubscription started = subs.findById(sub.getId()).orElseThrow();
@@ -318,6 +324,30 @@ public class InvoiceService {
         audit.record(new UserPrincipal(by, inv.getTenantId(), null, by == null ? "بوابة الدفع" : "الإدارة", null, Role.SUPER_ADMIN),
                 "INVOICE_PAID", "PaymentInvoice", inv.getId(), null, source + " " + inv.getTotal().toPlainString());
         return true;
+    }
+
+    /** An invoice by the number the student sends with their screenshot (on WhatsApp, say); "dr-abc" and "ABC" work too. */
+    @Transactional
+    public InvoiceView byNumber(String number) {
+        String n = Objects.toString(number, "").trim().toUpperCase(Locale.ROOT).replaceAll("\\s+", "");
+        if (!n.startsWith("DR-")) n = "DR-" + n;
+        PaymentInvoice inv = invoices.findByNumber(n).orElseThrow(() -> new NotFoundException("مفيش فاتورة بالرقم ده"));
+        expireIfDue(inv, Instant.now());
+        return view(inv);
+    }
+
+    /**
+     * Head office saw the transfer outside the app (the screenshot on WhatsApp) and confirms a wallet invoice by hand.
+     * Fawry invoices are left to the gateway, so a code can't be paid once here and again at the kiosk.
+     */
+    @Transactional
+    public InvoiceView confirm(Long invoiceId, Long by, String reference) {
+        PaymentInvoice inv = invoices.findById(invoiceId).orElseThrow(() -> NotFoundException.of("الفاتورة", invoiceId));
+        if (FAWRY.equals(inv.getMethodCode())) throw new BadRequestException("فاتورة فوري بتتأكد لوحدها من بوابة الدفع");
+        if (PaymentInvoice.PAID.equals(inv.getStatus())) throw new ConflictException("الفاتورة دي اتدفعت قبل كده");
+        if (!inv.open()) throw new ConflictException("الفاتورة دي اتلغت — الطالب يعمل فاتورة جديدة");
+        markPaid(invoiceId, by, "MANUAL", reference);
+        return view(invoices.findById(invoiceId).orElseThrow());
     }
 
     /** Head office sent the receipt back: the invoice waits for payment again, with the reason. */
@@ -430,13 +460,15 @@ public class InvoiceService {
         Student st = students.findById(inv.getStudentId()).orElse(null);
         User owner = st == null || st.getUserId() == null ? null : users.findById(st.getUserId()).map(linked::owner).orElse(null);
         String email = owner == null || owner.getEmail() == null || owner.getEmail().endsWith("@accounts.local") ? "" : owner.getEmail();
-        Instant periodEnds = subs.findById(inv.getPlanSubscriptionId()).map(PlanSubscription::getEndsAt).orElse(null);
+        PlanSubscription sub = subs.findById(inv.getPlanSubscriptionId()).orElse(null);
+        Instant periodEnds = sub == null ? null : sub.getEndsAt();
         return new InvoiceView(inv.getId(), inv.getNumber(), inv.getStatus(), inv.getDescription(), teacherName(inv.getTenantId()),
                 inv.getMonths(), inv.getMethodCode(), m == null ? inv.getMethodCode() : m.getName(), FAWRY.equals(inv.getMethodCode()),
                 inv.getBaseAmount(), inv.getFeePercent(), inv.getFeeAmount(), inv.getTotal(), inv.getCreatedAt(), inv.getExpiresAt(),
                 inv.getPaidAt(), inv.getFawryCode(), how == null ? "" : how.account(), how == null ? "" : how.accountName(),
                 how == null ? "" : how.whatsapp(), how == null ? "" : how.instructions(), inv.getNote(),
                 st == null ? "" : st.getFullName(), st == null ? "" : Objects.toString(st.getCode(), ""), email,
-                st == null ? "" : Objects.toString(st.getPhone(), ""), PaymentInvoice.PAID.equals(inv.getStatus()) ? periodEnds : null);
+                st == null ? "" : Objects.toString(st.getPhone(), ""), PaymentInvoice.PAID.equals(inv.getStatus()) ? periodEnds : null,
+                sub == null ? null : sub.getPlanId());
     }
 }

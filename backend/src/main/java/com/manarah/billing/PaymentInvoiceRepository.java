@@ -15,6 +15,7 @@ public interface PaymentInvoiceRepository extends JpaRepository<PaymentInvoice, 
     List<PaymentInvoice> findByPlanSubscriptionIdOrderByIdDesc(Long planSubscriptionId);
     Optional<PaymentInvoice> findByGatewayInvoiceId(String gatewayInvoiceId);
     Optional<PaymentInvoice> findByGatewayInvoiceKey(String gatewayInvoiceKey);
+    Optional<PaymentInvoice> findByNumber(String number);
     boolean existsByNumber(String number);
 
     /** The invoice, locked until the transaction ends — so a repeated webhook and an approval can't both pay it. */

@@ -176,6 +176,18 @@ public class BillingService {
         return new Receipt(p.getReceiptType(), Base64.getDecoder().decode(p.getReceiptData()));
     }
 
+    /** Head office looks up the invoice a student names (by its number, from WhatsApp or a call). */
+    public InvoiceService.InvoiceView invoiceByNumber(UserPrincipal actor, String number) {
+        bundles.requireHeadOffice(actor);
+        return invoices.byNumber(number);
+    }
+
+    /** Head office confirms a wallet transfer it saw outside the app; the subscription starts as with an approved receipt. */
+    public InvoiceService.InvoiceView confirmInvoice(UserPrincipal actor, Long id, String reference) {
+        bundles.requireHeadOffice(actor);
+        return invoices.confirm(id, actor.getId(), trim(reference, 120, "رقم العملية"));
+    }
+
     @Transactional
     public SubmissionView approve(UserPrincipal actor, Long id) {
         PaymentSubmission p = reviewable(actor, id);

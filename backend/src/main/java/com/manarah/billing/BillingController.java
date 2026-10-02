@@ -59,6 +59,19 @@ public class BillingController {
         return billing.reject(actor, id, body == null ? null : body.reason());
     }
 
+    public record ConfirmBody(String reference) {}
+
+    @GetMapping("/admin/invoices/lookup") @PreAuthorize(HEAD_OFFICE)
+    public InvoiceService.InvoiceView invoice(@AuthenticationPrincipal UserPrincipal actor, @RequestParam String number) {
+        return billing.invoiceByNumber(actor, number);
+    }
+
+    @PostMapping("/admin/invoices/{id}/confirm") @PreAuthorize(HEAD_OFFICE)
+    public InvoiceService.InvoiceView confirm(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id,
+                                              @RequestBody(required = false) ConfirmBody body) {
+        return billing.confirmInvoice(actor, id, body == null ? null : body.reference());
+    }
+
     /** The receipt photo, for head office or the student who sent it. Never cached by shared caches. */
     @GetMapping({"/admin/payments/{id}/receipt", "/me/payments/{id}/receipt"})
     public ResponseEntity<byte[]> receipt(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id) {
