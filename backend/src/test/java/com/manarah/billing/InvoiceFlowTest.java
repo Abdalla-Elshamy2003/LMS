@@ -64,6 +64,8 @@ class InvoiceFlowTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
     @Autowired FakeGateway gateway;
+    @Autowired PaymentSubmissionRepository submissions;
+    @Autowired com.manarah.subscription.PlanSubscriptionRepository subscriptions;
 
     ResultActions call(MockHttpServletRequestBuilder req, String token, Object body) throws Exception {
         if (token != null) req.header("Authorization", "Bearer " + token);
@@ -174,6 +176,19 @@ class InvoiceFlowTest {
         call(post("/api/admin/invoices/" + found.path("id").asLong() + "/confirm"), admin, Map.of()).andExpect(status().isConflict());
         call(get("/api/courses/" + course), three, null).andExpect(status().isOk());
         assertThat(ok(call(get("/api/admin/payments/summary"), admin, null)).path("total").decimalValue()).isEqualByComparingTo("1110");
+
+        // A receipt sent before invoices existed (none attached) can still be approved, and starts the subscription.
+        String four = register("طالب رابع", "pay.four@example.com", "01011117777");
+        ok(call(post("/api/me/plans/" + plan + "/request"), four, null));
+        long legacySub = 0;
+        for (JsonNode s : ok(call(get("/api/plans/requests"), teacher, null))) if (s.path("studentName").asText().equals("طالب رابع")) legacySub = s.path("id").asLong();
+        PaymentSubmission legacy = new PaymentSubmission();
+        var subRow = subscriptions.findById(legacySub).orElseThrow();
+        legacy.setTenantId(subRow.getTenantId()); legacy.setStudentId(subRow.getStudentId()); legacy.setPlanSubscriptionId(legacySub);
+        legacy.setMethodCode("VODAFONE_CASH"); legacy.setAmount(new BigDecimal("100")); legacy.setReference("OLD-1");
+        long legacyId = submissions.save(legacy).getId();
+        ok(call(post("/api/admin/payments/" + legacyId + "/approve"), admin, null));
+        call(get("/api/courses/" + course), four, null).andExpect(status().isOk());
 
         // The older pay screen goes through an invoice too: Vodafone Cash still costs 110 there.
         long pending = 0;

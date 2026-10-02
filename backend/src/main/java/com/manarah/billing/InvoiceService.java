@@ -92,7 +92,8 @@ public class InvoiceService {
 
     boolean available(PaymentMethod m) {
         if (!m.isEnabled()) return false;
-        return FAWRY.equals(m.getCode()) ? gateway.configured() : !m.getAccount().isBlank();
+        // Fawry also needs the site's public address: the gateway calls back to it when the code is paid.
+        return FAWRY.equals(m.getCode()) ? gateway.configured() && !appUrl.isBlank() : !m.getAccount().isBlank();
     }
 
     /** The current teacher's priced subscriptions (the student's own year first) with their lengths, and the methods. */
@@ -169,6 +170,7 @@ public class InvoiceService {
     }
 
     private void issueFawryCode(PaymentInvoice inv, Student seat) {
+        if (appUrl.isBlank()) throw new BadRequestException("الدفع بفوري مش متاح دلوقتي — اختار طريقة تانية");
         User owner = seat.getUserId() == null ? null : users.findById(seat.getUserId()).map(linked::owner).orElse(null);
         List<FawryGateway.Item> items = new ArrayList<>();
         items.add(new FawryGateway.Item(inv.getDescription(), inv.getBaseAmount()));

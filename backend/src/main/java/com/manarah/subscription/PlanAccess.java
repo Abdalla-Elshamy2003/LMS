@@ -283,7 +283,7 @@ public class PlanAccess {
             close(plan, s.getStudentId(), now);
             if (!running(plan.getId(), s.getStudentId(), now))
                 tellStudent(s, "اشتراك " + label(plan) + " خلص", "خلص يوم " + DAY.format(s.getEndsAt())
-                        + ". جدّده من «كورساتي» أو من ملفك الشخصي عشان الكورسات تتفتح تاني.");
+                        + ". جدّده من «مدفوعاتي» عشان الكورسات تتفتح تاني.");
         }
         return ended;
     }
@@ -301,7 +301,8 @@ public class PlanAccess {
                     .anyMatch(x -> !x.getId().equals(s.getId()) && runs(x, now) && x.getStartsAt() != null && !x.getStartsAt().isBefore(s.getEndsAt()));
             if (renewed) continue;
             plans.findById(s.getPlanId()).ifPresent(p -> tellStudent(s, "اشتراكك هيخلص قريب",
-                    "اشتراك " + label(p) + " هيخلص يوم " + DAY.format(s.getEndsAt()) + ". جدّده قبلها عشان الكورسات ما تتقفلش."));
+                    "اشتراك " + label(p) + " هيخلص يوم " + DAY.format(s.getEndsAt()) + ". جدّده من «مدفوعاتي» قبلها عشان الكورسات ما تتقفلش"
+                            + " — المدة الجديدة بتبدأ بعد الحالية، فمش هتخسر ولا يوم."));
             reminded++;
         }
         return reminded;
@@ -320,7 +321,8 @@ public class PlanAccess {
         if (teacher == null) return;
         String name = students.findById(studentId).map(s -> s.getFullName()).orElse("طالب");
         notifications.notify(p.getTenantId(), new NotifyCommand(teacher, null, "طلب اشتراك جديد",
-                name + " عايز يشترك في " + label(p) + " ومستني يدفع. أول ما تستلم الفلوس فعّله من «طلبات الاشتراك» في لوحتك أو ابعتله كود.",
+                name + " عايز يشترك في " + label(p) + " ومستني يدفع. الدفع بيتم من «مدفوعاتي» عند الطالب، والاشتراك بيتفعّل لوحده أول ما يتأكد."
+                        + " لو دفعلك إنت مباشرة فعّله من «طلبات الاشتراك» أو ابعتله كود.",
                 "SUBSCRIPTION", "SubscriptionPlan", p.getId(), List.of("IN_APP")));
     }
 

@@ -255,7 +255,7 @@ function MethodCard({ method }) {
           <p className={`rounded-xl p-3 text-xs leading-6 ${method.ready ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'}`}>
             {method.ready
               ? 'بوابة فواتيرك متوصلة: الطالب بياخد كود فوري والدفع بيتأكد لوحده.'
-              : <>محتاج مفاتيح فواتيرك على السيرفر (<span dir="ltr" className="font-mono">MANARAH_FAWATERAK_API_KEY</span> و <span dir="ltr" className="font-mono">MANARAH_FAWATERAK_VENDOR_KEY</span>). لحد ما تتحط، فوري مش هيظهر للطلاب.</>}
+              : <>محتاج مفاتيح فواتيرك على السيرفر (<span dir="ltr" className="font-mono">MANARAH_FAWATERAK_API_KEY</span> و <span dir="ltr" className="font-mono">MANARAH_FAWATERAK_VENDOR_KEY</span>) ورابط الموقع <span dir="ltr" className="font-mono">MANARAH_PUBLIC_APP_URL</span>. لحد ما تتحط، فوري مش هيظهر للطلاب.</>}
           </p>
         ) : <>
           <label className="block text-xs font-bold text-ink-500">{meta.account || 'الحساب'}
