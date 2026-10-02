@@ -61,8 +61,15 @@ public class PlanService {
     // ---- Teacher: plans and prices -------------------------------------------------------------------------------
 
     public record PlanRow(Long id, String year, String subject, BigDecimal price, int discountPercent, BigDecimal finalPrice,
-                          int months, boolean active, long running, long pending, List<String> courses) {}
-    public record PlanInput(Long id, String year, String subject, BigDecimal price, Integer discountPercent, Integer months, Boolean active) {}
+                          int months, boolean active, long running, long pending, List<String> courses,
+                          List<SubscriptionPlan.Option> extraOptions, List<SubscriptionPlan.Option> options) {}
+    /** {@code extraOptions}: other lengths at their own prices (null leaves them as they are). */
+    public record PlanInput(Long id, String year, String subject, BigDecimal price, Integer discountPercent, Integer months, Boolean active,
+                            List<SubscriptionPlan.Option> extraOptions) {
+        public PlanInput(Long id, String year, String subject, BigDecimal price, Integer discountPercent, Integer months, Boolean active) {
+            this(id, year, subject, price, discountPercent, months, active, null);
+        }
+    }
 
     /** Every plan, plus a row (with no id yet) for each year and subject the teacher's courses cover that isn't priced. */
     public List<PlanRow> plans(UserPrincipal actor) {
@@ -106,6 +113,7 @@ public class PlanService {
         p.setPrice(in.price());
         p.setDiscountPercent(discount);
         p.setMonths(months);
+        if (in.extraOptions() != null) p.setExtraOptions(extraOptions(in.extraOptions(), months));
         if (in.active() != null) p.setActive(in.active());
         p.setUpdatedAt(Instant.now());
         plans.save(p);
@@ -127,7 +135,24 @@ public class PlanService {
             titles = courses.findByTenantId(p.getTenantId()).stream().filter(c -> access.covers(p, c)).map(Course::getTitle).toList();
         }
         return new PlanRow(p.getId(), p.getYearLabel(), p.getSubject(), p.getPrice(), p.getDiscountPercent(), p.finalPrice(),
-                p.getMonths(), p.isActive(), running, pending, titles);
+                p.getMonths(), p.isActive(), running, pending, titles, p.extraOptions(), p.options());
+    }
+
+    /** The other lengths a teacher sells: 1–24 months each, a price above zero, no length twice, at most six. */
+    private static List<SubscriptionPlan.Option> extraOptions(List<SubscriptionPlan.Option> in, int baseMonths) {
+        if (in.size() > 6) throw new BadRequestException("ست مدد إضافية بحد أقصى");
+        Set<Integer> seen = new HashSet<>(Set.of(baseMonths));
+        List<SubscriptionPlan.Option> out = new ArrayList<>();
+        for (SubscriptionPlan.Option o : in) {
+            if (o == null) continue;
+            if (o.months() < 1 || o.months() > 24) throw new BadRequestException("مدة الاشتراك من شهر لحد ٢٤ شهر");
+            if (o.price() == null || o.price().signum() <= 0 || o.price().compareTo(new BigDecimal("1000000")) > 0)
+                throw new BadRequestException("اكتب سعر صحيح لمدة " + o.months() + " شهر");
+            if (!seen.add(o.months())) throw new BadRequestException("مدة " + o.months() + " شهر متكررة");
+            out.add(new SubscriptionPlan.Option(o.months(), o.price().setScale(2, java.math.RoundingMode.HALF_UP)));
+        }
+        out.sort(Comparator.comparingInt(SubscriptionPlan.Option::months));
+        return out;
     }
 
     // ---- Teacher: requests and subscribers -----------------------------------------------------------------------

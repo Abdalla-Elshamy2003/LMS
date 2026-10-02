@@ -18,4 +18,8 @@ public class PaymentMethod {
     private String instructions = "";
     private int sortOrder;
     private Instant updatedAt = Instant.now();
+    /** Added on top of the price, in percent (Vodafone Cash: 10 → 100 becomes 110). */
+    private java.math.BigDecimal feePercent = java.math.BigDecimal.ZERO;
+    /** Where manual payers send the screenshot of their transfer (WhatsApp); blank = the account number. */
+    private String whatsapp = "";
 }

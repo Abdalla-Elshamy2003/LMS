@@ -28,4 +28,6 @@ public class PaymentSubmission {
     private Long reviewedBy;
     private Instant reviewedAt;
     private Instant createdAt = Instant.now();
+    /** The invoice this payment answers (every payment goes through one since V40). */
+    private Long invoiceId;
 }

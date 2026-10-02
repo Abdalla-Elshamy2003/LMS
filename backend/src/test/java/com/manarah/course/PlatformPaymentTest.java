@@ -66,9 +66,11 @@ class PlatformPaymentTest {
 
     @Test void payThePlatformAndHeadOfficeStartsTheSubscription() throws Exception {
         String admin = login("admin@manarah.io", "manarah123");
-        // Nothing to pay with until head office sets a method up — and it can't be switched on empty.
-        assertThat(call(get("/api/public/payment-methods"), null, null, 200).size()).isZero();
+        // The platform starts with its own Vodafone Cash and InstaPay number (Fawry only once the gateway has keys),
+        // a method can't be switched on empty, and head office can switch one off.
+        assertThat(call(get("/api/public/payment-methods"), null, null, 200).findValuesAsText("code")).containsExactlyInAnyOrder("VODAFONE_CASH", "INSTAPAY");
         call(put("/api/admin/payment-methods/VODAFONE_CASH"), admin, Map.of("enabled", true, "account", ""), 400);
+        call(put("/api/admin/payment-methods/INSTAPAY"), admin, Map.of("enabled", false, "account", "01115978493"), 200);
         call(put("/api/admin/payment-methods/VODAFONE_CASH"), admin, Map.of("enabled", true, "account", "01000000000",
                 "accountName", "منصة منارة", "instructions", "حوّل واكتب رقم العملية"), 200);
         JsonNode methods = call(get("/api/public/payment-methods"), null, null, 200);
@@ -95,7 +97,8 @@ class PlatformPaymentTest {
 
         JsonNode sent = call(pay(subscription, "VODAFONE_CASH", "TX-777", true), student, null, 200);
         assertThat(sent.path("status").asText()).isEqualTo("SUBMITTED");
-        assertThat(sent.path("amount").asDouble()).isEqualTo(300.0);
+        // Vodafone Cash carries its 10% fee: 300 + 30.
+        assertThat(sent.path("amount").asDouble()).isEqualTo(330.0);
         JsonNode plan = call(get("/api/me/catalog"), student, null, 200).path("plans").get(0);
         assertThat(plan.path("paymentStatus").asText()).isEqualTo("SUBMITTED");
         assertThat(call(get("/api/plans/requests"), teacher, null, 200).get(0).path("paymentStatus").asText()).isEqualTo("SUBMITTED");
@@ -126,7 +129,7 @@ class PlatformPaymentTest {
         call(get("/api/courses/" + motion), student, null, 200);
         assertThat(call(get("/api/me/subscriptions"), student, null, 200).get(0).path("status").asText()).isEqualTo("ACTIVE");
         JsonNode summary = call(get("/api/admin/payments/summary"), admin, null, 200);
-        assertThat(summary.path("total").asDouble()).isEqualTo(300.0);
+        assertThat(summary.path("total").asDouble()).isEqualTo(330.0);
         assertThat(summary.path("waiting").asLong()).isZero();
         assertThat(summary.path("teachers").get(0).path("teacher").asText()).isEqualTo("مستر فيزياء");
     }

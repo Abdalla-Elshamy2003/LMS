@@ -26,10 +26,52 @@ public class SubscriptionPlan {
     private Instant createdAt = Instant.now();
     private Instant updatedAt = Instant.now();
 
+    /** Other lengths the teacher sells, each at its own price, as JSON: [{"months": 6, "price": 500}, ...]. */
+    @Column(columnDefinition = "TEXT")
+    private String extraOptionsJson = "[]";
+
     /** The price after the teacher's discount, or null while no price is set. */
     public BigDecimal finalPrice() {
         if (price == null) return null;
         if (discountPercent <= 0) return price;
         return price.multiply(BigDecimal.valueOf(100 - discountPercent)).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+    }
+
+    /** One length a student can buy, at its final price. */
+    public record Option(int months, BigDecimal price) {}
+
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
+
+    /** The teacher's extra lengths, as stored (no base option, no checks). */
+    public java.util.List<Option> extraOptions() {
+        try {
+            return java.util.Arrays.asList(JSON.readValue(extraOptionsJson == null || extraOptionsJson.isBlank() ? "[]" : extraOptionsJson, Option[].class));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("Invalid stored plan options", e);
+        }
+    }
+
+    public void setExtraOptions(java.util.List<Option> options) {
+        try { extraOptionsJson = JSON.writeValueAsString(options); }
+        catch (com.fasterxml.jackson.core.JsonProcessingException e) { throw new IllegalStateException(e); }
+    }
+
+    /**
+     * Every length a student can choose, shortest first: the plan's own months at its final price, then the teacher's
+     * other lengths. Empty while the plan has no price.
+     */
+    public java.util.List<Option> options() {
+        if (finalPrice() == null) return java.util.List.of();
+        java.util.Map<Integer, Option> byMonths = new java.util.TreeMap<>();
+        byMonths.put(months, new Option(months, finalPrice()));
+        for (Option o : extraOptions())
+            if (o != null && o.months() > 0 && o.price() != null && o.price().signum() > 0) byMonths.putIfAbsent(o.months(), o);
+        return java.util.List.copyOf(byMonths.values());
+    }
+
+    /** The choice for {@code wanted} months, or the plan's own length when none is asked for. */
+    public java.util.Optional<Option> option(Integer wanted) {
+        int m = wanted == null ? months : wanted;
+        return options().stream().filter(o -> o.months() == m).findFirst();
     }
 }

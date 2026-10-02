@@ -9,4 +9,5 @@ import java.util.Optional;
 public interface PaymentSubmissionRepository extends JpaRepository<PaymentSubmission, Long> {
     List<PaymentSubmission> findByTenantIdInOrderByIdDesc(Collection<Long> tenantIds);
     Optional<PaymentSubmission> findFirstByPlanSubscriptionIdOrderByIdDesc(Long planSubscriptionId);
+    Optional<PaymentSubmission> findFirstByInvoiceIdOrderByIdDesc(Long invoiceId);
 }

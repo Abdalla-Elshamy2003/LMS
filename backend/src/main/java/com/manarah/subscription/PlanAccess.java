@@ -43,7 +43,7 @@ public class PlanAccess {
     public static final ZoneId CAIRO = ZoneId.of("Africa/Cairo");
     /** Enrollment status of a plan course while none of its plans runs for the student. */
     public static final String LOCKED = "EXPIRED";
-    private static final Duration REMIND_BEFORE = Duration.ofDays(3);
+    private static final Duration REMIND_BEFORE = Duration.ofDays(2);
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.forLanguageTag("ar-EG")).withZone(CAIRO);
 
     private final SubscriptionPlanRepository plans;
@@ -128,12 +128,23 @@ public class PlanAccess {
     /** The student asks to subscribe (or renew): one waiting request per plan, and the teacher hears about it. */
     @Transactional
     public PlanSubscription request(SubscriptionPlan p, Long studentId) {
+        return request(p, studentId, null);
+    }
+
+    /**
+     * The same, for a chosen length ({@code months}, one of {@link SubscriptionPlan#options}; null = the plan's own). Asking
+     * again for another length changes the waiting request: the period that starts is the one finally paid for.
+     */
+    @Transactional
+    public PlanSubscription request(SubscriptionPlan p, Long studentId, Integer months) {
         if (!p.isActive()) throw new BadRequestException("الاشتراك ده مش متاح دلوقتي. تواصل مع المدرس.");
+        SubscriptionPlan.Option choice = months == null ? p.option(null).orElse(null)
+                : p.option(months).orElseThrow(() -> new BadRequestException("المدة دي مش من المدد اللي المدرس حددها"));
         var waiting = pending(p.getId(), studentId);
-        if (waiting.isPresent()) return waiting.get();
-        PlanSubscription s = fresh(p, studentId, "REQUEST");
+        PlanSubscription s = waiting.orElseGet(() -> fresh(p, studentId, "REQUEST"));
+        if (choice != null) { s.setMonths(choice.months()); s.setPrice(choice.price()); }
         subs.save(s);
-        tellTeacher(p, studentId);
+        if (waiting.isEmpty()) tellTeacher(p, studentId);
         return s;
     }
 
@@ -145,17 +156,18 @@ public class PlanAccess {
         return start(s, p, by, source);
     }
 
-    /** Starts a period: now, or when the running one ends if the student renewed early. Months and price are fixed here. */
+    /** Starts a period: now, or when the running one ends if the student renewed early, for the length and price asked for. */
     @Transactional
     public PlanSubscription start(PlanSubscription s, SubscriptionPlan p, Long by, String source) {
         Instant now = Instant.now();
         Instant from = subs.findByPlanIdAndStudentIdOrderByIdDesc(p.getId(), s.getStudentId()).stream()
                 .filter(x -> runs(x, now) && !Objects.equals(x.getId(), s.getId()))
                 .map(PlanSubscription::getEndsAt).max(Comparator.naturalOrder()).orElse(now);
-        s.setMonths(p.getMonths());
-        s.setPrice(p.finalPrice());
+        int months = s.getMonths() > 0 ? s.getMonths() : p.getMonths();
+        s.setMonths(months);
+        if (s.getPrice() == null) s.setPrice(p.finalPrice());
         s.setStartsAt(from);
-        s.setEndsAt(from.atZone(CAIRO).plusMonths(p.getMonths()).toInstant());
+        s.setEndsAt(from.atZone(CAIRO).plusMonths(months).toInstant());
         s.setStatus(ACTIVE);
         s.setActivatedAt(now);
         s.setActivatedBy(by);

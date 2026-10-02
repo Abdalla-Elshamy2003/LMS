@@ -51,24 +51,37 @@ public class BillingService {
     private final BundleService bundles;
     private final NotificationService notifications;
     private final com.manarah.audit.AuditService audit;
+    private final InvoiceService invoices;
+    private final PaymentNotices notices;
+    private final com.manarah.billing.gateway.FawryGateway gateway;
+    private final PaymentInvoiceRepository invoiceRepo;
 
     public BillingService(PaymentMethodRepository methods, PaymentSubmissionRepository submissions, PlanSubscriptionRepository subs,
                           SubscriptionPlanRepository plans, PlanAccess access, LinkedStudentAccounts linked, StudentRepository students,
                           UserRepository users, TeacherAcademyRepository academies, BundleService bundles,
-                          NotificationService notifications, com.manarah.audit.AuditService audit) {
+                          NotificationService notifications, com.manarah.audit.AuditService audit, InvoiceService invoices,
+                          PaymentNotices notices, com.manarah.billing.gateway.FawryGateway gateway,
+                          PaymentInvoiceRepository invoiceRepo) {
         this.methods = methods; this.submissions = submissions; this.subs = subs; this.plans = plans; this.access = access;
         this.linked = linked; this.students = students; this.users = users; this.academies = academies; this.bundles = bundles;
-        this.notifications = notifications; this.audit = audit;
+        this.notifications = notifications; this.audit = audit; this.invoices = invoices; this.notices = notices; this.gateway = gateway;
+        this.invoiceRepo = invoiceRepo;
     }
 
     // ---- Ways to pay -----------------------------------------------------------------------------------------------
 
-    public record MethodView(String code, String name, boolean enabled, String account, String accountName, String instructions) {}
-    public record MethodInput(Boolean enabled, String account, String accountName, String instructions) {}
+    /** {@code gateway}: paid through the payment gateway (Fawry), so no account to transfer to; {@code ready}: on and usable. */
+    public record MethodView(String code, String name, boolean enabled, String account, String accountName, String instructions,
+                             BigDecimal feePercent, String whatsapp, boolean gateway, boolean ready) {}
+    public record MethodInput(Boolean enabled, String account, String accountName, String instructions, BigDecimal feePercent, String whatsapp) {
+        public MethodInput(Boolean enabled, String account, String accountName, String instructions) {
+            this(enabled, account, accountName, instructions, null, null);
+        }
+    }
 
-    /** What a student can pay with right now: the methods head office turned on and filled in. */
+    /** What a student can pay with right now: on and filled in — and Fawry only once the gateway's keys are set. */
     public List<MethodView> enabledMethods() {
-        return methods.findAllByOrderBySortOrderAsc().stream().filter(m -> m.isEnabled() && !m.getAccount().isBlank()).map(this::view).toList();
+        return methods.findAllByOrderBySortOrderAsc().stream().filter(invoices::available).map(this::view).toList();
     }
 
     public List<MethodView> allMethods(UserPrincipal actor) {
@@ -82,18 +95,28 @@ public class BillingService {
         PaymentMethod m = methods.findByCode(code).orElseThrow(() -> new NotFoundException("طريقة الدفع غير موجودة"));
         String account = trim(in.account(), 120, "رقم الحساب"), accountName = trim(in.accountName(), 120, "اسم الحساب");
         String instructions = trim(in.instructions(), 600, "التعليمات");
+        String whatsapp = in.whatsapp() == null ? m.getWhatsapp() : trim(in.whatsapp(), 40, "رقم الواتساب");
+        BigDecimal fee = in.feePercent() == null ? m.getFeePercent() : in.feePercent();
+        if (fee == null || fee.signum() < 0 || fee.compareTo(BigDecimal.valueOf(50)) > 0) throw new BadRequestException("رسوم الطريقة من ٠ لحد ٥٠٪");
+        boolean viaGateway = InvoiceService.FAWRY.equals(m.getCode());
         boolean enabled = in.enabled() != null ? in.enabled() : m.isEnabled();
-        if (enabled && account.isBlank()) throw new BadRequestException("اكتب رقم " + m.getName() + " الأول عشان تفعّلها");
-        String before = m.isEnabled() + "/" + m.getAccount();
-        m.setAccount(account); m.setAccountName(accountName); m.setInstructions(instructions); m.setEnabled(enabled);
+        // Fawry is paid at the gateway, so there's no account to fill in — only its keys on the server.
+        if (enabled && !viaGateway && account.isBlank()) throw new BadRequestException("اكتب رقم " + m.getName() + " الأول عشان تفعّلها");
+        String before = m.isEnabled() + "/" + m.getAccount() + "/" + m.getFeePercent() + "%";
+        if (!viaGateway) { m.setAccount(account); m.setAccountName(accountName); }
+        else if (m.getAccount().isBlank()) m.setAccount("Fawaterak");
+        m.setInstructions(instructions); m.setEnabled(enabled); m.setWhatsapp(whatsapp);
+        m.setFeePercent(fee.setScale(2, java.math.RoundingMode.HALF_UP));
         m.setUpdatedAt(Instant.now());
         methods.save(m);
-        audit.record(actor, "PAYMENT_METHOD_SAVED", "PaymentMethod", m.getId(), before, m.isEnabled() + "/" + m.getAccount());
+        audit.record(actor, "PAYMENT_METHOD_SAVED", "PaymentMethod", m.getId(), before, m.isEnabled() + "/" + m.getAccount() + "/" + m.getFeePercent() + "%");
         return view(m);
     }
 
     private MethodView view(PaymentMethod m) {
-        return new MethodView(m.getCode(), m.getName(), m.isEnabled(), m.getAccount(), m.getAccountName(), m.getInstructions());
+        boolean viaGateway = InvoiceService.FAWRY.equals(m.getCode());
+        return new MethodView(m.getCode(), m.getName(), m.isEnabled(), viaGateway ? "" : m.getAccount(), m.getAccountName(), m.getInstructions(),
+                m.getFeePercent(), m.getWhatsapp(), viaGateway, invoices.available(m));
     }
 
     // ---- The student sends a payment -----------------------------------------------------------------------------
@@ -101,7 +124,7 @@ public class BillingService {
     public record SubmissionView(Long id, String status, String method, BigDecimal amount, String reference, String sender,
                                  boolean hasReceipt, String note, Instant createdAt, Instant reviewedAt, Long subscriptionId,
                                  Long studentId, String studentName, String email, String phone, String teacher, String plan,
-                                 int months, String subscriptionStatus) {}
+                                 int months, String subscriptionStatus, String invoiceNumber, BigDecimal feeAmount) {}
 
     @Transactional
     public SubmissionView submit(UserPrincipal actor, Long subscriptionId, String methodCode, String reference, String sender,
@@ -111,26 +134,18 @@ public class BillingService {
         Student seat = linked.seatIn(actor, s.getTenantId()).filter(st -> st.getId().equals(s.getStudentId()))
                 .orElseThrow(() -> new ForbiddenException("طلب الاشتراك ده مش بتاعك"));
         if (!PlanSubscription.PENDING.equals(s.getStatus())) throw new ConflictException("الاشتراك ده مش مستني دفع");
-        PaymentMethod m = methods.findByCode(Objects.toString(methodCode, "")).filter(x -> x.isEnabled() && !x.getAccount().isBlank())
+        PaymentMethod m = methods.findByCode(Objects.toString(methodCode, "")).filter(invoices::available)
                 .orElseThrow(() -> new BadRequestException("اختار طريقة دفع متاحة"));
-        String ref = trim(reference, 80, "رقم العملية"), from = trim(sender, 80, "الرقم اللي حوّلت منه");
-        boolean hasFile = receipt != null && !receipt.isEmpty();
-        if (ref.isBlank() && !hasFile) throw new BadRequestException("اكتب رقم العملية أو ارفع صورة الإيصال");
-
-        // A second send for the same request replaces the one still waiting, so head office checks one thing.
-        PaymentSubmission p = submissions.findFirstByPlanSubscriptionIdOrderByIdDesc(s.getId())
-                .filter(x -> PaymentSubmission.SUBMITTED.equals(x.getStatus())).orElseGet(PaymentSubmission::new);
-        p.setTenantId(s.getTenantId()); p.setStudentId(seat.getId()); p.setPlanSubscriptionId(s.getId());
-        p.setMethodCode(m.getCode()); p.setReference(ref); p.setSender(from); p.setStatus(PaymentSubmission.SUBMITTED);
-        p.setNote(""); p.setCreatedAt(Instant.now());
+        if (InvoiceService.FAWRY.equals(m.getCode())) throw new BadRequestException("الدفع بفوري من «مدفوعاتي»: هيطلعلك كود تدفع بيه");
+        // This older screen goes through an invoice too, so the method's fee (Vodafone Cash +10%) applies here as well.
         SubscriptionPlan plan = plans.findById(s.getPlanId()).orElseThrow();
-        p.setAmount(s.getPrice() != null ? s.getPrice() : plan.finalPrice());
-        if (hasFile) { p.setReceiptType(imageType(receipt)); p.setReceiptData(base64(receipt)); }
-        submissions.save(p);
-        tellHeadOffice(s.getTenantId(), "دفع جديد مستني المراجعة",
-                seat.getFullName() + " حوّل " + (p.getAmount() == null ? "" : p.getAmount().toPlainString() + " ج.م ") + "بـ" + m.getName()
-                        + " لاشتراك " + PlanAccess.label(plan) + ". راجعه من «المدفوعات».");
-        return view(p);
+        SubscriptionPlan.Option option = plan.option(s.getMonths() > 0 ? s.getMonths() : null)
+                .orElseGet(() -> new SubscriptionPlan.Option(s.getMonths() > 0 ? s.getMonths() : plan.getMonths(),
+                        s.getPrice() != null ? s.getPrice() : plan.finalPrice()));
+        if (option.price() == null) throw new BadRequestException("المدرس لسه ما حددش سعر الاشتراك ده");
+        PaymentInvoice inv = invoices.open(s, plan, seat, option, m);
+        invoices.sendReceipt(actor, inv.getId(), reference, sender, receipt);
+        return view(submissions.findFirstByInvoiceIdOrderByIdDesc(inv.getId()).orElseThrow());
     }
 
     /** The latest payment sent for a subscription request, for the student's own screens. */
@@ -164,11 +179,16 @@ public class BillingService {
     @Transactional
     public SubmissionView approve(UserPrincipal actor, Long id) {
         PaymentSubmission p = reviewable(actor, id);
-        PlanSubscription s = subs.findById(p.getPlanSubscriptionId()).orElseThrow();
-        // Still waiting: the payment starts it. Already opened (the teacher took cash meanwhile): just record the payment.
-        if (PlanSubscription.PENDING.equals(s.getStatus())) access.start(s, plans.findById(s.getPlanId()).orElseThrow(), actor.getId(), "PAYMENT");
         p.setStatus(PaymentSubmission.APPROVED); p.setReviewedBy(actor.getId()); p.setReviewedAt(Instant.now());
         submissions.save(p);
+        if (p.getInvoiceId() != null) {
+            // The invoice settles it, the same way the gateway does: the subscription starts for the length paid for.
+            invoices.markPaid(p.getInvoiceId(), actor.getId(), "REVIEW", p.getReference());
+        } else {
+            PlanSubscription s = subs.findById(p.getPlanSubscriptionId()).orElseThrow();
+            // Still waiting: the payment starts it. Already opened (the teacher took cash meanwhile): just record the payment.
+            if (PlanSubscription.PENDING.equals(s.getStatus())) access.start(s, plans.findById(s.getPlanId()).orElseThrow(), actor.getId(), "PAYMENT");
+        }
         audit.record(actor, "PAYMENT_APPROVED", "PaymentSubmission", p.getId(), PaymentSubmission.SUBMITTED, PaymentSubmission.APPROVED);
         return view(p);
     }
@@ -180,9 +200,10 @@ public class BillingService {
         if (why.isBlank()) throw new BadRequestException("اكتب سبب الرفض عشان الطالب يعرف يصلّح إيه");
         p.setStatus(PaymentSubmission.REJECTED); p.setNote(why); p.setReviewedBy(actor.getId()); p.setReviewedAt(Instant.now());
         submissions.save(p);
+        if (p.getInvoiceId() != null) invoices.receiptRejected(p.getInvoiceId(), why);
         students.findById(p.getStudentId()).filter(st -> st.getUserId() != null).ifPresent(st ->
                 notifications.notify(p.getTenantId(), new NotifyCommand(st.getUserId(), null, "الدفع ما اتأكدش",
-                        why + " — راجع البيانات وابعته تاني من «كورساتي».", "PAYMENT", "PaymentSubmission", p.getId(), List.of("IN_APP"))));
+                        why + " — راجع البيانات وابعته تاني من «مدفوعاتي».", "PAYMENT", "PaymentSubmission", p.getId(), List.of("IN_APP"))));
         audit.record(actor, "PAYMENT_REJECTED", "PaymentSubmission", p.getId(), PaymentSubmission.SUBMITTED, why);
         return view(p);
     }
@@ -226,15 +247,8 @@ public class BillingService {
         return academies.findByManagerTenantId(actor.getTenantId()).stream().map(TeacherAcademy::getTenantId).toList();
     }
 
-    private void tellHeadOffice(Long teacherTenantId, String title, String body) {
-        Long headOffice = academies.findByTenantId(teacherTenantId).map(TeacherAcademy::getManagerTenantId).orElse(null);
-        if (headOffice == null) return;
-        for (Role role : List.of(Role.SUPER_ADMIN, Role.BRANCH_ADMIN))
-            users.findByTenantIdAndRole(headOffice, role).forEach(u -> notifications.notify(headOffice,
-                    new NotifyCommand(u.getId(), null, title, body, "PAYMENT", "PaymentSubmission", null, List.of("IN_APP"))));
-    }
-
     private SubmissionView view(PaymentSubmission p) {
+        PaymentInvoice invoice = p.getInvoiceId() == null ? null : invoiceRepo.findById(p.getInvoiceId()).orElse(null);
         PlanSubscription s = subs.findById(p.getPlanSubscriptionId()).orElse(null);
         SubscriptionPlan plan = s == null ? null : plans.findById(s.getPlanId()).orElse(null);
         Student st = students.findById(p.getStudentId()).orElse(null);
@@ -244,17 +258,18 @@ public class BillingService {
                 p.getReceiptType() != null, p.getNote(), p.getCreatedAt(), p.getReviewedAt(), p.getPlanSubscriptionId(), p.getStudentId(),
                 st == null ? "طالب" : st.getFullName(), email, st == null ? "" : Objects.toString(st.getPhone(), ""),
                 academies.findByTenantId(p.getTenantId()).map(TeacherAcademy::getName).orElse(""),
-                plan == null ? "" : PlanAccess.label(plan), plan == null ? 0 : plan.getMonths(), s == null ? "" : s.getStatus());
+                plan == null ? "" : PlanAccess.label(plan), s != null && s.getMonths() > 0 ? s.getMonths() : plan == null ? 0 : plan.getMonths(),
+                s == null ? "" : s.getStatus(), invoice == null ? "" : invoice.getNumber(), invoice == null ? null : invoice.getFeeAmount());
     }
 
-    private static String trim(String v, int max, String what) {
+    static String trim(String v, int max, String what) {
         String s = v == null ? "" : v.trim();
         if (s.length() > max) throw new BadRequestException(what + " طويل جداً");
         return s;
     }
 
     /** Only a real PNG/JPG under 3 MB is kept: the bytes are decoded, not trusted by name. */
-    private static String imageType(MultipartFile file) {
+    static String imageType(MultipartFile file) {
         if (file.getSize() > MAX_RECEIPT_BYTES) throw new BadRequestException("صورة الإيصال لازم تكون أصغر من ٣ ميجا");
         try (var input = ImageIO.createImageInputStream(file.getInputStream())) {
             var readers = ImageIO.getImageReaders(input);
@@ -274,7 +289,7 @@ public class BillingService {
         }
     }
 
-    private static String base64(MultipartFile file) {
+    static String base64(MultipartFile file) {
         try { return Base64.getEncoder().encodeToString(file.getBytes()); }
         catch (java.io.IOException e) { throw new BadRequestException("تعذّر قراءة صورة الإيصال"); }
     }
