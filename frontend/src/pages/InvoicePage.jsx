@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  AlertTriangle, ArrowRight, BookOpen, CheckCircle2, Clock, Copy, ImagePlus, MapPin, MessageCircle, Printer, RefreshCw,
-  Send, Store, XCircle,
+  AlertTriangle, ArrowLeftRight, ArrowRight, BookOpen, CheckCircle2, Clock, Copy, ImagePlus, MapPin, MessageCircle, Printer,
+  RefreshCw, Send, Store, XCircle,
 } from 'lucide-react'
 import api from '../lib/api'
 import { apiErrorMessage } from '../lib/apiError'
 import { PageLoader, Spinner } from '../components/ui'
 import PaymentIcon, { METHOD_META } from '../components/payments/PaymentIcon'
 import { fmtDay, monthsLabel } from '../lib/subscriptions'
-import { INVOICE_STATE, fmtWhen, isOpen, money, plainAmount, timeLeft, whatsappLink } from '../features/payments/invoices'
+import { INVOICE_STATE, feeLabel, feeOn, fmtWhen, isOpen, money, plainAmount, timeLeft, whatsappLink } from '../features/payments/invoices'
+import { usePlatformMethods } from '../features/payments/usePlatformMethods'
 
 const FAWRY_PAY_CODE = '788'
 
@@ -74,6 +75,7 @@ export default function InvoicePage() {
 
       {error && <p role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-700 print:hidden">{error}</p>}
       {flash && <p className="rounded-2xl bg-sky-50 p-4 text-sm font-bold text-sky-800 print:hidden">{flash}</p>}
+      {(inv.status === 'UNPAID' || inv.status === 'EXPIRED') && inv.planId && <ChangeMethod inv={inv} label={label} />}
 
       <article className="invoice-sheet overflow-hidden rounded-3xl bg-white shadow-card ring-1 ring-ink-100">
         {/* Header */}
@@ -174,6 +176,68 @@ export default function InvoicePage() {
         </div>
       )}
     </motion.div>
+  )
+}
+
+/**
+ * Changing your mind about how to pay: the other ways with their own total, and picking one makes a new invoice for the
+ * same subscription and length — the server cancels this one. Not offered once a receipt is under review.
+ */
+function ChangeMethod({ inv, label }) {
+  const navigate = useNavigate()
+  const methods = usePlatformMethods()
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(''), [error, setError] = useState('')
+  const others = (methods || []).filter((m) => m.code !== inv.method)
+  if (methods && others.length === 0) return null
+
+  const pick = async (m) => {
+    setBusy(m.code); setError('')
+    try {
+      const { data } = await api.post('/me/invoices', { planId: inv.planId, months: inv.months, method: m.code })
+      setOpen(false)
+      navigate(`/app/my-payments/${data.id}`, { replace: true })
+    } catch (e) { setError(apiErrorMessage(e, 'تعذّر تغيير طريقة الدفع')) } finally { setBusy('') }
+  }
+
+  return (
+    <div className="rounded-3xl border border-brand-100 bg-brand-50/50 p-4 print:hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="flex items-center gap-2 text-sm text-ink-700">
+          <PaymentIcon code={inv.method} size={26} /> بتدفع بـ<b>{label}</b>
+        </p>
+        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="btn-soft text-sm">
+          <ArrowLeftRight size={15} /> {open ? 'خليها زي ما هي' : 'غيّر طريقة الدفع'}
+        </button>
+      </div>
+      {open && (
+        <div className="mt-4 space-y-3">
+          {!methods ? <Spinner className="h-5 w-5 border-brand-200 border-t-brand-600" /> : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {others.map((m) => {
+                const total = Number(inv.baseAmount) + feeOn(inv.baseAmount, m.feePercent)
+                return (
+                  <button key={m.code} type="button" disabled={!!busy} onClick={() => pick(m)}
+                    className="flex items-center gap-3 rounded-2xl border-2 border-ink-100 bg-white p-3.5 text-right transition hover:border-brand-300 disabled:opacity-60">
+                    <PaymentIcon code={m.code} size={40} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-extrabold text-ink-800">{METHOD_META[m.code]?.label || m.name}</span>
+                      <span className={`block text-[11px] font-bold ${Number(m.feePercent) > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>{feeLabel(m.feePercent)}</span>
+                    </span>
+                    <span className="text-left">
+                      {busy === m.code ? <Spinner className="h-4 w-4 border-brand-200 border-t-brand-600" />
+                        : <><span className="block text-[11px] text-ink-400">الإجمالي</span><b className="text-ink-900">{money(total)}</b></>}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          <p className="text-[11px] leading-5 text-ink-500">هتتعمل فاتورة جديدة بنفس الاشتراك والمدة، والفاتورة دي هتتلغي لوحدها.</p>
+          {error && <p role="alert" className="rounded-2xl bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-600">{error}</p>}
+        </div>
+      )}
+    </div>
   )
 }
 

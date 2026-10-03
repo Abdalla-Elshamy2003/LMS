@@ -190,6 +190,12 @@ class InvoiceFlowTest {
         ok(call(post("/api/admin/payments/" + legacyId + "/approve"), admin, null));
         call(get("/api/courses/" + course), four, null).andExpect(status().isOk());
 
+        // Changing the way to pay: the same subscription and length by InstaPay is a new invoice, and the Fawry one closes.
+        var switched = ok(call(post("/api/me/invoices"), two, Map.of("planId", plan, "months", 1, "method", "INSTAPAY")));
+        assertThat(switched.path("id").asLong()).isNotEqualTo(late.path("id").asLong());
+        assertThat(switched.path("total").decimalValue()).isEqualByComparingTo("100");
+        assertThat(ok(call(get("/api/me/invoices/" + late.path("id").asLong()), two, null)).path("status").asText()).isEqualTo("CANCELLED");
+
         // The older pay screen goes through an invoice too: Vodafone Cash still costs 110 there.
         long pending = 0;
         for (JsonNode s : ok(call(get("/api/plans/requests"), teacher, null))) if (s.path("studentName").asText().equals("طالب تاني")) pending = s.path("id").asLong();
