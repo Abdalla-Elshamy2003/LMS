@@ -69,9 +69,11 @@ jobs:
         run: npm ci
       - working-directory: frontend
         run: npm run build
+      # What ships to browsers must have no high/critical advisory; build-only tools (Tailwind's file watcher
+      # chain) are held to critical, since some high ones there have no fixed release.
       - name: Fail on known high/critical vulnerabilities
         working-directory: frontend
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high && npm audit --audit-level=critical
 
   stack-smoke-test:
     runs-on: ubuntu-latest
