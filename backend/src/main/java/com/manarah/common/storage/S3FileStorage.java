@@ -4,6 +4,7 @@ import com.manarah.common.exception.ApiExceptions.BadRequestException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.AbstractResource;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,6 +17,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,14 +39,20 @@ public class S3FileStorage implements FileStorage {
 
     private final S3Client client;
     private final String bucket;
+    private final Path legacyRoot;
+    private final boolean legacyLocalFallback;
 
     public S3FileStorage(@Value("${manarah.storage.s3.bucket}") String bucket,
                           @Value("${manarah.storage.s3.region}") String region,
                           @Value("${manarah.storage.s3.endpoint}") String endpoint,
                           @Value("${manarah.storage.s3.access-key}") String accessKey,
                           @Value("${manarah.storage.s3.secret-key}") String secretKey,
-                          @Value("${manarah.storage.s3.path-style-access:false}") boolean pathStyleAccess) {
+                          @Value("${manarah.storage.s3.path-style-access:false}") boolean pathStyleAccess,
+                          @Value("${manarah.storage.root:./data/files}") String legacyRoot,
+                          @Value("${manarah.storage.s3.legacy-local-fallback:false}") boolean legacyLocalFallback) {
         this.bucket = bucket;
+        this.legacyRoot = Path.of(legacyRoot).toAbsolutePath().normalize();
+        this.legacyLocalFallback = legacyLocalFallback;
         var builder = S3Client.builder()
                 .region(Region.of(region))
                 .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)))
@@ -85,7 +93,15 @@ public class S3FileStorage implements FileStorage {
 
     @Override
     public Resource open(String key) {
-        return new S3ObjectResource(client, bucket, key);
+        var object = new S3ObjectResource(client, bucket, key);
+        if (legacyLocalFallback && !object.exists()) {
+            Path path = legacyRoot.resolve(key).normalize();
+            if (path.startsWith(legacyRoot)) {
+                var legacy = new FileSystemResource(path);
+                if (legacy.exists()) return legacy;
+            }
+        }
+        return object;
     }
 
     private static class S3ObjectResource extends AbstractResource {
@@ -104,8 +120,9 @@ public class S3FileStorage implements FileStorage {
             try {
                 client.headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build());
                 return true;
-            } catch (NoSuchKeyException e) {
-                return false;
+            } catch (S3Exception e) {
+                if (e.statusCode() == 404) return false;
+                throw e;
             }
         }
 
@@ -113,8 +130,9 @@ public class S3FileStorage implements FileStorage {
         public long contentLength() {
             try {
                 return client.headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build()).contentLength();
-            } catch (NoSuchKeyException e) {
-                return 0;
+            } catch (S3Exception e) {
+                if (e.statusCode() == 404) return 0;
+                throw e;
             }
         }
 

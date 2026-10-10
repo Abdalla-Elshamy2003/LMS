@@ -55,17 +55,19 @@ public class BillingService {
     private final PaymentNotices notices;
     private final com.manarah.billing.gateway.FawryGateway gateway;
     private final PaymentInvoiceRepository invoiceRepo;
+    private final com.manarah.media.MediaContent media;
 
     public BillingService(PaymentMethodRepository methods, PaymentSubmissionRepository submissions, PlanSubscriptionRepository subs,
                           SubscriptionPlanRepository plans, PlanAccess access, LinkedStudentAccounts linked, StudentRepository students,
                           UserRepository users, TeacherAcademyRepository academies, BundleService bundles,
                           NotificationService notifications, com.manarah.audit.AuditService audit, InvoiceService invoices,
                           PaymentNotices notices, com.manarah.billing.gateway.FawryGateway gateway,
-                          PaymentInvoiceRepository invoiceRepo) {
+                          PaymentInvoiceRepository invoiceRepo, com.manarah.media.MediaContent media) {
         this.methods = methods; this.submissions = submissions; this.subs = subs; this.plans = plans; this.access = access;
         this.linked = linked; this.students = students; this.users = users; this.academies = academies; this.bundles = bundles;
         this.notifications = notifications; this.audit = audit; this.invoices = invoices; this.notices = notices; this.gateway = gateway;
         this.invoiceRepo = invoiceRepo;
+        this.media = media;
     }
 
     // ---- Ways to pay -----------------------------------------------------------------------------------------------
@@ -173,7 +175,7 @@ public class BillingService {
             if (!managedTenants(actor).contains(p.getTenantId())) throw new ForbiddenException("مش مسموح");
         }
         if (p.getReceiptData() == null) throw new NotFoundException("مفيش صورة إيصال للدفع ده");
-        return new Receipt(p.getReceiptType(), Base64.getDecoder().decode(p.getReceiptData()));
+        return new Receipt(p.getReceiptType(), media.read(p.getReceiptData()));
     }
 
     /** Head office looks up the invoice a student names (by its number, from WhatsApp or a call). */

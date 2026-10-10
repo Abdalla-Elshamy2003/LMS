@@ -21,7 +21,7 @@ public class PaymentSubmission {
     private String reference = "";
     private String sender = "";
     private String receiptType;
-    /** Base64 image; only head office and the student who sent it can open it. */
+    /** Legacy Base64 or an object-storage reference; only head office and the sender may read it. */
     @Basic(fetch = FetchType.LAZY) @Column(columnDefinition = "TEXT") private String receiptData;
     private String status = SUBMITTED;
     private String note = "";

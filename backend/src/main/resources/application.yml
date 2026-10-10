@@ -100,6 +100,8 @@ manarah:
       secret-key: ${MANARAH_S3_SECRET_KEY:}
       # MinIO/local dev needs path-style URLs; real cloud providers use virtual-hosted style.
       path-style-access: ${MANARAH_S3_PATH_STYLE:false}
+      # Read existing disk files during a storage migration; new writes still go only to S3/R2.
+      legacy-local-fallback: ${MANARAH_S3_LEGACY_LOCAL_FALLBACK:false}
   video:
     vdocipher-secret: ${MANARAH_VDOCIPHER_SECRET:}
     require-drm: ${MANARAH_VIDEO_REQUIRE_DRM:false}

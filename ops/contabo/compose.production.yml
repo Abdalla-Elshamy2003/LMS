@@ -1,0 +1,96 @@
+name: lms-contabo
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: manarah
+      POSTGRES_USER: manarah
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    command: [postgres, -c, shared_buffers=256MB, -c, effective_cache_size=4GB, -c, work_mem=16MB]
+    volumes: [postgres-data:/var/lib/postgresql]
+    ports: ['127.0.0.1:15432:5432']
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U manarah -d manarah]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    mem_limit: 2g
+    shm_size: 512m
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: [redis-server, --requirepass, '${MANARAH_REDIS_PASSWORD}']
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: [CMD, redis-cli, -a, '${MANARAH_REDIS_PASSWORD}', --no-auth-warning, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    mem_limit: 256m
+  backend:
+    image: lms-backend:__RELEASE_SHA__
+    restart: unless-stopped
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      MANARAH_DB_URL: jdbc:postgresql://postgres:5432/manarah
+      MANARAH_DB_USERNAME: manarah
+      MANARAH_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      MANARAH_REDIS_HOST: redis
+      MANARAH_REDIS_PASSWORD: ${MANARAH_REDIS_PASSWORD}
+      MANARAH_JWT_SECRET: ${MANARAH_JWT_SECRET}
+      MANARAH_PUBLIC_APP_URL: https://droos.com.co
+      MANARAH_CORS_ALLOWED_ORIGINS: https://droos.com.co,https://www.droos.com.co,http://213.199.38.162
+      MANARAH_COOKIE_SECURE: ${MANARAH_COOKIE_SECURE:-true}
+      MANARAH_API_DOCS_ENABLED: 'false'
+      MANARAH_DEMO_SEED_ENABLED: 'false'
+      MANARAH_STORAGE_PROVIDER: s3
+      MANARAH_S3_BUCKET: ${MANARAH_R2_BUCKET}
+      MANARAH_S3_REGION: auto
+      MANARAH_S3_ENDPOINT: ${MANARAH_R2_ENDPOINT}
+      MANARAH_S3_ACCESS_KEY: ${MANARAH_R2_ACCESS_KEY_ID}
+      MANARAH_S3_SECRET_KEY: ${MANARAH_R2_SECRET_ACCESS_KEY}
+      MANARAH_S3_PATH_STYLE: 'true'
+      MANARAH_S3_LEGACY_LOCAL_FALLBACK: 'true'
+      MANARAH_VIDEO_STORAGE: r2
+      MANARAH_VIDEO_TRANSCODE: 'false'
+      MANARAH_R2_ENDPOINT: ${MANARAH_R2_ENDPOINT}
+      MANARAH_R2_BUCKET: ${MANARAH_R2_BUCKET}
+      MANARAH_R2_ACCESS_KEY_ID: ${MANARAH_R2_ACCESS_KEY_ID}
+      MANARAH_R2_SECRET_ACCESS_KEY: ${MANARAH_R2_SECRET_ACCESS_KEY}
+      MANARAH_AI_ENABLED: ${MANARAH_AI_ENABLED:-false}
+      MANARAH_AI_BASE_URL: ${MANARAH_AI_BASE_URL:-https://openrouter.ai/api/v1}
+      MANARAH_AI_API_KEY: ${MANARAH_AI_API_KEY:-}
+      MANARAH_AI_MODEL: ${MANARAH_AI_MODEL:-openrouter/free}
+      MANARAH_FAWATERAK_API_KEY: ${MANARAH_FAWATERAK_API_KEY:-}
+      MANARAH_FAWATERAK_VENDOR_KEY: ${MANARAH_FAWATERAK_VENDOR_KEY:-}
+      MANARAH_FAWATERAK_BASE_URL: ${MANARAH_FAWATERAK_BASE_URL:-https://app.fawaterk.com/api/v2}
+      JAVA_TOOL_OPTIONS: -Xms256m -Xmx1536m
+    volumes:
+      - /opt/lms/shared/files:/app/data/files
+    healthcheck:
+      test: [CMD, curl, -fsS, 'http://localhost:8091/actuator/health']
+      interval: 10s
+      timeout: 5s
+      start_period: 40s
+      retries: 10
+    mem_limit: 2g
+    cpus: 3.0
+  frontend:
+    image: lms-frontend:__RELEASE_SHA__
+    restart: unless-stopped
+    depends_on:
+      backend: {condition: service_healthy}
+    ports: ['127.0.0.1:18475:80']
+    healthcheck:
+      test: [CMD, wget, -qO-, 'http://127.0.0.1:80/healthz']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 128m
+volumes:
+  postgres-data:
+  redis-data:

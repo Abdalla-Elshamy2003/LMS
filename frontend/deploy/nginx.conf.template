@@ -25,6 +25,13 @@ server {
         return 200 "ok\n";
     }
 
+    # Operator release verification must observe the active deployment through proxies.
+    location = /release.json {
+        add_header Cache-Control "no-store" always;
+        add_header X-Content-Type-Options nosniff always;
+        try_files $uri =404;
+    }
+
     gzip on;
     gzip_comp_level 5;
     gzip_min_length 512;

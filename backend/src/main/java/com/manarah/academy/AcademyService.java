@@ -228,7 +228,7 @@ public class AcademyService {
         audit.record(actor, "TEACHER_CREDENTIALS_CHANGED", "TeacherAcademy", id, null, "credentials rotated");
     }
 
-    /** Adds one promotional poster to the teacher page, stored in the database under the page's own tenant. */
+    /** Adds a promotional poster's metadata to the teacher page under the page's own tenant. */
     @Transactional
     public TeacherAcademy addGalleryImage(UserPrincipal actor, Long id, com.manarah.media.PublicImage image) {
         var a = manage(actor, id);

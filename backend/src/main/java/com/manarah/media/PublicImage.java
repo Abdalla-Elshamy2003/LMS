@@ -19,7 +19,7 @@ public class PublicImage extends BaseEntity {
     @Column(name = "content_type", nullable = false)
     private String contentType;
 
-    /** Base64 of the raw image bytes. */
+    /** Legacy Base64, or a typed object-storage reference written by MediaContent. */
     @Column(nullable = false, columnDefinition = "TEXT")
     private String data;
 
