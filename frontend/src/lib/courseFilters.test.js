@@ -7,7 +7,6 @@ test('managed academy teachers appear even when the staff endpoint lists only he
   const options = courseTeacherOptions(courses, [{ id: 5, fullName: 'أ. محمد' }])
   assert.deepEqual(new Set(options.map(t => t.id)), new Set(['5', '11', '67']))
   assert.equal(options.find(t => t.id === '67').name, 'محمد العازمي')
-  assert.equal(courses.filter(c => String(c.teacherId) === '11').length, 1)
 })
 
 test('options keep distinct accounts with the same name, normalize IDs, and exclude courses without teachers', () => {

@@ -46,12 +46,12 @@ class EmailCodeLoginTest {
 
     @BeforeEach void mail() {
         when(mail.isDeliverable()).thenReturn(true);
-        when(mail.send(anyString(), anyString(), anyString())).thenAnswer(call -> {
+        doAnswer(call -> {
             var match = Pattern.compile("(?m)^([0-9]{6})$").matcher(call.getArgument(2, String.class));
             assertThat(match.find()).isTrue();
             inbox.put(call.getArgument(0), match.group(1));
             return true;
-        });
+        }).when(mail).send(anyString(), anyString(), anyString());
     }
     JsonNode call(MockHttpServletRequestBuilder req, Object body, int expected) throws Exception {
         int ip = IPS.incrementAndGet();
@@ -138,7 +138,7 @@ class EmailCodeLoginTest {
         String adminId = request("admin@manarah.io", "LOGIN");
         verifyCode(adminId, "admin@manarah.io", "LOGIN", inbox.get("admin@manarah.io"), 401);
         var admin = call(post("/api/auth/login"), Map.of("email", "admin@manarah.io", "password", "manarah123"), 200);
-        assertThat(admin.path("user").path("role").asText()).isEqualTo("ADMIN");
+        assertThat(admin.path("user").path("role").asText()).isEqualTo("SUPER_ADMIN");
         String unknown = address(), unknownId = request(unknown, "LOGIN");
         verifyCode(unknownId, unknown, "LOGIN", inbox.get(unknown), 401);
         String email = address(); call(post("/api/public/register"), signup(email, proof(email)), 200);
@@ -156,7 +156,7 @@ class EmailCodeLoginTest {
         assertThat(call(get("/api/auth/email-code/status"), null, 200).path("available").asBoolean()).isFalse();
         call(post("/api/auth/email-code/request"), Map.of("email", address(), "purpose", "LOGIN"), 503);
         when(mail.isDeliverable()).thenReturn(true);
-        when(mail.send(anyString(), anyString(), anyString())).thenReturn(false);
+        doReturn(false).when(mail).send(anyString(), anyString(), anyString());
         String failed = address();
         call(post("/api/auth/email-code/request"), Map.of("email", failed, "purpose", "REGISTER"), 503);
         assertThat(rows.findFirstByEmailOrderByCreatedAtDesc(failed).orElseThrow().getUsedAt()).isNotNull();

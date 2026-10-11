@@ -5,7 +5,7 @@ import { apiErrorMessage } from '../lib/apiError'
 import { Spinner } from './ui'
 
 /** The code stays in this form; only the server-issued session/proof is passed to the caller. */
-export default function EmailCodeEntry({ email: fixedEmail, purpose = 'LOGIN', onVerified, onBusyChange, onCancel }) {
+export default function EmailCodeEntry({ fixedEmail, purpose = 'LOGIN', onVerified, onBusyChange, onCancel }) {
   const id = useId()
   const [email, setEmail] = useState(fixedEmail || '')
   const [challenge, setChallenge] = useState(null)
