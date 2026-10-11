@@ -385,7 +385,7 @@ export default function Register() {
             </form>
           )}
 
-          {step === 2 && verifyingEmail && <EmailCodeEntry email={form.email.trim()} purpose="REGISTER"
+          {step === 2 && verifyingEmail && <EmailCodeEntry fixedEmail={form.email.trim()} purpose="REGISTER"
             onVerified={data => submit(null, data.verificationToken)} onBusyChange={setSaving} onCancel={() => setVerifyingEmail(false)} />}
 
           {step === 3 && done && <Welcome done={done} pass={pass} qr={qr} email={form.email.trim()} onGo={(to) => nav(to)} />}
