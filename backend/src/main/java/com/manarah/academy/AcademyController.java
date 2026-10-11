@@ -20,11 +20,13 @@ public class AcademyController {
     private final BundleService bundles;
     private final com.manarah.subscription.SubscriptionPlanRepository plans;
     private final BlockService blocks;
+    private final com.manarah.media.MediaContent media;
     public AcademyController(AcademyService service, TeacherAcademyRepository academies, CourseRepository courses,
                              com.manarah.student.repo.StudentRepository students, BundleService bundles,
-                             com.manarah.subscription.SubscriptionPlanRepository plans, BlockService blocks) {
+                             com.manarah.subscription.SubscriptionPlanRepository plans, BlockService blocks, com.manarah.media.MediaContent media) {
         this.service = service; this.academies = academies; this.courses = courses; this.students = students; this.bundles = bundles;
         this.plans = plans; this.blocks = blocks;
+        this.media = media;
     }
 
     /** Public home page payload: platform-wide numbers, the teacher cards and the teacher packages. */
@@ -98,7 +100,7 @@ public class AcademyController {
         var a = service.manage(actor, id);
         if (!Set.of("photo", "cover").contains(slot)) throw new BadRequestException("مكان الصورة غير صالح");
         String type = com.manarah.media.ImageFiles.validatedType(file);
-        String data = "data:" + type + ";base64," + Base64.getEncoder().encodeToString(file.getBytes());
+        String data = media.storeImage(a.getTenantId(), "academy-images", file, type, true);
         if (slot.equals("photo")) { a.setPhotoData(data); a.setPhotoUrl("/api/public/academies/" + a.getSlug() + "/images/photo?v=" + System.currentTimeMillis()); }
         else a.setCoverData(data);
         academies.save(a); return Map.of("url", slot.equals("photo") ? a.getPhotoUrl() : "/api/public/academies/" + a.getSlug() + "/images/cover?v=" + System.currentTimeMillis());
@@ -106,9 +108,10 @@ public class AcademyController {
     /** Adds a promotional poster; reordering and removing go through the page save ({@code gallery}). */
     @PostMapping("/academies/{id}/gallery")
     public Object addGalleryImage(@AuthenticationPrincipal UserPrincipal actor, @PathVariable Long id, @RequestParam MultipartFile file) throws Exception {
+        var academy = service.manage(actor, id);
         var image = new com.manarah.media.PublicImage();
         image.setContentType(com.manarah.media.ImageFiles.validatedType(file));
-        image.setData(Base64.getEncoder().encodeToString(file.getBytes()));
+        image.setData(media.storeImage(academy.getTenantId(), "public-images", file, image.getContentType(), false));
         return service.addGalleryImage(actor, id, image);
     }
     private TeacherAcademy published(String slug) {
@@ -150,7 +153,7 @@ public class AcademyController {
     public ResponseEntity<byte[]> image(@PathVariable String slug, @PathVariable String slot) {
         var a = published(slug); String data = slot.equals("photo") ? a.getPhotoData() : slot.equals("cover") ? a.getCoverData() : null;
         if (data == null) return ResponseEntity.notFound().build();
-        return ResponseEntity.ok().header("X-Content-Type-Options", "nosniff").contentType(MediaType.parseMediaType(data.substring(5, data.indexOf(';'))))
-            .body(Base64.getDecoder().decode(data.substring(data.indexOf(',') + 1)));
+        return ResponseEntity.ok().header("X-Content-Type-Options", "nosniff").contentType(MediaType.parseMediaType(media.contentType(data)))
+            .body(media.read(data));
     }
 }

@@ -60,15 +60,18 @@ public class InvoiceService {
     private final PaymentNotices notices;
     private final com.manarah.audit.AuditService audit;
     private final String appUrl;
+    private final com.manarah.media.MediaContent media;
 
     public InvoiceService(PaymentInvoiceRepository invoices, PaymentMethodRepository methods, PaymentSubmissionRepository submissions,
                           PlanSubscriptionRepository subs, SubscriptionPlanRepository plans, PlanAccess access,
                           LinkedStudentAccounts linked, StudentRepository students, UserRepository users,
                           TeacherAcademyRepository academies, FawryGateway gateway, PaymentNotices notices,
-                          com.manarah.audit.AuditService audit, @Value("${manarah.public-app-url:}") String appUrl) {
+                          com.manarah.audit.AuditService audit, @Value("${manarah.public-app-url:}") String appUrl,
+                          com.manarah.media.MediaContent media) {
         this.invoices = invoices; this.methods = methods; this.submissions = submissions; this.subs = subs; this.plans = plans;
         this.access = access; this.linked = linked; this.students = students; this.users = users; this.academies = academies;
         this.gateway = gateway; this.notices = notices; this.audit = audit;
+        this.media = media;
         this.appUrl = appUrl == null ? "" : appUrl.trim().replaceAll("/+$", "");
     }
 
@@ -263,7 +266,10 @@ public class InvoiceService {
         p.setTenantId(inv.getTenantId()); p.setStudentId(inv.getStudentId()); p.setPlanSubscriptionId(inv.getPlanSubscriptionId());
         p.setInvoiceId(inv.getId()); p.setMethodCode(inv.getMethodCode()); p.setAmount(inv.getTotal());
         p.setReference(ref); p.setSender(from); p.setStatus(PaymentSubmission.SUBMITTED); p.setNote(""); p.setCreatedAt(Instant.now());
-        if (hasFile) { p.setReceiptType(BillingService.imageType(receipt)); p.setReceiptData(BillingService.base64(receipt)); }
+        if (hasFile) {
+            p.setReceiptType(BillingService.imageType(receipt));
+            p.setReceiptData(media.storeImage(inv.getTenantId(), "receipts", receipt, p.getReceiptType(), false));
+        }
         submissions.save(p);
         inv.setStatus(PaymentInvoice.AWAITING_REVIEW);
         inv.setNote("");

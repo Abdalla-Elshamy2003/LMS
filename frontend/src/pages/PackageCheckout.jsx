@@ -11,6 +11,7 @@ import MarketingNav from '../components/marketing/MarketingNav'
 import MarketingFooter from '../components/marketing/MarketingFooter'
 import { tintStyle } from '../components/bundles/bundleArt'
 import '../components/bundles/bundles.css'
+import EmailCodeEntry from '../components/EmailCodeEntry'
 
 /**
  * Buying a whole teacher package. Same manual flow as a course: send the package price to head office's numbers,
@@ -26,6 +27,9 @@ export default function PackageCheckout() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState('')
+  const [emailMode, setEmailMode] = useState(false)
+  const [verifyingEmail, setVerifyingEmail] = useState(false)
+  useEffect(() => { api.get('/auth/email-code/status').then(r => setEmailMode(r.data.available)).catch(() => {}) }, [])
 
   useEffect(() => { api.get(`/public/bundles/${slug}`).then(r => setPkg(r.data)).catch(() => setMissing(true)) }, [slug])
 
@@ -33,16 +37,17 @@ export default function PackageCheckout() {
   const copy = (text, key) => navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1500) })
   const asStudent = user?.role === 'STUDENT'
 
-  const submit = async (e) => {
-    e.preventDefault()
+  const submit = async (e, emailVerificationToken) => {
+    e?.preventDefault()
     const code = form.code.trim()
     if (!code) return setError('اكتب كود الباقة اللي استلمته بعد التحويل')
     if (!asStudent) {
       if (!form.fullName.trim()) return setError('الاسم الكامل مطلوب')
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return setError('أدخل بريداً إلكترونياً صحيحاً')
-      if (form.password.length < 10 || !/[\p{L}]/u.test(form.password) || !/\d/.test(form.password)) return setError('كلمة المرور ١٠ أحرف على الأقل وفيها حروف وأرقام')
-      if (form.password !== form.confirmPassword) return setError('كلمتا المرور غير متطابقتين')
+      if (!emailMode && (form.password.length < 10 || !/[\p{L}]/u.test(form.password) || !/\d/.test(form.password))) return setError('كلمة المرور ١٠ أحرف على الأقل وفيها حروف وأرقام')
+      if (!emailMode && form.password !== form.confirmPassword) return setError('كلمتا المرور غير متطابقتين')
       if (!form.phone.trim()) return setError('رقم الهاتف مطلوب')
+      if (emailMode && !emailVerificationToken) { setError(''); setVerifyingEmail(true); return }
     }
     setSaving(true); setError('')
     try {
@@ -50,11 +55,12 @@ export default function PackageCheckout() {
         await api.post('/courses/redeem-code', { code })
       } else {
         const { data } = await api.post('/public/redeem-code', { code, fullName: form.fullName.trim(), email: form.email.trim(),
-          password: form.password, phone: form.phone.trim(), grade: form.grade || null })
+          password: emailMode ? null : form.password, emailVerificationToken, phone: form.phone.trim(), grade: form.grade || null })
         await loginWithToken(data.accessToken)
       }
       location.href = '/app/my-package'
     } catch (err) {
+      setVerifyingEmail(false)
       setError(apiErrorMessage(err, 'تعذّر تفعيل الباقة، راجع الكود وجرّب تاني'))
       setSaving(false)
     }
@@ -129,6 +135,10 @@ export default function PackageCheckout() {
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="lg:col-span-3">
               {user && !asStudent ? (
                 <div className="card p-8 text-center text-ink-500">الاشتراك في الباقات للطلاب. إنت داخل بحساب {user.roleArabic}.</div>
+              ) : verifyingEmail ? (
+                <div className="card p-7"><EmailCodeEntry purpose="REGISTER" fixedEmail={form.email.trim()}
+                  onVerified={data => submit(null, data.verificationToken)} onBusyChange={setSaving}
+                  onCancel={() => setVerifyingEmail(false)} /></div>
               ) : (
                 <form onSubmit={submit} className="card space-y-4 p-7">
                   <h2 className="text-lg font-extrabold text-ink-800">{asStudent ? 'فعّل الباقة بحسابك' : 'أنشئ حسابك وفعّل الباقة'}</h2>
@@ -137,10 +147,10 @@ export default function PackageCheckout() {
                     : <>
                         <Field icon={User} label="الاسم الكامل" value={form.fullName} onChange={set('fullName')} placeholder="اسمك الكامل" />
                         <Field icon={Mail} label="البريد الإلكتروني" type="email" value={form.email} onChange={set('email')} placeholder="you@example.com" />
-                        <div className="grid grid-cols-2 gap-3">
+                        {!emailMode && <div className="grid grid-cols-2 gap-3">
                           <Field icon={Lock} label="كلمة المرور" type="password" value={form.password} onChange={set('password')} placeholder="••••••••" />
                           <Field icon={Lock} label="تأكيد كلمة المرور" type="password" value={form.confirmPassword} onChange={set('confirmPassword')} placeholder="••••••••" />
-                        </div>
+                        </div>}
                         <Field icon={Phone} label="رقم الهاتف" value={form.phone} onChange={set('phone')} placeholder="01xxxxxxxxx" />
                         <div><label className="label">الصف الدراسي (اختياري)</label><input className="input" value={form.grade} onChange={set('grade')} placeholder="مثال: الصف الأول الثانوي" /></div>
                       </>}

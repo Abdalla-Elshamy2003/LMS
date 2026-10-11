@@ -12,6 +12,7 @@ import { Modal, PageLoader, EmptyState, Spinner, stagger, fadeUp } from '../comp
 import { fmtMoney, GRADES } from '../lib/format'
 import { useAuth } from '../lib/auth'
 import { courseHref } from '../lib/courseNavigation'
+import { courseTeacherOptions } from '../lib/courseFilters'
 import ImageUpload from '../components/ImageUpload'
 import WeeklySchedulePicker, { emptySchedule, scheduleProblem, scheduleText } from '../components/WeeklySchedulePicker'
 import StudentCatalog from '../features/student-catalog/StudentCatalog'
@@ -79,6 +80,7 @@ export default function Courses() {
   const scoped =isParent ? courses.filter((c) => childrenCourseIds.has(c.id)) : user.role === 'TEACHER' ? courses.filter(c => c.teacherId === user.id) : courses
   const subjects = [...new Set(scoped.map((c) => c.subject).filter(Boolean))]
   const years = distinctYears(scoped.map((c) => c.grade))
+  const filterTeachers = courseTeacherOptions(scoped, teachers)
   const needle = query.trim().toLowerCase()
   const filtered = scoped.filter((c) => (!subject || c.subject === subject) && (!teacherId || String(c.teacherId) === teacherId)
     && (!year || sameYear(c.grade, year)) && (!needle || `${c.title} ${c.subject || ''}`.toLowerCase().includes(needle)))
@@ -103,7 +105,7 @@ export default function Courses() {
         {user.role !== 'TEACHER' && (
           <select className="input max-w-[200px]" value={teacherId} onChange={(e) => setTeacherId(e.target.value)} aria-label="المدرس">
             <option value="">كل المدرسين</option>
-            {teachers.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}
+            {filterTeachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
         )}
         <p className="text-sm text-ink-400">{filtered.length} كورس</p>

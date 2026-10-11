@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, development]
   pull_request:
   workflow_dispatch:
 
@@ -14,11 +14,18 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  deployment-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test deployment command and archive boundaries
+        run: python3 -m unittest discover -s ops/contabo/tests -v
+
   backend:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_DB: manarah
           POSTGRES_USER: manarah
@@ -67,6 +74,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - working-directory: frontend
         run: npm ci
+      - name: Course teacher filter regression tests
+        working-directory: frontend
+        run: node --test src/lib/courseFilters.test.js
       - working-directory: frontend
         run: npm run build
       # What ships to browsers must have no high/critical advisory; build-only tools (Tailwind's file watcher
@@ -77,7 +87,7 @@ jobs:
 
   stack-smoke-test:
     runs-on: ubuntu-latest
-    needs: [backend, frontend]
+    needs: [backend, frontend, deployment-checks]
     steps:
       - uses: actions/checkout@v4
       - name: Write a CI-only .env for docker compose
@@ -113,20 +123,48 @@ jobs:
         run: docker compose down --volumes --remove-orphans
 
   deploy-production:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [backend, frontend, stack-smoke-test]
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    needs: [backend, frontend, deployment-checks, stack-smoke-test]
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: production
+    environment:
+      name: production
+      url: https://droos.com.co
+    concurrency:
+      group: contabo-production
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - name: Install pinned Railway CLI
-        run: npm install -g @railway/cli@5.58.0
-      - name: Deploy backend and frontend, then verify production
+      - name: Configure the restricted SSH deployment key
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_DROOS_DEPLOY_TOKEN }}
+          DEPLOY_KEY: ${{ secrets.CONTABO_SSH_KEY }}
+          KNOWN_HOSTS: ${{ vars.CONTABO_KNOWN_HOSTS }}
+        run: |
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/contabo_lms
+          chmod 600 ~/.ssh/contabo_lms
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - name: Deploy the tested main commit to Contabo
+        env:
+          GH_TOKEN: ${{ github.token }}
           RELEASE_SHA: ${{ github.sha }}
-        run: node scripts/deploy-railway.mjs
+          DEPLOY_HOST: ${{ vars.CONTABO_HOST }}
+          DEPLOY_PORT: ${{ vars.CONTABO_PORT }}
+          DEPLOY_USER: ${{ vars.CONTABO_USER }}
+        run: |
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [ "$latest" != "$RELEASE_SHA" ]; then
+            echo 'A newer main commit exists; this tested commit will not replace it.'
+            exit 0
+          fi
+          git archive --format=tar.gz --output=/tmp/lms-source.tar.gz HEAD
+          ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
+            -i ~/.ssh/contabo_lms -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "deploy $RELEASE_SHA" < /tmp/lms-source.tar.gz
+          curl --fail --silent --show-error --retry 3 "https://droos.com.co/release.json?commit=$RELEASE_SHA" \
+            | python3 -c 'import json,os,sys; assert json.load(sys.stdin)["commit"] == os.environ["RELEASE_SHA"]'
+      - name: Remove the runner's temporary deployment key
+        if: always()
+        run: rm -f ~/.ssh/contabo_lms /tmp/lms-source.tar.gz

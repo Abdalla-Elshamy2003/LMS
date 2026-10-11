@@ -9,6 +9,7 @@ import MarketingNav from '../components/marketing/MarketingNav'
 import MarketingFooter from '../components/marketing/MarketingFooter'
 import { apiErrorMessage } from '../lib/apiError'
 import { perMonths } from '../lib/subscriptions'
+import EmailCodeEntry from '../components/EmailCodeEntry'
 
 /** No live payment gateway: the teacher confirms InstaPay/Vodafone Cash transfers manually and
  *  hands the student a one-time code. This page shows where to send the money, then lets the
@@ -26,6 +27,10 @@ export default function Checkout() {
   const [error, setError] = useState('')
   const [done, setDone] = useState(null)
   const [copied, setCopied] = useState('')
+  const [emailMode, setEmailMode] = useState(false)
+  const [verifyingEmail, setVerifyingEmail] = useState(false)
+
+  useEffect(() => { api.get('/auth/email-code/status').then(r => setEmailMode(r.data.available)).catch(() => {}) }, [])
 
   useEffect(() => {
     api.get(`/public/courses/${courseId}`).then((r) => setCourse(r.data)).catch(() => setNotFound(true))
@@ -36,23 +41,26 @@ export default function Checkout() {
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
   const copy = (text, key) => { navigator.clipboard?.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 1500) }) }
 
-  const submit = async (e) => {
-    e.preventDefault()
+  const submit = async (e, emailVerificationToken) => {
+    e?.preventDefault()
     if (!form.fullName.trim()) return setError('الاسم الكامل مطلوب')
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return setError('أدخل بريداً إلكترونياً صحيحاً')
-    if (form.password.length < 10 || !/[\p{L}]/u.test(form.password) || !/\d/.test(form.password)) return setError('كلمة المرور يجب أن تكون 10 أحرف على الأقل وتحتوي على حروف وأرقام')
-    if (form.password !== form.confirmPassword) return setError('كلمتا المرور غير متطابقتين')
+    if (!emailMode && (form.password.length < 10 || !/[\p{L}]/u.test(form.password) || !/\d/.test(form.password))) return setError('كلمة المرور يجب أن تكون 10 أحرف على الأقل وتحتوي على حروف وأرقام')
+    if (!emailMode && form.password !== form.confirmPassword) return setError('كلمتا المرور غير متطابقتين')
     if (!form.phone.trim()) return setError('رقم الهاتف مطلوب')
     if (!form.code.trim()) return setError('اكتب كود الاشتراك اللي استلمته من المستر بعد التحويل')
+    if (emailMode && !emailVerificationToken) { setError(''); setVerifyingEmail(true); return }
     setSaving(true); setError('')
     try {
       const { data } = await api.post('/public/redeem-code', {
-        code: form.code.trim(), fullName: form.fullName.trim(), email: form.email.trim(), password: form.password,
+        code: form.code.trim(), fullName: form.fullName.trim(), email: form.email.trim(), password: emailMode ? null : form.password,
+        emailVerificationToken,
         phone: form.phone.trim(), grade: form.grade || null,
       })
       setDone(data)
       await loginWithToken(data.accessToken)
     } catch (err) {
+      setVerifyingEmail(false)
       setError(apiErrorMessage(err, 'تعذّر إتمام العملية، حاول مرة أخرى'))
     } finally {
       setSaving(false)
@@ -170,6 +178,10 @@ export default function Checkout() {
                     {saving ? <Spinner className="h-5 w-5 border-white/40 border-t-white" /> : <>تفعيل الكورس <ArrowLeft size={18} /></>}
                   </button>
                 </form>
+              ) : verifyingEmail ? (
+                <div className="card p-7"><EmailCodeEntry purpose="REGISTER" fixedEmail={form.email.trim()}
+                  onVerified={data => submit(null, data.verificationToken)} onBusyChange={setSaving}
+                  onCancel={() => setVerifyingEmail(false)} /></div>
               ) : (
                 <form onSubmit={submit} className="card space-y-4 p-7">
                   <h3 className="text-lg font-extrabold text-ink-800">أنشئ حسابك وفعّل الكود</h3>
@@ -181,7 +193,7 @@ export default function Checkout() {
                     <label className="label">البريد الإلكتروني</label>
                     <div className="relative"><Mail size={18} className="absolute right-3.5 top-3 text-ink-400" /><input type="email" className="input pr-11" value={form.email} onChange={set('email')} placeholder="you@example.com" /></div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  {!emailMode && <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="label">كلمة المرور</label>
                       <div className="relative"><Lock size={18} className="absolute right-3.5 top-3 text-ink-400" /><input type="password" className="input pr-11" value={form.password} onChange={set('password')} placeholder="••••••••" /></div>
@@ -190,7 +202,7 @@ export default function Checkout() {
                       <label className="label">تأكيد كلمة المرور</label>
                       <div className="relative"><Lock size={18} className="absolute right-3.5 top-3 text-ink-400" /><input type="password" className="input pr-11" value={form.confirmPassword} onChange={set('confirmPassword')} placeholder="••••••••" /></div>
                     </div>
-                  </div>
+                  </div>}
                   <div>
                     <label className="label">رقم الهاتف</label>
                     <div className="relative"><Phone size={18} className="absolute right-3.5 top-3 text-ink-400" /><input className="input pr-11" value={form.phone} onChange={set('phone')} placeholder="01xxxxxxxxx" /></div>

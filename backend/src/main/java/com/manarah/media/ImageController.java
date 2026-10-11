@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
-import java.util.Base64;
 import java.util.Map;
 
 /**
@@ -31,9 +30,11 @@ import java.util.Map;
 public class ImageController {
 
     private final PublicImageRepository images;
+    private final MediaContent media;
 
-    public ImageController(PublicImageRepository images) {
+    public ImageController(PublicImageRepository images, MediaContent media) {
         this.images = images;
+        this.media = media;
     }
 
     @PostMapping("/api/images")
@@ -44,7 +45,7 @@ public class ImageController {
         var image = new PublicImage();
         image.setTenantId(TenantContext.require());
         image.setContentType(type);
-        image.setData(Base64.getEncoder().encodeToString(file.getBytes()));
+        image.setData(media.storeImage(image.getTenantId(), "public-images", file, type, false));
         image.setCreatedBy(actor.getId());
         images.save(image);
         return Map.of("id", image.getId(), "url", "/api/public/images/" + image.getId());
@@ -57,6 +58,6 @@ public class ImageController {
                 .header("X-Content-Type-Options", "nosniff")
                 .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic().immutable())
                 .contentType(MediaType.parseMediaType(image.getContentType()))
-                .body(Base64.getDecoder().decode(image.getData()));
+                .body(media.read(image.getData()));
     }
 }

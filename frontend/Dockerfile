@@ -29,6 +29,8 @@ COPY deploy/docker-entrypoint.sh /docker-entrypoint.d/40-render-backend-host.sh
 RUN chmod +x /docker-entrypoint.d/40-render-backend-host.sh \
     && rm -f /docker-entrypoint.d/20-envsubst-on-templates.sh
 COPY --from=build /build/dist /usr/share/nginx/html
+RUN find /usr/share/nginx/html -type d -exec chmod 755 {} + \
+    && find /usr/share/nginx/html -type f -exec chmod 644 {} +
 
 EXPOSE 80
 

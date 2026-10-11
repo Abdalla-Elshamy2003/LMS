@@ -23,14 +23,15 @@ api.interceptors.response.use(
   (err) => {
     // Blocked while signed in (head office or the teacher just did it): the session ends and the sign-in page says
     // why. Matched on the code, since other 403s (a role not allowed, another teacher's space) must not sign anyone out.
-    if (isAccountBlocked(err) && !err.config.url.includes('/auth/login')) {
+    const authenticating = /^\/auth\/(login|email-code)(\/|$)/.test(err.config.url)
+    if (isAccountBlocked(err) && !authenticating) {
       try { sessionStorage.setItem(BLOCKED_NOTICE_KEY, err.response.data.message || '') } catch { /* the page still signs out */ }
       localStorage.removeItem('manarah_token')
       sessionStorage.removeItem('manarah_academy')
       if (location.pathname.startsWith('/app')) location.href = '/login'
       return Promise.reject(err)
     }
-    if (err.response && err.response.status === 401 && !err.config.url.includes('/auth/login')) {
+    if (err.response && err.response.status === 401 && !authenticating) {
       localStorage.removeItem('manarah_token')
       // Only the signed-in app is bounced to login on an expired session. The startup /auth/me check is
       // skipped: the auth provider and route guards already handle it, and forcing a redirect there sent

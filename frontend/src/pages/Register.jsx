@@ -17,10 +17,11 @@ import { qrDataUrl } from '../lib/qr'
 import { studentVerifyUrl } from '../features/student-verification/studentVerificationApi'
 import { apiErrorMessage } from '../lib/apiError'
 import BrandLogo from '../components/Brand'
+import EmailCodeEntry from '../components/EmailCodeEntry'
 
 const FEATURES = [
   { icon: BookOpen, title: 'اختار مدرسك وكورسك', desc: 'المادة وسنتك بتتحدد لوحدها من الكورس اللي اخترته' },
-  { icon: ShieldCheck, title: 'حساب واحد لكل مدرسينك', desc: 'نفس الإيميل والباسورد مع أي مدرس تشترك معاه' },
+  { icon: ShieldCheck, title: 'حساب واحد لكل مدرسينك', desc: 'نفس الإيميل مع أي مدرس تشترك معاه' },
   { icon: Trophy, title: 'كل جديد لسنتك بيوصلك', desc: 'أي كورس المدرس ينزّله لسنتك بيظهرلك على طول' },
 ]
 
@@ -47,6 +48,8 @@ export default function Register() {
   const [courses, setCourses] = useState([])
   const [plans, setPlans] = useState([])
   const [step, setStep] = useState(1)
+  const [emailMode, setEmailMode] = useState(false)
+  const [verifyingEmail, setVerifyingEmail] = useState(false)
   const [form, setForm] = useState({
     fullName: '', email: '', password: '', confirmPassword: '', phone: '',
     grade: params.get('year') || '', nationalId: '', educationType: 'عادي',
@@ -56,6 +59,10 @@ export default function Register() {
   const [done, setDone] = useState(null)
   const [pass, setPass] = useState(null), [qr, setQr] = useState('')
   const [error, setError] = useState(''), [conflict, setConflict] = useState(false)
+
+  useEffect(() => {
+    api.get('/auth/email-code/status').then(({ data }) => setEmailMode(data.available)).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!fixedSlug) api.get('/public/academies').then((r) => setTeachers(r.data || [])).catch(() => {})
@@ -114,8 +121,8 @@ export default function Register() {
   const validateStep1 = () => {
     if (!form.fullName.trim()) return 'الاسم الكامل مطلوب'
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return 'أدخل بريداً إلكترونياً صحيحاً'
-    if (form.password.length < 10 || !/[\p{L}]/u.test(form.password) || !/\d/.test(form.password)) return 'كلمة المرور يجب أن تكون 10 أحرف على الأقل وتحتوي على حروف وأرقام'
-    if (form.password !== form.confirmPassword) return 'كلمتا المرور غير متطابقتين'
+    if (!emailMode && (form.password.length < 10 || !/[\p{L}]/u.test(form.password) || !/\d/.test(form.password))) return 'كلمة المرور يجب أن تكون 10 أحرف على الأقل وتحتوي على حروف وأرقام'
+    if (!emailMode && form.password !== form.confirmPassword) return 'كلمتا المرور غير متطابقتين'
     if (!form.phone.trim()) return 'رقم الهاتف مطلوب'
     return ''
   }
@@ -134,16 +141,18 @@ export default function Register() {
     setStep(2)
   }
 
-  const submit = async (e) => {
-    e.preventDefault()
+  const submit = async (e, emailVerificationToken) => {
+    e?.preventDefault()
     const err = validateStep2()
     if (err) { setError(err); return }
+    if (emailMode && !emailVerificationToken) { setVerifyingEmail(true); setError(''); return }
     setSaving(true); setError(''); setConflict(false)
     try {
       const { data } = await api.post('/public/register', {
         fullName: form.fullName.trim(),
         email: form.email.trim(),
-        password: form.password,
+        password: emailMode ? null : form.password,
+        emailVerificationToken,
         phone: form.phone.trim(),
         grade: form.grade || null,
         nationalId: form.nationalId.trim() || null,
@@ -166,6 +175,7 @@ export default function Register() {
       setStep(3)
     } catch (err) {
       setDone(null)
+      setVerifyingEmail(false)
       setError(apiErrorMessage(err, 'تعذّر إتمام التسجيل، حاول مرة أخرى'))
       if (err.response?.status === 409) { setConflict(true); setStep(1) }
     } finally {
@@ -231,10 +241,10 @@ export default function Register() {
             <span className={`h-1.5 flex-1 rounded-full ${step >= 3 ? 'bg-emerald-500' : 'bg-ink-100'}`} />
           </div>
           <h2 className="mt-5 text-2xl font-black text-ink-800">
-            {step === 1 ? 'إنشاء حساب جديد' : step === 2 ? 'مدرسك وسنتك وكورسك' : 'حسابك جاهز'}
+            {step === 1 ? 'إنشاء حساب جديد' : step === 2 ? (verifyingEmail ? 'أكد إيميلك وادخل' : 'مدرسك وسنتك وكورسك') : 'حسابك جاهز'}
           </h2>
           <p className="mt-1 text-sm text-ink-400">
-            {step === 1 ? 'خطوة 1 من 3 — بيانات الحساب' : step === 2 ? 'خطوة 2 من 3 — اتملت من الكورس اللي اخترته، راجعها بس' : 'خطوة 3 من 3 — كود الدخول بتاعك'}
+            {step === 1 ? 'خطوة 1 من 3 — بيانات الحساب' : step === 2 ? (verifyingEmail ? 'اكتب الكود اللي هيوصلك على بريدك لإكمال التسجيل' : 'خطوة 2 من 3 — اتملت من الكورس اللي اخترته، راجعها بس') : 'خطوة 3 من 3 — كارت الطالب الخاص بك'}
           </p>
 
           {step < 3 && teacher && <ChoiceSummary teacher={teacher} course={chosen} grade={form.grade} plan={paidChoice ? plan : null} />}
@@ -255,7 +265,7 @@ export default function Register() {
                   <input type="email" value={form.email} onChange={set('email')} className="input pr-11" placeholder="you@example.com" required />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              {!emailMode && <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">كلمة المرور</label>
                   <div className="relative">
@@ -270,7 +280,7 @@ export default function Register() {
                     <input type="password" value={form.confirmPassword} onChange={set('confirmPassword')} className="input pr-11" placeholder="••••••••" required />
                   </div>
                 </div>
-              </div>
+              </div>}
               <div>
                 <label className="label">رقم الهاتف</label>
                 <div className="relative">
@@ -287,7 +297,7 @@ export default function Register() {
             </form>
           )}
 
-          {step === 2 && (
+          {step === 2 && !verifyingEmail && (
             <form onSubmit={submit} className="mt-6 space-y-4">
               <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr]">
                 <div>
@@ -369,11 +379,14 @@ export default function Register() {
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => setStep(1)} className="btn-ghost">رجوع</button>
                 <button type="submit" disabled={saving} className="btn-primary flex-1 py-3 text-base">
-                  {saving ? <Spinner className="h-5 w-5 border-white/40 border-t-white" /> : <>إنشاء الحساب <CheckCircle2 size={18} /></>}
+                  {saving ? <Spinner className="h-5 w-5 border-white/40 border-t-white" /> : <>{emailMode ? 'متابعة لتأكيد الإيميل' : 'إنشاء الحساب'} <CheckCircle2 size={18} /></>}
                 </button>
               </div>
             </form>
           )}
+
+          {step === 2 && verifyingEmail && <EmailCodeEntry fixedEmail={form.email.trim()} purpose="REGISTER"
+            onVerified={data => submit(null, data.verificationToken)} onBusyChange={setSaving} onCancel={() => setVerifyingEmail(false)} />}
 
           {step === 3 && done && <Welcome done={done} pass={pass} qr={qr} email={form.email.trim()} onGo={(to) => nav(to)} />}
 

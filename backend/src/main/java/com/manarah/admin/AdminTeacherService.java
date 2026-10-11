@@ -44,15 +44,18 @@ public class AdminTeacherService {
     private final EnrollmentRepository enrollments;
     private final com.manarah.student.repo.StudentRepository students;
     private final com.manarah.audit.AuditService audit;
+    private final com.manarah.media.MediaContent media;
 
     public AdminTeacherService(BundleService bundleService, AcademyService academyService, CourseService courseService,
                                TeacherAcademyRepository academies, TeacherBundleMemberRepository bundleMembers, TenantRepository tenants,
                                UserRepository users, CourseRepository courses, EnrollmentRepository enrollments,
-                               com.manarah.student.repo.StudentRepository students, com.manarah.audit.AuditService audit) {
+                               com.manarah.student.repo.StudentRepository students, com.manarah.audit.AuditService audit,
+                               com.manarah.media.MediaContent media) {
         this.bundleService = bundleService; this.academyService = academyService; this.courseService = courseService;
         this.academies = academies; this.bundleMembers = bundleMembers; this.tenants = tenants; this.users = users;
         this.courses = courses; this.enrollments = enrollments; this.students = students;
         this.audit = audit;
+        this.media = media;
     }
 
     /** The teacher page. On create, {@code slug}, {@code username} and {@code password} are required; on an edit
@@ -211,8 +214,8 @@ public class AdminTeacherService {
         return new TeacherDetail(a.getId(), a.getSlug(), a.getName(), Objects.toString(a.getSubject(), ""),
                 Objects.toString(a.getTagline(), ""), Objects.toString(a.getHeadline(), ""), Objects.toString(a.getDescription(), ""),
                 Objects.toString(a.getAboutText(), ""), Objects.toString(a.getPhone(), ""),
-                a.getPhotoData() != null ? a.getPhotoData() : Objects.toString(a.getPhotoUrl(), ""),
-                Objects.toString(a.getCoverData(), ""),
+                a.getPhotoData() != null ? media.preview(a.getPhotoData()) : Objects.toString(a.getPhotoUrl(), ""),
+                media.preview(a.getCoverData()),
                 a.isPublished(), Objects.toString(teacher.getUsername(), ""), email,
                 students.countByTenantIdAndStatusNot(a.getTenantId(), ARCHIVED), list);
     }
