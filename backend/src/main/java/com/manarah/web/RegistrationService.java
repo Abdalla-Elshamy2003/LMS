@@ -67,6 +67,7 @@ public class RegistrationService {
     private final com.manarah.academy.BundleSubscriptionService packages;
     private final com.manarah.enrollment.CourseRequests requests;
     private final com.manarah.subscription.PlanService planService;
+    private final com.manarah.security.auth.EmailCodeService emailCodes;
 
     public RegistrationService(TenantRepository tenants, BranchRepository branches, CourseRepository courses,
                                StudentRepository students, GuardianRepository guardians,
@@ -78,7 +79,9 @@ public class RegistrationService {
                                com.manarah.security.auth.LoginAttemptLimiter loginAttempts,
                                com.manarah.academy.BundleSubscriptionService packages,
                                com.manarah.enrollment.CourseRequests requests,
-                               com.manarah.subscription.PlanService planService) {
+                               com.manarah.subscription.PlanService planService,
+                               com.manarah.security.auth.EmailCodeService emailCodes) {
+        this.emailCodes = emailCodes;
         this.packages = packages;
         this.requests = requests;
         this.planService = planService;
@@ -103,7 +106,8 @@ public class RegistrationService {
 
     public record RegisterCommand(String fullName, String email, String password, String phone, String grade,
                                   String nationalId, String educationType,
-                                  String guardianName, String guardianPhone, Long courseId, String tenantSlug) {
+                                  String guardianName, String guardianPhone, Long courseId, String tenantSlug,
+                                  String emailVerificationToken) {
     }
 
     public record RegistrationResult(String accessToken, String tokenType, long expiresInMinutes,
@@ -114,13 +118,14 @@ public class RegistrationService {
      *  required, and a purchase order is opened for its price instead of a trial enrollment. */
     public record CheckoutCommand(String fullName, String email, String password, String phone, String grade,
                                   String nationalId, String educationType,
-                                  String guardianName, String guardianPhone, Long courseId, String tenantSlug) {
+                                  String guardianName, String guardianPhone, Long courseId, String tenantSlug,
+                                  String emailVerificationToken) {
     }
 
     /** No tenantSlug/courseId needed — the code itself identifies both. */
     public record RedeemCommand(String code, String fullName, String email, String password, String phone,
                                 String grade, String nationalId, String educationType,
-                                String guardianName, String guardianPhone) {
+                                String guardianName, String guardianPhone, String emailVerificationToken) {
     }
 
     public record CheckoutResult(String accessToken, String tokenType, long expiresInMinutes, String studentCode,
@@ -144,7 +149,7 @@ public class RegistrationService {
                 && !course.getGrade().isBlank() ? course.getGrade().trim() : cmd.grade();
 
         Account acc = createAccount(tenantId, cmd.fullName(), cmd.email(), cmd.password(), cmd.phone(),
-                grade, cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone());
+                grade, cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone(), cmd.emailVerificationToken());
 
         if (course != null) requests.request(tenantId, acc.student.getId(), course);
 
@@ -174,7 +179,7 @@ public class RegistrationService {
         Course course = requireCourse(tenantId, cmd.courseId());
 
         Account acc = createAccount(tenantId, cmd.fullName(), cmd.email(), cmd.password(), cmd.phone(),
-                cmd.grade(), cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone());
+                cmd.grade(), cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone(), cmd.emailVerificationToken());
         acc.student.setStatus("PENDING_PAYMENT");
         students.save(acc.student);
 
@@ -197,7 +202,7 @@ public class RegistrationService {
                 .orElseThrow(() -> new BadRequestException("الكورس المرتبط بهذا الكود لم يعد متاحاً"));
 
         Account acc = createAccount(code.getTenantId(), cmd.fullName(), cmd.email(), cmd.password(), cmd.phone(),
-                cmd.grade(), cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone());
+                cmd.grade(), cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone(), cmd.emailVerificationToken());
         accessCodes.redeem(code, acc.student.getId());
 
         String token = linked.tokenFor(acc.user);
@@ -213,7 +218,7 @@ public class RegistrationService {
         var code = packages.redeemable(cmd.code());
         Long tenantId = packages.homeTenantFor(code);
         Account acc = createAccount(tenantId, cmd.fullName(), cmd.email(), cmd.password(), cmd.phone(),
-                cmd.grade(), cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone());
+                cmd.grade(), cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone(), cmd.emailVerificationToken());
         packages.use(code, linked.owner(acc.user));
         String token = linked.tokenFor(acc.user);
         return new RegistrationResult(token, "Bearer", jwtService.getAccessTokenTtlMinutes(),
@@ -226,7 +231,7 @@ public class RegistrationService {
         var plan = planService.planOf(code);
         String grade = cmd.grade() == null || cmd.grade().isBlank() ? plan.getYearLabel() : cmd.grade();
         Account acc = createAccount(plan.getTenantId(), cmd.fullName(), cmd.email(), cmd.password(), cmd.phone(),
-                grade, cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone());
+                grade, cmd.nationalId(), cmd.educationType(), cmd.guardianName(), cmd.guardianPhone(), cmd.emailVerificationToken());
         var period = planService.use(code, acc.student.getId());
         String token = linked.tokenFor(acc.user);
         return new RegistrationResult(token, "Bearer", jwtService.getAccessTokenTtlMinutes(), acc.student.getCode(),
@@ -249,14 +254,16 @@ public class RegistrationService {
      *  every self-service signup needs, regardless of whether it ends in a trial or a purchase. */
     private Account createAccount(Long tenantId, String fullName, String email, String password, String phone,
                                   String grade, String nationalId, String educationTypeIn,
-                                  String guardianName, String guardianPhone) {
+                                  String guardianName, String guardianPhone, String emailVerificationToken) {
         if (fullName == null || fullName.isBlank()) {
             throw new BadRequestException("الاسم الكامل مطلوب");
         }
         if (email == null || !EMAIL.matcher(email.trim()).matches()) {
             throw new BadRequestException("البريد الإلكتروني غير صحيح");
         }
-        PasswordPolicy.requireStrong(password);
+        boolean emailVerified = emailCodes.registrationProof(email, emailVerificationToken);
+        String accountPassword = emailVerified && (password == null || password.isBlank())
+                ? UUID.randomUUID().toString() : PasswordPolicy.requireStrong(password);
         if (phone == null || phone.isBlank()) {
             throw new BadRequestException("رقم الهاتف مطلوب");
         }
@@ -281,7 +288,7 @@ public class RegistrationService {
             loginAttempts.assertAllowed(trimmedEmail);
             User owner = elsewhere.stream()
                     .filter(u -> "ACTIVE".equals(u.getStatus()) && u.getRole() == Role.STUDENT)
-                    .filter(u -> passwordEncoder.matches(password, u.getPasswordHash()))
+                    .filter(u -> emailVerified || passwordEncoder.matches(password, u.getPasswordHash()))
                     .findFirst().orElse(null);
             if (owner == null) {
                 loginAttempts.failed(trimmedEmail);
@@ -302,7 +309,7 @@ public class RegistrationService {
         user.setEmail(trimmedEmail);
         user.setPhone(phone);
         user.setRole(Role.STUDENT);
-        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setPasswordHash(passwordEncoder.encode(accountPassword));
         try {
             users.save(user);
         } catch (DataIntegrityViolationException e) {

@@ -44,6 +44,8 @@ public class PublicEndpointRateLimitFilter extends OncePerRequestFilter {
     }
 
     private static final List<Rule> RULES = List.of(
+            new Rule("POST", "/api/auth/email-code/request", 10, Duration.ofMinutes(15)),
+            new Rule("POST", "/api/auth/email-code/verify", 30, Duration.ofMinutes(15)),
             new Rule("POST", "/api/auth/forgot-password", 5, Duration.ofMinutes(15)),
             new Rule("POST", "/api/public/register", 10, Duration.ofMinutes(15)),
             new Rule("POST", "/api/public/checkout", 20, Duration.ofMinutes(15)),

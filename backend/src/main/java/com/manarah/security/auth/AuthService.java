@@ -46,6 +46,19 @@ public class AuthService {
             throw new UnauthorizedException("بيانات الدخول غير صحيحة");
         }
         loginAttempts.succeeded(identifier);
+        return session(user);
+    }
+
+    @Transactional
+    public AuthDtos.TokenResponse emailLogin(Long userId, String email) {
+        User user = userId == null ? null : users.findById(userId)
+                .filter(u -> u.getPrimaryUserId() == null && u.getRole() == com.manarah.identity.domain.Role.STUDENT)
+                .filter(u -> "ACTIVE".equals(u.getStatus()) && email.equalsIgnoreCase(u.getEmail())).orElse(null);
+        if (user == null) throw new UnauthorizedException("مفيش حساب طالب متاح بالإيميل ده. اعمل حساب جديد أو راجع الإدارة");
+        return session(user);
+    }
+
+    private AuthDtos.TokenResponse session(User user) {
         // The password was right, so this is the person themselves: they are told why they are blocked, if they are.
         String blocked = blocks.accountReason(user);
         if (blocked != null) throw new AccountBlockedException(blocked);

@@ -10,9 +10,12 @@ import api from '../lib/api'
 import { Spinner } from '../components/ui'
 import { BrandMark, Wordmark } from '../components/Brand'
 import { apiErrorMessage, BLOCKED_NOTICE_KEY, isAccountBlocked } from '../lib/apiError'
+import EmailCodeEntry from '../components/EmailCodeEntry'
 
 export default function Login() {
-  const { user, login, joinTeacher } = useAuth()
+  const { user, login, loginWithToken, joinTeacher } = useAuth()
+  const [emailReady, setEmailReady] = useState(false)
+  const [method, setMethod] = useState('password')
   const [params] = useSearchParams(), nav = useNavigate()
   const [profile, setProfile] = useState(null)
   const [username, setUsername] = useState(''), [password, setPassword] = useState('')
@@ -24,6 +27,12 @@ export default function Login() {
   })
   // Read once above, cleared here: an initializer may run twice, and must not lose the notice the first time.
   useEffect(() => { try { sessionStorage.removeItem(BLOCKED_NOTICE_KEY) } catch { /* nothing to clear */ } }, [])
+  useEffect(() => {
+    api.get('/auth/email-code/status').then(({ data }) => {
+      setEmailReady(data.available)
+      if (data.available) setMethod('code')
+    }).catch(() => {})
+  }, [])
 
   const slug = params.get('academy') || 'default'
   // Signing in from a course on a teacher's page: that course is added to the account right after.
@@ -47,7 +56,16 @@ export default function Login() {
     e.preventDefault()
     setBusy(true); setError(''); setBlocked('')
     try {
-      const account = await login(username.trim(), password)
+      await finishLogin(await login(username.trim(), password))
+    } catch (e) {
+      if (isAccountBlocked(e)) setBlocked(apiErrorMessage(e, 'حسابك موقوف.'))
+      else setError(apiErrorMessage(e, 'تعذّر تسجيل الدخول. راجع اسم المستخدم وكلمة المرور.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const finishLogin = async account => {
       if (account.role === 'STUDENT' && course && params.get('academy'))
         return await joinTeacher(params.get('academy'), Number(course), `/app/courses?focus=${course}`)
       // An admin signing in from a teacher's own login link (?academy=...) works inside that teacher's space;
@@ -56,12 +74,6 @@ export default function Login() {
         && profile.managerTenantId === account.tenantId)
         sessionStorage.setItem('manarah_academy', JSON.stringify({ id: profile.id, name: profile.name, slug: profile.slug }))
       nav(destination)
-    } catch (e) {
-      if (isAccountBlocked(e)) setBlocked(apiErrorMessage(e, 'حسابك موقوف.'))
-      else setError(apiErrorMessage(e, 'تعذّر تسجيل الدخول. راجع اسم المستخدم وكلمة المرور.'))
-    } finally {
-      setBusy(false)
-    }
   }
 
   const fromTeacher = !!(profile && params.get('academy'))
@@ -92,9 +104,13 @@ export default function Login() {
             </p>
           )}
           <h1 className="text-3xl font-black tracking-tight text-ink-900">أهلاً بيك من جديد</h1>
-          <p className="mt-2 text-sm leading-7 text-ink-500">ادخل ببيانات حسابك — طالب، مدرس، سنتر، أو إدارة.</p>
+          <p className="mt-2 text-sm leading-7 text-ink-500">{method === 'code' ? 'اكتب إيميل حساب الطالب، وهيجيلك كود تدخل بيه.' : 'ادخل ببيانات حسابك — طالب، مدرس، سنتر، أو إدارة.'}</p>
+          {emailReady && <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl bg-ink-50 p-1.5">
+            <button type="button" disabled={busy} onClick={() => setMethod('code')} className={`rounded-xl px-3 py-3 text-xs font-bold ${method === 'code' ? 'bg-white text-brand-700 shadow-sm' : 'text-ink-500'}`}>الطالب: كود على الإيميل</button>
+            <button type="button" disabled={busy} onClick={() => setMethod('password')} className={`rounded-xl px-3 py-3 text-xs font-bold ${method === 'password' ? 'bg-white text-brand-700 shadow-sm' : 'text-ink-500'}`}>اسم المستخدم وكلمة المرور</button>
+          </div>}
 
-          <form onSubmit={submit} className="mt-8 space-y-5">
+          {method === 'code' ? <EmailCodeEntry onBusyChange={setBusy} onVerified={async data => finishLogin(await loginWithToken(data.accessToken))} /> : <form onSubmit={submit} className="mt-8 space-y-5">
             {blocked && (
               <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} role="alert"
                 className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
@@ -145,7 +161,7 @@ export default function Login() {
               <span className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-white/20 transition-all duration-700 group-hover:left-[120%]" />
               {busy ? <Spinner className="h-5 w-5 border-white/40 border-t-white" /> : <>دخول المنصة <ArrowLeft size={18} className="transition group-hover:-translate-x-1" /></>}
             </button>
-          </form>
+          </form>}
 
           <p className="mt-8 text-center text-sm text-ink-500">
             لسه معندكش حساب؟{' '}

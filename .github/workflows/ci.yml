@@ -74,6 +74,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - working-directory: frontend
         run: npm ci
+      - name: Course teacher filter regression tests
+        working-directory: frontend
+        run: node --test src/lib/courseFilters.test.js
       - working-directory: frontend
         run: npm run build
       # What ships to browsers must have no high/critical advisory; build-only tools (Tailwind's file watcher

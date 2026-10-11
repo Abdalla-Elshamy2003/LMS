@@ -27,6 +27,7 @@ export function AuthProvider({ children }) {
   // Used right after self-registration: the register endpoint already hands back a valid
   // access token, so we skip a second round-trip to /auth/login and just fetch the profile.
   const loginWithToken = async (accessToken) => {
+    sessionStorage.removeItem('manarah_academy')
     localStorage.setItem('manarah_token', accessToken)
     const res = await api.get('/auth/me')
     setUser(res.data)
