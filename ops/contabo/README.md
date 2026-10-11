@@ -42,6 +42,14 @@ No R2, AI, Fawaterak, database, or JWT credentials are stored in GitHub. They re
 
 New persistent uploads use private R2 storage, with read compatibility for existing local files and database images. Existing shared files and Docker database volumes are retained.
 
+## Student email codes
+
+The student login page uses six-digit email codes when a sender is configured. Staff retain password sign-in. Registration (including course/package code checkout) verifies the submitted address before creating an account. Codes expire after ten minutes, allow at most five guesses, and cannot be reused. Resending invalidates the previous code and is limited to once per minute and five requests per address per hour.
+
+Configure mail only in `/opt/lms/shared/.env`: set `MANARAH_EMAIL_ENABLED=true` and `MANARAH_EMAIL_FROM` to a provider-verified sender. Use either the existing `MANARAH_BREVO_API_KEY` integration or SMTP (`SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`). For [Resend SMTP](https://resend.com/docs/send-with-smtp), use `smtp.resend.com`, port `587`, username `resend`, and a private sending API key as the SMTP password. SMTP requires STARTTLS.
+
+After testing real delivery to an owned inbox, set `MANARAH_EMAIL_REQUIRE_VERIFICATION=true` and recreate the backend with the current release's Compose file. This also prevents clients bypassing the registration email check. Leave verification disabled while mail is unconfigured so existing registration/password sign-in remains usable. `/api/auth/email-code/status` exposes readiness without credentials; successful provider acceptance alone does not prove inbox delivery.
+
 If a build fails, the current application stays in place. If application health or verification fails after replacement, the previous application images are restored. Database migrations are not automatically undone; the pre-deploy dump is available for an administrator-reviewed restore if a schema change requires one. Failed releases can be retried with the same commit.
 
 ```bash
