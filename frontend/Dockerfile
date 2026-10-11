@@ -18,7 +18,7 @@ COPY . .
 RUN npm run build
 
 # ---------- Runtime stage ----------
-FROM nginx:1.30.4-alpine AS runtime
+FROM nginx:1.31.0-alpine AS runtime
 
 # Templated, not a plain config file: BACKEND_HOST is filled in at container start (see
 # docker-entrypoint.sh) so the same image works unmodified under Docker Compose (defaults to
